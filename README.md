@@ -2,9 +2,9 @@
 Collaboration Development Assignment Project
 
 
-## Flutter Version
-Flutter 3.44.8 stable
+## Required development environment
 
-
-## Dart Version
-Dart 3.12.2
+- Flutter: 3.44.8 stable
+- Dart: 3.12.2, included with Flutter
+- JDK: 17
+- Android compile SDK: 36
