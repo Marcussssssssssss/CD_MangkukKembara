@@ -15,9 +15,9 @@ class AuthBranding extends StatelessWidget {
       child: Column(
         children: [
           Image.asset(
-            'asset/image/logo_light.png',
+            'asset/image/logo.png',
             width: 260,
-            height: 86,
+            height: 94,
             fit: BoxFit.contain,
           ),
           const SizedBox(height: 4),
@@ -29,6 +29,31 @@ class AuthBranding extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Keeps authentication content centered when it fits, and scrollable when it
+/// does not (including when the keyboard reduces the available height).
+class AuthPageLayout extends StatelessWidget {
+  final Widget child;
+
+  const AuthPageLayout({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: LayoutBuilder(
+        builder: (context, constraints) => SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              minHeight: (constraints.maxHeight - 48).clamp(0, double.infinity),
+            ),
+            child: Center(child: child),
+          ),
+        ),
       ),
     );
   }

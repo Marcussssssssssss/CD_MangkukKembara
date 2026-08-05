@@ -53,12 +53,13 @@ class _RegisterViewState extends State<RegisterView> {
         builder: (ctx, vm, _) {
           return Scaffold(
             backgroundColor: AppColors.background,
-            body: SafeArea(
+            body: AuthPageLayout(
               child: Form(
                 key: _formKey,
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
+                child: SizedBox(
+                  width: double.infinity,
                   child: Column(
+                    mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Center(
@@ -335,7 +336,16 @@ class _RegisterViewState extends State<RegisterView> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 32),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                            ctx,
+                            AppRoutes.treasureMap,
+                            (_) => false,
+                          ),
+                          child: const Text('Continue as Guest'),
+                        ),
+                      ),
                     ],
                   ),
                 ),

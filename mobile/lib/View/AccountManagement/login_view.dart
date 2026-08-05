@@ -31,14 +31,13 @@ class _LoginViewState extends State<LoginView> {
     return Consumer<AuthViewModel>(
       builder: (ctx, vm, _) => Scaffold(
         backgroundColor: AppColors.background,
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+        body: AuthPageLayout(
+          child: SizedBox(
+            width: double.infinity,
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 20),
-
                 const Center(child: AuthBranding(subtitle: 'Welcome back!')),
 
                 const SizedBox(height: 40),
@@ -227,6 +226,16 @@ class _LoginViewState extends State<LoginView> {
                             ),
                           ),
                         ],
+                      ),
+                      Center(
+                        child: TextButton(
+                          onPressed: () => Navigator.pushNamedAndRemoveUntil(
+                            ctx,
+                            AppRoutes.treasureMap,
+                            (_) => false,
+                          ),
+                          child: const Text('Continue as Guest'),
+                        ),
                       ),
                     ],
                   ),

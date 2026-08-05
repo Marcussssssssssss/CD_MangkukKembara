@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
-import '../../core/constants.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
-import '../Widgets/app_bottom_nav.dart';
+import '../Widgets/auth_branding.dart';
 import '../Widgets/map_home_button.dart';
 
 /// D2. Guest Account View — shown when user is not logged in.
@@ -16,10 +15,6 @@ class GuestAccountView extends StatelessWidget {
     return MapBackScope(
       child: Scaffold(
         backgroundColor: AppColors.background,
-        appBar: AppBar(
-          title: const Text('Account'),
-          leading: const MapHomeButton(),
-        ),
         body: Consumer<AuthViewModel>(
           builder: (ctx, auth, _) {
             if (auth.isLoggedIn) {
@@ -43,15 +38,8 @@ class GuestAccountView extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.center,
                         children: [
-                          Text(
-                            AppConstants.appName,
-                            style: Theme.of(ctx).textTheme.headlineMedium,
-                          ),
-                          Text(
-                            'Malaysia Heritage Food Experience',
-                            style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                              color: AppColors.textSecondary,
-                            ),
+                          const AuthBranding(
+                            subtitle: 'Malaysia Heritage Food Experience',
                           ),
                           const SizedBox(height: 24),
                           const _BenefitRow(
@@ -125,7 +113,6 @@ class GuestAccountView extends StatelessWidget {
             );
           },
         ),
-        bottomNavigationBar: const AppBottomNav(selectedIndex: 2),
       ),
     );
   }
