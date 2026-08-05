@@ -272,7 +272,12 @@ insert into public.user_tiffin_collection (
 values
     ('UTC0001', 'P0001', 'HT0001', 'TQC0001', now() - interval '10 days'),
     ('UTC0002', 'P0001', 'HT0002', 'TQC0002', now() - interval '5 days'),
-    ('UTC0003', 'P0002', 'HT0003', 'TQC0003', now() - interval '2 days');
+    ('UTC0003', 'P0002', 'HT0003', 'TQC0003', now() - interval '2 days'),
+    -- P0003 is the seeded test@gmail.com account; unlock every Heritage Tiffin.
+    ('UTC0004', 'P0003', 'HT0001', 'TQC0001', now() - interval '4 days'),
+    ('UTC0005', 'P0003', 'HT0002', 'TQC0002', now() - interval '3 days'),
+    ('UTC0006', 'P0003', 'HT0003', 'TQC0003', now() - interval '2 days'),
+    ('UTC0007', 'P0003', 'HT0004', 'TQC0004', now() - interval '1 day');
 
 -- ============================================================================
 -- 5. PASAR MALAM AND VENDORS
