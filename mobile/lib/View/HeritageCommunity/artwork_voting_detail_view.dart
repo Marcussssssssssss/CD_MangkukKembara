@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
+import '../../core/app_routes.dart';
 import '../../ViewModel/HeritageCommunity/artwork_voting_view_model.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
-import '../Widgets/login_required_dialog.dart';
 
 /// C7. Artwork Voting Detail View.
 class ArtworkVotingDetailView extends StatefulWidget {
@@ -219,7 +219,7 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
                         ? null
                         : () async {
                             if (!auth.isLoggedIn) {
-                              await showLoginRequiredDialog(ctx);
+                              await Navigator.pushNamed(ctx, AppRoutes.login);
                               return;
                             }
                             await _vm.vote(e.id, auth.currentUser!.id);

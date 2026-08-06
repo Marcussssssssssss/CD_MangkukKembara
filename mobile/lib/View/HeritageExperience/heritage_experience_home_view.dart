@@ -11,7 +11,6 @@ import '../Widgets/tiffin_card.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/empty_state_widget.dart';
 import '../Widgets/error_state_widget.dart';
-import '../Widgets/login_required_dialog.dart';
 
 /// B1. Heritage Experience Home View.
 class HeritageExperienceHomeView extends StatefulWidget {
@@ -164,7 +163,7 @@ class _HeritageExperienceHomeViewState
                       ? vm.selectedState == 'All States'
                             ? null
                             : () => _vm.setStateFilter('All States')
-                      : () => showLoginRequiredDialog(ctx),
+                      : () => Navigator.pushNamed(ctx, AppRoutes.login),
                 ),
               )
             : SliverPadding(
@@ -200,9 +199,7 @@ class _HeritageExperienceHomeViewState
   ) {
     if (!auth.isLoggedIn) {
       return _GuestPromptBanner(
-        onLogin: () async {
-          await showLoginRequiredDialog(ctx);
-        },
+        onLogin: () => Navigator.pushNamed(ctx, AppRoutes.login),
       );
     }
     final progress = vm.totalCount > 0

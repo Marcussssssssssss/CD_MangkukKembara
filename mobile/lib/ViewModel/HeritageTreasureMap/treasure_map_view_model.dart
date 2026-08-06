@@ -17,6 +17,7 @@ class TreasureMapViewModel extends ChangeNotifier {
   // ── State ─────────────────────────────────────────────────────────────────────
 
   List<VendorModel> _vendors = [];
+  List<VendorModel> _mapVendors = [];
   List<PasarMalamModel> _pasarMalam = [];
   bool _isLoading = false;
   bool _hasError = false;
@@ -39,6 +40,7 @@ class TreasureMapViewModel extends ChangeNotifier {
   // ── Getters ───────────────────────────────────────────────────────────────────
 
   List<VendorModel> get vendors => _vendors;
+  List<VendorModel> get mapVendors => _mapVendors;
   List<PasarMalamModel> get pasarMalam => _pasarMalam;
   bool get isLoading => _isLoading;
   bool get hasError => _hasError;
@@ -56,6 +58,7 @@ class TreasureMapViewModel extends ChangeNotifier {
       !_isLoading && !_hasError && _vendors.isEmpty && _pasarMalam.isEmpty;
   String get vendorSort => _vendorSort;
   String? get locationMessage => _locationMessage;
+  bool get canShowCurrentLocation => _position != null;
 
   // ── Actions ───────────────────────────────────────────────────────────────────
 
@@ -67,14 +70,16 @@ class TreasureMapViewModel extends ChangeNotifier {
     _hasError = false;
     if (showLoading) notifyListeners();
     try {
-      _vendors = await _repo.fetchVendors(
+      _mapVendors = await _repo.fetchVendors(
         query: _searchQuery.isEmpty ? null : _searchQuery,
         state: _selectedState == 'All States' ? null : _selectedState,
         foodCategory: _selectedFoodCategory == 'All'
             ? null
             : _selectedFoodCategory,
-        standaloneOnly: true,
       );
+      _vendors = _mapVendors
+          .where((vendor) => vendor.pasarMalamId == null)
+          .toList();
       await _sortVendors();
       _pasarMalam = await _repo.fetchPasarMalam(
         query: _searchQuery.isEmpty ? null : _searchQuery,
