@@ -8,7 +8,6 @@ import '../../Model/Repositories/HeritageTreasureMap/operating_hour_model.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
 import '../Widgets/rating_bar.dart';
-import '../Widgets/login_required_dialog.dart';
 
 /// A3. Vendor Details View.
 class VendorDetailView extends StatefulWidget {
@@ -278,7 +277,7 @@ class _VendorDetailViewState extends State<VendorDetailView> {
                         label: const Text('Write a Review'),
                         onPressed: () async {
                           if (!authVm.isLoggedIn) {
-                            await showLoginRequiredDialog(ctx);
+                            await Navigator.pushNamed(ctx, AppRoutes.login);
                             return;
                           }
                           Navigator.pushNamed(ctx, AppRoutes.createPost);

@@ -9,7 +9,6 @@ import '../Widgets/app_bottom_nav.dart';
 import '../Widgets/empty_state_widget.dart';
 import '../Widgets/error_state_widget.dart';
 import '../Widgets/loading_widget.dart';
-import '../Widgets/login_required_dialog.dart';
 import '../Widgets/map_home_button.dart';
 import '../Widgets/post_card.dart';
 import 'artwork_campaign_home_view.dart';
@@ -90,7 +89,7 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
                 ? FloatingActionButton.extended(
                     onPressed: () async {
                       if (!auth.isLoggedIn) {
-                        await showLoginRequiredDialog(ctx);
+                        await Navigator.pushNamed(ctx, AppRoutes.login);
                         return;
                       }
                       if (ctx.mounted) {
@@ -209,7 +208,7 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
                         ),
                         onLike: () async {
                           if (!auth.isLoggedIn) {
-                            await showLoginRequiredDialog(context);
+                            await Navigator.pushNamed(context, AppRoutes.login);
                             return;
                           }
                           vm.toggleLike(

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
+import '../../core/app_routes.dart';
 import '../../ViewModel/HeritageCommunity/post_detail_view_model.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../Model/Repositories/HeritageCommunity/community_comment_model.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
 import '../Widgets/rating_bar.dart';
-import '../Widgets/login_required_dialog.dart';
 
 /// C3. Community Post Details View.
 class PostDetailView extends StatefulWidget {
@@ -239,7 +239,7 @@ class _PostDetailViewState extends State<PostDetailView> {
                     comment: c,
                     onReply: () async {
                       if (!auth.isLoggedIn) {
-                        await showLoginRequiredDialog(ctx);
+                        await Navigator.pushNamed(ctx, AppRoutes.login);
                         return;
                       }
                       await _showReplyDialog(ctx, vm, c);
@@ -274,7 +274,7 @@ class _PostDetailViewState extends State<PostDetailView> {
                       ? null
                       : () async {
                           if (!auth.isLoggedIn) {
-                            await showLoginRequiredDialog(ctx);
+                            await Navigator.pushNamed(ctx, AppRoutes.login);
                             return;
                           }
                           await _vm.toggleLike(auth.currentUser!.id);
@@ -306,7 +306,7 @@ class _PostDetailViewState extends State<PostDetailView> {
               const SizedBox(height: 8),
               !auth.isLoggedIn
                   ? GestureDetector(
-                      onTap: () => showLoginRequiredDialog(ctx),
+                      onTap: () => Navigator.pushNamed(ctx, AppRoutes.login),
                       child: Container(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 16,

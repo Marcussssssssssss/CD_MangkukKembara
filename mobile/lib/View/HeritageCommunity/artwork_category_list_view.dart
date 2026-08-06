@@ -7,7 +7,6 @@ import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
 import '../Widgets/empty_state_widget.dart';
-import '../Widgets/login_required_dialog.dart';
 
 /// C6. Campaign Category List / Artwork Entry List / Vote View.
 class ArtworkCategoryListView extends StatefulWidget {
@@ -232,7 +231,10 @@ class _ArtworkCategoryListViewState extends State<ArtworkCategoryListView> {
                               child: ElevatedButton(
                                 onPressed: () async {
                                   if (!auth.isLoggedIn) {
-                                    await showLoginRequiredDialog(ctx);
+                                    await Navigator.pushNamed(
+                                      ctx,
+                                      AppRoutes.login,
+                                    );
                                     return;
                                   }
                                   if (entry.hasCurrentUserVoted) {

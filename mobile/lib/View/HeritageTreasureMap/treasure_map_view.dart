@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
@@ -341,52 +342,92 @@ class _TreasureMapViewState extends State<TreasureMapView> {
       );
     }
 
-    // Coordinate overview derived from the vendors returned by Supabase.
-    return LayoutBuilder(
-      builder: (context, constraints) => RefreshIndicator(
-        onRefresh: () => vm.loadVendors(showLoading: false),
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          child: SizedBox(
-            height: constraints.maxHeight,
-            child: _VendorCoordinateView(
-              vendors: vm.vendors,
-              pasarMalam: vm.pasarMalam,
-              onVendorTap: vm.showVendorPreview,
-              onPasarMalamTap: vm.showPasarMalamPreview,
-            ),
-          ),
-        ),
-      ),
+    return _VendorGoogleMap(
+      vendors: vm.mapVendors,
+      pasarMalam: vm.pasarMalam,
+      showCurrentLocation: vm.canShowCurrentLocation,
+      onVendorTap: vm.showVendorPreview,
+      onPasarMalamTap: vm.showPasarMalamPreview,
     );
   }
 }
 
-/// A lightweight coordinate plot; directions open in the real maps app.
-class _VendorCoordinateView extends StatelessWidget {
+/// Interactive map backed by vendor and night-market coordinates in Supabase.
+class _VendorGoogleMap extends StatefulWidget {
   final List<VendorModel> vendors;
   final List<PasarMalamModel> pasarMalam;
+  final bool showCurrentLocation;
   final void Function(VendorModel) onVendorTap;
   final void Function(PasarMalamModel) onPasarMalamTap;
 
-  const _VendorCoordinateView({
+  const _VendorGoogleMap({
     required this.vendors,
     required this.pasarMalam,
+    required this.showCurrentLocation,
     required this.onVendorTap,
     required this.onPasarMalamTap,
   });
 
   @override
+  State<_VendorGoogleMap> createState() => _VendorGoogleMapState();
+}
+
+class _VendorGoogleMapState extends State<_VendorGoogleMap> {
+  GoogleMapController? _controller;
+
+  static const _malaysia = CameraPosition(
+    target: LatLng(4.2105, 101.9758),
+    zoom: 5.4,
+  );
+
+  Set<Marker> get _markers => {
+    ...widget.vendors.map(
+      (vendor) => Marker(
+        markerId: MarkerId('vendor_${vendor.id}'),
+        position: LatLng(vendor.latitude, vendor.longitude),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        zIndexInt: 2,
+        infoWindow: InfoWindow(title: vendor.name, snippet: vendor.address),
+        onTap: () => widget.onVendorTap(vendor),
+      ),
+    ),
+    ...widget.pasarMalam.map(
+      (market) => Marker(
+        markerId: MarkerId('market_${market.id}'),
+        position: LatLng(market.latitude, market.longitude),
+        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+        zIndexInt: 1,
+        infoWindow: InfoWindow(title: market.name, snippet: market.address),
+        onTap: () => widget.onPasarMalamTap(market),
+      ),
+    ),
+  };
+
+  List<LatLng> get _positions => [
+    ...widget.vendors.map((v) => LatLng(v.latitude, v.longitude)),
+    ...widget.pasarMalam.map((m) => LatLng(m.latitude, m.longitude)),
+  ];
+
+  @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        // Neutral coordinate-grid background.
-        CustomPaint(
-          painter: _MapGridPainter(),
-          child: Container(color: AppColors.mapBg),
+        GoogleMap(
+          initialCameraPosition: _malaysia,
+          markers: _markers,
+          myLocationButtonEnabled: widget.showCurrentLocation,
+          myLocationEnabled: widget.showCurrentLocation,
+          compassEnabled: true,
+          buildingsEnabled: true,
+          mapToolbarEnabled: false,
+          zoomControlsEnabled: false,
+          onMapCreated: (controller) {
+            _controller = controller;
+            WidgetsBinding.instance.addPostFrameCallback(
+              (_) => _fitVisiblePlaces(),
+            );
+          },
         ),
-
-        // Legend / info overlay
         Positioned(
           top: 12,
           right: 12,
@@ -399,250 +440,65 @@ class _VendorCoordinateView extends StatelessWidget {
                 BoxShadow(color: Colors.black.withAlpha(30), blurRadius: 6),
               ],
             ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  '${vendors.length} places · ${pasarMalam.length} markets',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Icon(
-                      Icons.location_on_rounded,
-                      color: AppColors.primary,
-                      size: 14,
-                    ),
-                    const SizedBox(width: 4),
-                    const Text(
-                      'Tap a pin',
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            child: Text(
+              '${widget.vendors.length} places · '
+              '${widget.pasarMalam.length} markets',
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
             ),
-          ),
-        ),
-
-        // Vendor pins positioned from their stored latitude and longitude.
-        ...vendors.asMap().entries.map((entry) {
-          final v = entry.value;
-          final minLatitude = vendors
-              .map((vendor) => vendor.latitude)
-              .reduce((a, b) => a < b ? a : b);
-          final maxLatitude = vendors
-              .map((vendor) => vendor.latitude)
-              .reduce((a, b) => a > b ? a : b);
-          final minLongitude = vendors
-              .map((vendor) => vendor.longitude)
-              .reduce((a, b) => a < b ? a : b);
-          final maxLongitude = vendors
-              .map((vendor) => vendor.longitude)
-              .reduce((a, b) => a > b ? a : b);
-          final latitudeRange = maxLatitude - minLatitude;
-          final longitudeRange = maxLongitude - minLongitude;
-          final frac = Offset(
-            longitudeRange == 0
-                ? 0.5
-                : 0.15 + ((v.longitude - minLongitude) / longitudeRange) * 0.7,
-            latitudeRange == 0
-                ? 0.5
-                : 0.15 + (1 - (v.latitude - minLatitude) / latitudeRange) * 0.7,
-          );
-          return Positioned(
-            left: 0,
-            top: 0,
-            right: 0,
-            bottom: 0,
-            child: Builder(
-              builder: (ctx) {
-                return LayoutBuilder(
-                  builder: (_, constraints) {
-                    final x = constraints.maxWidth * frac.dx - 18;
-                    final y = constraints.maxHeight * frac.dy - 40;
-                    const pinColor = AppColors.primary;
-                    return Stack(
-                      children: [
-                        Positioned(
-                          left: x,
-                          top: y,
-                          child: GestureDetector(
-                            onTap: () => onVendorTap(v),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 4,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color: pinColor,
-                                    borderRadius: BorderRadius.circular(8),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: pinColor.withAlpha(120),
-                                        blurRadius: 6,
-                                      ),
-                                    ],
-                                  ),
-                                  child: Text(
-                                    v.name.split(' ').first,
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ),
-                                Container(width: 2, height: 8, color: pinColor),
-                                Container(
-                                  width: 8,
-                                  height: 8,
-                                  decoration: BoxDecoration(
-                                    color: pinColor,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    );
-                  },
-                );
-              },
-            ),
-          );
-        }),
-        ...pasarMalam.map(
-          (market) => _PasarMalamMapPin(
-            market: market,
-            markets: pasarMalam,
-            onTap: () => onPasarMalamTap(market),
           ),
         ),
       ],
     );
   }
-}
 
-class _PasarMalamMapPin extends StatelessWidget {
-  final PasarMalamModel market;
-  final List<PasarMalamModel> markets;
-  final VoidCallback onTap;
-
-  const _PasarMalamMapPin({
-    required this.market,
-    required this.markets,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final minLat = markets
-        .map((m) => m.latitude)
-        .reduce((a, b) => a < b ? a : b);
-    final maxLat = markets
-        .map((m) => m.latitude)
-        .reduce((a, b) => a > b ? a : b);
-    final minLng = markets
-        .map((m) => m.longitude)
-        .reduce((a, b) => a < b ? a : b);
-    final maxLng = markets
-        .map((m) => m.longitude)
-        .reduce((a, b) => a > b ? a : b);
-    final latRange = maxLat - minLat;
-    final lngRange = maxLng - minLng;
-    final dx = lngRange == 0
-        ? 0.5
-        : 0.15 + ((market.longitude - minLng) / lngRange) * 0.7;
-    final dy = latRange == 0
-        ? 0.5
-        : 0.15 + (1 - (market.latitude - minLat) / latRange) * 0.7;
-    return Positioned.fill(
-      child: LayoutBuilder(
-        builder: (_, constraints) => Stack(
-          children: [
-            Positioned(
-              left: constraints.maxWidth * dx - 22,
-              top: constraints.maxHeight * dy - 44,
-              child: Semantics(
-                button: true,
-                label: 'Open ${market.name} and its vendors',
-                child: GestureDetector(
-                  onTap: onTap,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.accentDark,
-                          borderRadius: BorderRadius.circular(9),
-                          boxShadow: [
-                            BoxShadow(
-                              color: AppColors.accentDark.withAlpha(100),
-                              blurRadius: 7,
-                            ),
-                          ],
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(
-                              Icons.nightlife_rounded,
-                              color: Colors.white,
-                              size: 14,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              market.name.split(' ').take(2).join(' '),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      Container(
-                        width: 2,
-                        height: 8,
-                        color: AppColors.accentDark,
-                      ),
-                      Container(
-                        width: 9,
-                        height: 9,
-                        decoration: const BoxDecoration(
-                          color: AppColors.accentDark,
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+  Future<void> _fitVisiblePlaces() async {
+    final controller = _controller;
+    final positions = _positions;
+    if (controller == null || positions.isEmpty) return;
+    if (positions.length == 1) {
+      await controller.animateCamera(
+        CameraUpdate.newLatLngZoom(positions.first, 14),
+      );
+      return;
+    }
+    var south = positions.first.latitude;
+    var north = positions.first.latitude;
+    var west = positions.first.longitude;
+    var east = positions.first.longitude;
+    for (final position in positions.skip(1)) {
+      if (position.latitude < south) south = position.latitude;
+      if (position.latitude > north) north = position.latitude;
+      if (position.longitude < west) west = position.longitude;
+      if (position.longitude > east) east = position.longitude;
+    }
+    await controller.animateCamera(
+      CameraUpdate.newLatLngBounds(
+        LatLngBounds(
+          southwest: LatLng(south, west),
+          northeast: LatLng(north, east),
         ),
+        56,
       ),
     );
+  }
+
+  @override
+  void didUpdateWidget(covariant _VendorGoogleMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.vendors != widget.vendors ||
+        oldWidget.pasarMalam != widget.pasarMalam) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => _fitVisiblePlaces());
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
   }
 }
 
@@ -860,97 +716,6 @@ class _PasarMalamPreviewSheet extends StatelessWidget {
       ),
     );
   }
-}
-
-class _MapGridPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final roadPaint = Paint()
-      ..color = AppColors.mapRoad
-      ..strokeWidth = 3;
-    final gridPaint = Paint()
-      ..color = AppColors.mapGrid
-      ..strokeWidth = 1;
-    final waterPaint = Paint()..color = AppColors.mapWater;
-
-    // Reference grid lines.
-    canvas.drawLine(
-      Offset(0, size.height * 0.35),
-      Offset(size.width, size.height * 0.35),
-      roadPaint,
-    );
-    canvas.drawLine(
-      Offset(0, size.height * 0.65),
-      Offset(size.width, size.height * 0.65),
-      roadPaint,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.45, 0),
-      Offset(size.width * 0.45, size.height),
-      roadPaint,
-    );
-    canvas.drawLine(
-      Offset(size.width * 0.75, 0),
-      Offset(size.width * 0.75, size.height),
-      roadPaint,
-    );
-
-    // A visual latitude guide.
-    final riverPath = Path()
-      ..moveTo(size.width * 0.15, 0)
-      ..quadraticBezierTo(
-        size.width * 0.25,
-        size.height * 0.5,
-        size.width * 0.15,
-        size.height,
-      );
-    canvas.drawPath(
-      riverPath,
-      waterPaint
-        ..strokeWidth = 14
-        ..style = PaintingStyle.stroke,
-    );
-
-    // Draw grid lines
-    for (double x = 0; x < size.width; x += 40) {
-      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
-    }
-    for (double y = 0; y < size.height; y += 40) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
-    }
-
-    // Coordinate regions.
-    final blockPaint = Paint()
-      ..color = const Color(0xFFD4E8B0)
-      ..style = PaintingStyle.fill;
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          size.width * 0.47,
-          size.height * 0.37,
-          size.width * 0.26,
-          size.height * 0.26,
-        ),
-        const Radius.circular(4),
-      ),
-      blockPaint,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(
-        Rect.fromLTWH(
-          size.width * 0.0,
-          size.height * 0.37,
-          size.width * 0.43,
-          size.height * 0.26,
-        ),
-        const Radius.circular(4),
-      ),
-      blockPaint,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _LabeledFilterDropdown extends StatelessWidget {
