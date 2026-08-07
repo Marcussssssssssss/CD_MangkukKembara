@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
-import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../Widgets/auth_branding.dart';
 import '../Widgets/map_home_button.dart';
 
-/// D2. Guest Account View — shown when user is not logged in.
-class GuestAccountView extends StatelessWidget {
-  const GuestAccountView({super.key});
+/// Logged-out account landing page.
+class AccountLandingView extends StatelessWidget {
+  const AccountLandingView({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -92,18 +93,6 @@ class GuestAccountView extends StatelessWidget {
                               ),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          TextButton(
-                            onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                              ctx,
-                              AppRoutes.treasureMap,
-                              (route) => false,
-                            ),
-                            child: const Text(
-                              'Continue as Guest',
-                              style: TextStyle(color: AppColors.textHint),
-                            ),
-                          ),
                         ],
                       ),
                     ),
@@ -122,6 +111,7 @@ class _BenefitRow extends StatelessWidget {
   final IconData icon;
   final String title;
   final String desc;
+
   const _BenefitRow(this.icon, this.title, this.desc);
 
   @override
@@ -134,7 +124,7 @@ class _BenefitRow extends StatelessWidget {
           Container(
             width: 40,
             height: 40,
-            decoration: BoxDecoration(
+            decoration: const BoxDecoration(
               color: AppColors.primaryContainer,
               shape: BoxShape.circle,
             ),
