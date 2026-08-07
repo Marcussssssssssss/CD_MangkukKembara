@@ -4,6 +4,8 @@ class ArtworkSubmissionModel {
   final String categoryId;
   final String userId;
   final String artworkTitle;
+  final String? artworkFileUrl;
+  final String? designDescription;
   final String? reviewStatus; // 'pending' | 'approved' | 'rejected'
   final DateTime submittedAt;
   final String campaignName;
@@ -14,6 +16,8 @@ class ArtworkSubmissionModel {
     required this.categoryId,
     required this.userId,
     required this.artworkTitle,
+    this.artworkFileUrl,
+    this.designDescription,
     this.reviewStatus = 'pending',
     required this.submittedAt,
     required this.campaignName,
@@ -42,6 +46,8 @@ class ArtworkSubmissionModel {
     categoryId: json['artwork_campaign_category_id'] as String,
     userId: json['profile_id'] as String,
     artworkTitle: json['artwork_title'] as String,
+    artworkFileUrl: json['artwork_file_url'] as String?,
+    designDescription: json['design_description'] as String?,
     reviewStatus: switch (json['review_status']) {
       final value => value as String?,
     },
