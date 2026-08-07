@@ -31,7 +31,7 @@ import '../View/HeritageCommunity/artwork_submission_success_view.dart';
 import '../View/HeritageCommunity/campaign_rankings_view.dart';
 
 // Module D — Account Management
-import '../View/AccountManagement/guest_account_view.dart';
+import '../View/AccountManagement/account_landing_view.dart';
 import '../View/AccountManagement/login_view.dart';
 import '../View/AccountManagement/register_view.dart';
 import '../View/AccountManagement/forgot_password_view.dart'; // also contains ChangePasswordView
@@ -199,7 +199,7 @@ abstract final class AppRoutes {
 
       // Module D
       case guestAccount:
-        return _build(const GuestAccountView(), settings);
+        return _build(const AccountLandingView(), settings);
       case login:
         return _build(const LoginView(), settings);
       case register:

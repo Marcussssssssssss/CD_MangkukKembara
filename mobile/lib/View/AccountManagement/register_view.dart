@@ -53,6 +53,24 @@ class _RegisterViewState extends State<RegisterView> {
         builder: (ctx, vm, _) {
           return Scaffold(
             backgroundColor: AppColors.background,
+            appBar: AppBar(
+              title: const Text('Create Account'),
+              leading: IconButton(
+                icon: const Icon(Icons.arrow_back_rounded),
+                tooltip: 'Back',
+                onPressed: () {
+                  if (Navigator.canPop(ctx)) {
+                    Navigator.pop(ctx);
+                  } else {
+                    Navigator.pushNamedAndRemoveUntil(
+                      ctx,
+                      AppRoutes.guestAccount,
+                      (route) => route.isFirst,
+                    );
+                  }
+                },
+              ),
+            ),
             body: AuthPageLayout(
               child: Form(
                 key: _formKey,
@@ -325,7 +343,7 @@ class _RegisterViewState extends State<RegisterView> {
                             style: TextStyle(color: AppColors.textSecondary),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.pushReplacementNamed(
+                            onPressed: () => Navigator.pushNamed(
                               ctx,
                               AppRoutes.login,
                             ),
@@ -335,16 +353,6 @@ class _RegisterViewState extends State<RegisterView> {
                             ),
                           ),
                         ],
-                      ),
-                      Center(
-                        child: TextButton(
-                          onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                            ctx,
-                            AppRoutes.treasureMap,
-                            (_) => false,
-                          ),
-                          child: const Text('Continue as Guest'),
-                        ),
                       ),
                     ],
                   ),

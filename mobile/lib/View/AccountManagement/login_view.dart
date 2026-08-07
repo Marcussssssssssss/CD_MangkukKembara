@@ -31,6 +31,24 @@ class _LoginViewState extends State<LoginView> {
     return Consumer<AuthViewModel>(
       builder: (ctx, vm, _) => Scaffold(
         backgroundColor: AppColors.background,
+        appBar: AppBar(
+          title: const Text('Login'),
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_rounded),
+            tooltip: 'Back',
+            onPressed: () {
+              if (Navigator.canPop(ctx)) {
+                Navigator.pop(ctx);
+              } else {
+                Navigator.pushNamedAndRemoveUntil(
+                  ctx,
+                  AppRoutes.guestAccount,
+                  (route) => route.isFirst,
+                );
+              }
+            },
+          ),
+        ),
         body: AuthPageLayout(
           child: SizedBox(
             width: double.infinity,
@@ -216,7 +234,7 @@ class _LoginViewState extends State<LoginView> {
                             style: TextStyle(color: AppColors.textSecondary),
                           ),
                           TextButton(
-                            onPressed: () => Navigator.pushReplacementNamed(
+                            onPressed: () => Navigator.pushNamed(
                               ctx,
                               AppRoutes.register,
                             ),
@@ -226,16 +244,6 @@ class _LoginViewState extends State<LoginView> {
                             ),
                           ),
                         ],
-                      ),
-                      Center(
-                        child: TextButton(
-                          onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                            ctx,
-                            AppRoutes.treasureMap,
-                            (_) => false,
-                          ),
-                          child: const Text('Continue as Guest'),
-                        ),
                       ),
                     ],
                   ),
