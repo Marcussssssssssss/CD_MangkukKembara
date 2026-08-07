@@ -175,12 +175,15 @@ class _ProfileViewState extends State<ProfileView> {
                 _MenuItem(
                   Icons.rate_review_rounded,
                   'My Reviews',
-                  () => Navigator.pushNamed(ctx, AppRoutes.community),
+                  () => Navigator.pushNamed(ctx, AppRoutes.myReviews),
                 ),
                 _MenuItem(
                   Icons.brush_rounded,
                   'My Artwork Submissions',
-                  () => Navigator.pushNamed(ctx, AppRoutes.artworkCampaign),
+                  () => Navigator.pushNamed(
+                    ctx,
+                    AppRoutes.myArtworkSubmissions,
+                  ),
                 ),
               ],
             ),

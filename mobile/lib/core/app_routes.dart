@@ -38,6 +38,8 @@ import '../View/AccountManagement/forgot_password_view.dart'; // also contains C
 import '../View/AccountManagement/profile_view.dart';
 import '../View/AccountManagement/edit_profile_view.dart';
 import '../View/AccountManagement/email_verification_view.dart';
+import '../View/AccountManagement/my_artwork_submissions_view.dart';
+import '../View/AccountManagement/my_reviews_view.dart';
 
 /// All named route strings in the application.
 abstract final class AppRoutes {
@@ -81,6 +83,8 @@ abstract final class AppRoutes {
   static const String changePassword = '/change-password';
   static const String resetPassword = '/reset-password';
   static const String emailVerification = '/email-verification';
+  static const String myReviews = '/my-reviews';
+  static const String myArtworkSubmissions = '/my-artwork-submissions';
 
   /// Route generator — maps named routes to their view widgets.
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -215,6 +219,10 @@ abstract final class AppRoutes {
           EmailVerificationView(email: settings.arguments as String? ?? ''),
           settings,
         );
+      case myReviews:
+        return _build(const MyReviewsView(), settings);
+      case myArtworkSubmissions:
+        return _build(const MyArtworkSubmissionsView(), settings);
 
       default:
         return _build(const TreasureMapView(), settings);
