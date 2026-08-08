@@ -42,8 +42,15 @@ class SupabaseApiService {
     ),
   );
 
-  Future<void> resendSignupConfirmation(String email) => guard(
-    () => client.auth.resend(type: OtpType.signup, email: email.trim()),
+  Future<void> resendSignupConfirmation(
+    String email, {
+    String? emailRedirectTo,
+  }) => guard(
+    () => client.auth.resend(
+      type: OtpType.signup,
+      email: email.trim(),
+      emailRedirectTo: emailRedirectTo,
+    ),
   );
 
   Future<void> signOut() => guard(client.auth.signOut);

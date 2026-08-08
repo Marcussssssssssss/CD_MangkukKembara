@@ -73,7 +73,10 @@ class AccountRepository {
   }
 
   Future<void> resendVerificationEmail(String email) =>
-      _api.resendSignupConfirmation(email);
+      _api.resendSignupConfirmation(
+        email,
+        emailRedirectTo: BackendConfig.emailConfirmationRedirect,
+      );
 
   Future<void> sendPasswordResetEmail(String email) =>
       _api.sendPasswordResetEmail(
