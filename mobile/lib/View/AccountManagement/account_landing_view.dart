@@ -20,7 +20,10 @@ class AccountLandingView extends StatelessWidget {
           builder: (ctx, auth, _) {
             if (auth.isLoggedIn) {
               WidgetsBinding.instance.addPostFrameCallback(
-                (_) => Navigator.pushReplacementNamed(ctx, AppRoutes.profile),
+                (_) => Navigator.pushReplacementNamed(
+                  ctx,
+                  AppRoutes.treasureMap,
+                ),
               );
               return const SizedBox.shrink();
             }

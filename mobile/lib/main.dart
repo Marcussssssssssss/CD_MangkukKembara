@@ -30,17 +30,22 @@ class MangkukKembaraApp extends StatefulWidget {
 
 class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
-  StreamSubscription<AuthState>? _recoverySubscription;
+  StreamSubscription<AuthState>? _authSubscription;
 
   @override
   void initState() {
     super.initState();
-    _recoverySubscription = Supabase.instance.client.auth.onAuthStateChange
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange
         .listen((state) {
           if (state.event == AuthChangeEvent.passwordRecovery) {
             _navigatorKey.currentState?.pushNamedAndRemoveUntil(
               AppRoutes.resetPassword,
               (route) => route.isFirst,
+            );
+          } else if (state.event == AuthChangeEvent.signedIn) {
+            _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+              AppRoutes.treasureMap,
+              (route) => false,
             );
           }
         });
@@ -48,7 +53,7 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
 
   @override
   void dispose() {
-    _recoverySubscription?.cancel();
+    _authSubscription?.cancel();
     super.dispose();
   }
 
