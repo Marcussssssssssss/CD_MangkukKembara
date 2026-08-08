@@ -90,61 +90,61 @@ class _SubmissionCard extends StatelessWidget {
   final ArtworkSubmissionModel submission;
 
   @override
-  Widget build(BuildContext context) => Container(
-    margin: const EdgeInsets.only(bottom: 16),
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: AppColors.surface,
-      borderRadius: BorderRadius.circular(26),
-      border: Border.all(color: AppColors.divider.withAlpha(170)),
-      boxShadow: const [
-        BoxShadow(
-          color: Color(0x12000000),
-          blurRadius: 12,
-          offset: Offset(0, 4),
-        ),
-      ],
+  Widget build(BuildContext context) => GestureDetector(
+    behavior: HitTestBehavior.opaque,
+    onTap: () => Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => _ArtworkSubmissionDetailPage(submission: submission),
+      ),
     ),
-    child: Row(
+    child: Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.divider.withAlpha(170)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _ArtworkPreview(url: submission.artworkFileUrl),
-        const SizedBox(width: 14),
+        const SizedBox(width: 12),
         Expanded(
           child: SizedBox(
-            height: 140,
+            height: 130,
             child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Text(
-                      submission.artworkTitle,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        height: 1.15,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _StatusPill(status: submission.reviewStatus),
-                ],
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+              Text(
+                submission.artworkTitle,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                  height: 1.15,
+                ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 4),
+              _StatusPill(status: submission.reviewStatus),
+              const SizedBox(height: 6),
               Text(
                 submission.campaignName,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
                   color: AppColors.textPrimary,
-                  fontSize: 15,
-                  height: 1.25,
+                  fontSize: 13,
+                  height: 1.2,
                 ),
               ),
               const Spacer(),
@@ -163,7 +163,7 @@ class _SubmissionCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: AppColors.textSecondary,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -175,8 +175,209 @@ class _SubmissionCard extends StatelessWidget {
                   ),
                 ],
               ),
-            ],
+              ],
             ),
+          ),
+        ),
+      ],
+      ),
+    ),
+  );
+}
+
+class _ArtworkSubmissionDetailPage extends StatelessWidget {
+  const _ArtworkSubmissionDetailPage({required this.submission});
+
+  final ArtworkSubmissionModel submission;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: AppColors.background,
+    appBar: AppBar(
+      toolbarHeight: 64,
+      title: const Text(
+        'Artwork Submission',
+        style: TextStyle(fontSize: 24),
+      ),
+    ),
+    body: ListView(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.primaryContainer, width: 1.4),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x16000000),
+                blurRadius: 13,
+                offset: Offset(0, 5),
+              ),
+            ],
+          ),
+          child: SizedBox(
+            height: 190,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(23),
+              child: ColoredBox(
+                color: AppColors.surface,
+                child: submission.artworkFileUrl == null
+                    ? const Icon(
+                        Icons.image_not_supported_outlined,
+                        color: AppColors.textHint,
+                        size: 48,
+                      )
+                    : Image.network(
+                        submission.artworkFileUrl!,
+                        fit: BoxFit.contain,
+                        errorBuilder: (_, _, _) => const Icon(
+                          Icons.broken_image_outlined,
+                          color: AppColors.textHint,
+                          size: 48,
+                        ),
+                      ),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                submission.artworkTitle,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            _StatusPill(status: submission.reviewStatus, isCompact: false),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(22),
+            border: Border.all(color: AppColors.primaryContainer, width: 1.4),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x12000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              _SubmissionDetailRow(
+                icon: Icons.palette_outlined,
+                label: 'Campaign',
+                value: submission.campaignName,
+              ),
+              const Divider(indent: 66),
+              _SubmissionDetailRow(
+                icon: Icons.account_balance_outlined,
+                label: 'Category',
+                value: submission.categoryName,
+              ),
+              const Divider(indent: 66),
+              _SubmissionDetailRow(
+                icon: Icons.calendar_month_outlined,
+                label: 'Submitted',
+                value: DateFormat('d MMMM yyyy').format(submission.submittedAt),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        const Text(
+          'Design Description',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 19,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.primaryContainer, width: 1.4),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x12000000),
+                blurRadius: 10,
+                offset: Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Text(
+            submission.designDescription?.trim().isNotEmpty == true
+                ? submission.designDescription!
+                : 'No design description was provided.',
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 14,
+              height: 1.35,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _SubmissionDetailRow extends StatelessWidget {
+  const _SubmissionDetailRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 8),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 4, right: 16, left: 8),
+          child: Icon(icon, color: AppColors.primary, size: 25),
+        ),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  color: AppColors.textSecondary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -191,8 +392,8 @@ class _ArtworkPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 116,
-    height: 140,
+    width: 96,
+    height: 130,
     child: ClipRRect(
       borderRadius: BorderRadius.circular(21),
       child: ColoredBox(
@@ -216,9 +417,10 @@ class _ArtworkPreview extends StatelessWidget {
 }
 
 class _StatusPill extends StatelessWidget {
-  const _StatusPill({required this.status});
+  const _StatusPill({required this.status, this.isCompact = true});
 
   final String? status;
+  final bool isCompact;
 
   @override
   Widget build(BuildContext context) {
@@ -228,7 +430,10 @@ class _StatusPill extends StatelessWidget {
       _ => ('Pending', AppColors.warning, AppColors.warningLight),
     };
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 9 : 14,
+        vertical: isCompact ? 5 : 7,
+      ),
       decoration: BoxDecoration(
         color: background,
         borderRadius: BorderRadius.circular(22),
@@ -237,7 +442,7 @@ class _StatusPill extends StatelessWidget {
         label,
         style: TextStyle(
           color: foreground,
-          fontSize: 12,
+          fontSize: isCompact ? 11 : 13,
           fontWeight: FontWeight.w700,
         ),
       ),
