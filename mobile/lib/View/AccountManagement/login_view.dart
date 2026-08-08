@@ -42,7 +42,7 @@ class _LoginViewState extends State<LoginView> {
               } else {
                 Navigator.pushNamedAndRemoveUntil(
                   ctx,
-                  AppRoutes.guestAccount,
+                  AppRoutes.accountLanding,
                   (route) => route.isFirst,
                 );
               }
