@@ -64,7 +64,7 @@ class _RegisterViewState extends State<RegisterView> {
                   } else {
                     Navigator.pushNamedAndRemoveUntil(
                       ctx,
-                      AppRoutes.guestAccount,
+                      AppRoutes.accountLanding,
                       (route) => route.isFirst,
                     );
                   }

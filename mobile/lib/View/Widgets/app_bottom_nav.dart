@@ -73,15 +73,15 @@ class AppBottomNav extends StatelessWidget {
   }
 
   void _navigateAccount(BuildContext context) {
-    // The account view decides whether to show guest or profile based on auth state
+    // The account tab opens the landing page or profile based on auth state.
     final current = ModalRoute.of(context)?.settings.name;
-    if (current == AppRoutes.profile || current == AppRoutes.guestAccount) {
+    if (current == AppRoutes.profile || current == AppRoutes.accountLanding) {
       return;
     }
     final auth = context.read<AuthViewModel>();
     _navigate(
       context,
-      auth.isLoggedIn ? AppRoutes.profile : AppRoutes.guestAccount,
+      auth.isLoggedIn ? AppRoutes.profile : AppRoutes.accountLanding,
       2,
     );
   }

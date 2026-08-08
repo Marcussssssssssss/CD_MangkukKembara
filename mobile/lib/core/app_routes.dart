@@ -74,7 +74,7 @@ abstract final class AppRoutes {
   static const String campaignRankings = '/campaign-rankings';
 
   // ── Module D ─────────────────────────────────────────────────────────────────
-  static const String guestAccount = '/guest-account';
+  static const String accountLanding = '/account-landing';
   static const String login = '/login';
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
@@ -198,7 +198,7 @@ abstract final class AppRoutes {
         );
 
       // Module D
-      case guestAccount:
+      case accountLanding:
         return _build(const AccountLandingView(), settings);
       case login:
         return _build(const LoginView(), settings);

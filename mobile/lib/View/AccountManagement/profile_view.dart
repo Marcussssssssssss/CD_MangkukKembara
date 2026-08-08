@@ -30,7 +30,7 @@ class _ProfileViewState extends State<ProfileView> {
         _profileVm.loadProfile(auth.currentUser!.id);
       } else {
         // Guest — redirect to guest view
-        Navigator.pushReplacementNamed(context, AppRoutes.guestAccount);
+        Navigator.pushReplacementNamed(context, AppRoutes.accountLanding);
       }
     });
   }
@@ -44,7 +44,7 @@ class _ProfileViewState extends State<ProfileView> {
           if (!auth.isLoggedIn) {
             WidgetsBinding.instance.addPostFrameCallback(
               (_) =>
-                  Navigator.pushReplacementNamed(ctx, AppRoutes.guestAccount),
+                  Navigator.pushReplacementNamed(ctx, AppRoutes.accountLanding),
             );
             return const Scaffold(body: LoadingSpinner());
           }
@@ -215,7 +215,7 @@ class _ProfileViewState extends State<ProfileView> {
                     if (ctx.mounted) {
                       Navigator.pushNamedAndRemoveUntil(
                         ctx,
-                        AppRoutes.guestAccount,
+                        AppRoutes.accountLanding,
                         (route) => route.settings.name == AppRoutes.treasureMap,
                       );
                     }

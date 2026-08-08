@@ -69,7 +69,7 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
         title: 'MangkukKembara',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
-        initialRoute: AppRoutes.treasureMap,
+        initialRoute: AppRoutes.accountLanding,
         onGenerateRoute: AppRoutes.generateRoute,
       ),
     );
