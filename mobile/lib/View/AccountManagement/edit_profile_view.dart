@@ -138,7 +138,9 @@ class _EditProfileViewState extends State<EditProfileView> {
                                 onTap: () async {
                                   final file = await ImagePicker().pickImage(
                                     source: ImageSource.gallery,
-                                    imageQuality: 88,
+                                    maxWidth: 800,
+                                    maxHeight: 800,
+                                    imageQuality: 82,
                                   );
                                   if (file != null) vm.setPendingAvatar(file);
                                 },

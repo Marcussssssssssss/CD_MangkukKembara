@@ -7,6 +7,7 @@ import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../ViewModel/AccountManagement/my_artwork_submissions_view_model.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
+import '../Widgets/app_network_image.dart';
 import '../Widgets/empty_state_widget.dart';
 import '../Widgets/error_state_widget.dart';
 import '../Widgets/loading_widget.dart';
@@ -228,10 +229,11 @@ class _ArtworkSubmissionDetailPage extends StatelessWidget {
                         color: AppColors.textHint,
                         size: 48,
                       )
-                    : Image.network(
-                        submission.artworkFileUrl!,
+                    : AppNetworkImage(
+                        imageUrl: submission.artworkFileUrl,
                         fit: BoxFit.contain,
-                        errorBuilder: (_, _, _) => const Icon(
+                        targetOptimizationWidth: 800,
+                        errorWidget: const Icon(
                           Icons.broken_image_outlined,
                           color: AppColors.textHint,
                           size: 48,
@@ -403,10 +405,11 @@ class _ArtworkPreview extends StatelessWidget {
                 Icons.image_not_supported_outlined,
                 color: AppColors.textHint,
               )
-            : Image.network(
-                url!,
+            : AppNetworkImage(
+                imageUrl: url,
                 fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const Icon(
+                targetOptimizationWidth: 400,
+                errorWidget: const Icon(
                   Icons.broken_image_outlined,
                   color: AppColors.textHint,
                 ),

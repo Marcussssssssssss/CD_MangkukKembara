@@ -306,7 +306,9 @@ class _CreatePostViewState extends State<CreatePostView> {
                                     try {
                                       final files = await ImagePicker()
                                           .pickMultiImage(
-                                            imageQuality: 88,
+                                            maxWidth: 1920,
+                                            maxHeight: 1920,
+                                            imageQuality: 82,
                                             limit:
                                                 AppConstants.maxPostPhotos -
                                                 vm.photos.length,

@@ -146,7 +146,9 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
                               : () async {
                                   final file = await ImagePicker().pickImage(
                                     source: ImageSource.gallery,
-                                    imageQuality: 92,
+                                    maxWidth: 2048,
+                                    maxHeight: 2048,
+                                    imageQuality: 85,
                                   );
                                   if (file != null) _vm.setArtworkFile(file);
                                 },

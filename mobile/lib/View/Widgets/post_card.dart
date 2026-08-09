@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../Model/Repositories/HeritageCommunity/community_post_model.dart';
+import 'app_network_image.dart';
 import 'rating_bar.dart';
 
 /// Community post card used in the feed and search results.
@@ -107,14 +108,11 @@ class PostCard extends StatelessWidget {
                             children: [
                               ClipRRect(
                                 borderRadius: BorderRadius.circular(8),
-                                child: Image.network(
-                                  url,
+                                child: AppNetworkImage(
+                                  imageUrl: url,
                                   fit: BoxFit.cover,
                                   width: double.infinity,
-                                  errorBuilder: (_, _, _) => const ColoredBox(
-                                    color: AppColors.surfaceVariant,
-                                    child: Icon(Icons.broken_image_outlined),
-                                  ),
+                                  targetOptimizationWidth: 600,
                                 ),
                               ),
                               if (isLast && post.photoUrls.length > 3)

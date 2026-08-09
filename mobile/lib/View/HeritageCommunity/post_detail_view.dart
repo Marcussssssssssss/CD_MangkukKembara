@@ -5,6 +5,7 @@ import '../../core/app_routes.dart';
 import '../../ViewModel/HeritageCommunity/post_detail_view_model.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../Model/Repositories/HeritageCommunity/community_comment_model.dart';
+import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
 import '../Widgets/rating_bar.dart';
@@ -182,17 +183,12 @@ class _PostDetailViewState extends State<PostDetailView> {
                         padding: const EdgeInsets.only(right: 8),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            p.photoUrls[i],
+                          child: AppNetworkImage(
+                            imageUrl: p.photoUrls[i],
                             width: 120,
+                            height: 120,
                             fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => const SizedBox(
-                              width: 120,
-                              child: ColoredBox(
-                                color: AppColors.surfaceVariant,
-                                child: Icon(Icons.broken_image_outlined),
-                              ),
-                            ),
+                            targetOptimizationWidth: 500,
                           ),
                         ),
                       ),

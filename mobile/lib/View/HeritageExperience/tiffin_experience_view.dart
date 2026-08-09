@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
 import '../../ViewModel/HeritageExperience/tiffin_content_view_model.dart';
+import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
 
@@ -70,7 +71,11 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView> {
                 ),
               ),
               child: t.coverImageUrl != null
-                  ? Image.network(t.coverImageUrl!, fit: BoxFit.cover)
+                  ? AppNetworkImage(
+                      imageUrl: t.coverImageUrl,
+                      fit: BoxFit.cover,
+                      targetOptimizationWidth: 1000,
+                    )
                   : Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

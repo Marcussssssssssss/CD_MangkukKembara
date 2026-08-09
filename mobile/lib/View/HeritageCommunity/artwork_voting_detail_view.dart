@@ -4,6 +4,7 @@ import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
 import '../../ViewModel/HeritageCommunity/artwork_voting_view_model.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
+import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
 
@@ -91,7 +92,11 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
                 ? Stack(
                     fit: StackFit.expand,
                     children: [
-                      Image.network(e.artworkUrl, fit: BoxFit.cover),
+                      AppNetworkImage(
+                        imageUrl: e.artworkUrl,
+                        fit: BoxFit.cover,
+                        targetOptimizationWidth: 1000,
+                      ),
                       Align(
                         alignment: Alignment.bottomCenter,
                         child: ColoredBox(
