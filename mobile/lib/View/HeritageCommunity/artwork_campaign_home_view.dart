@@ -480,11 +480,6 @@ class _CampaignHeader extends StatelessWidget {
         : campaign.isOpenSubmission
         ? AppColors.primary
         : AppColors.accentDark;
-    final statusBackground = campaign.isVoting
-        ? AppColors.successLight
-        : campaign.isOpenSubmission
-        ? AppColors.primaryContainer
-        : AppColors.accentContainer;
     final statusIcon = campaign.isVoting
         ? Icons.how_to_vote_rounded
         : campaign.isOpenSubmission
@@ -507,48 +502,51 @@ class _CampaignHeader extends StatelessWidget {
         foregroundDecoration: BoxDecoration(
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: campaign.isCompleted ? AppColors.accent : AppColors.divider,
-            width: campaign.isCompleted ? 2 : 1,
+            color: campaign.isCompleted
+                ? AppColors.accentDark
+                : AppColors.divider,
+            width: campaign.isCompleted ? 2.5 : 1,
           ),
         ),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              width: double.infinity,
-              color: statusBackground,
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface.withAlpha(190),
-                      shape: BoxShape.circle,
+            if (campaign.isCompleted)
+              Container(
+                width: double.infinity,
+                color: AppColors.accentLight.withAlpha(105),
+                padding: const EdgeInsets.all(14),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.surface.withAlpha(190),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(statusIcon, size: 20, color: statusColor),
                     ),
-                    child: Icon(statusIcon, size: 20, color: statusColor),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          statusTitle,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            statusTitle,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 13, 12, 15),
               child: Row(
@@ -565,7 +563,9 @@ class _CampaignHeader extends StatelessWidget {
                   const SizedBox(width: 8),
                   Icon(
                     Icons.info_outline_rounded,
-                    color: statusColor,
+                    color: campaign.isCompleted
+                        ? statusColor
+                        : AppColors.textHint,
                     size: 21,
                   ),
                 ],
