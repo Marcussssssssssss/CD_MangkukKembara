@@ -85,7 +85,11 @@ class PostDetailViewModel extends ChangeNotifier {
     notifyListeners();
     try {
       await _repo.addComment(postId, body, parentId);
-      await loadPost(postId, showLoading: false);
+      // Refresh only the conversation. Calling loadPost here toggled the
+      // page-level loading state while the reply composer was still open,
+      // which could dispose the composer before its async submit completed.
+      _comments = await _repo.fetchCommentsByPostId(postId);
+      notifyListeners();
       return true;
     } catch (error) {
       _errorMessage = error.toString();
