@@ -36,7 +36,6 @@ class ArtworkVotingViewModel extends ChangeNotifier {
   Future<void> loadCampaign(
     String campaignId, {
     bool showLoading = true,
-    bool loadArtworkEntries = true,
   }) async {
     if (_isLoading) return;
     _isLoading = true;
@@ -46,7 +45,7 @@ class ArtworkVotingViewModel extends ChangeNotifier {
     try {
       _categories = await _repo.fetchCategoriesByCampaign(campaignId);
       _selectedCategoryId = _categories.isEmpty ? null : _categories.first.id;
-      _entries = _selectedCategoryId == null || !loadArtworkEntries
+      _entries = _selectedCategoryId == null
           ? []
           : await _repo.fetchVotingEntries(_selectedCategoryId!, sort: _sort);
     } catch (error) {
@@ -56,12 +55,6 @@ class ArtworkVotingViewModel extends ChangeNotifier {
       _isLoading = false;
       notifyListeners();
     }
-  }
-
-  void selectCategory(String categoryId) {
-    _selectedCategoryId = categoryId;
-    _entries = [];
-    notifyListeners();
   }
 
   Future<void> loadEntries(String categoryId, {bool showLoading = true}) async {

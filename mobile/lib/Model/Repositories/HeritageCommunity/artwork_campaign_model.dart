@@ -1,13 +1,11 @@
-/// Artwork campaign model (submission and voting campaigns).
+/// Artwork campaign model. Submission and voting share one active period.
 class ArtworkCampaignModel {
   final String id;
   final String title;
   final String description;
-  final String status; // 'open_submission' | 'voting' | 'completed'
+  final String status; // 'active' | 'completed'
   final DateTime? submissionDeadline;
   final DateTime? submissionStartDate;
-  final DateTime? votingStartDate;
-  final DateTime? votingEndDate;
   final int categoryCount;
 
   const ArtworkCampaignModel({
@@ -17,21 +15,27 @@ class ArtworkCampaignModel {
     required this.status,
     this.submissionDeadline,
     this.submissionStartDate,
-    this.votingStartDate,
-    this.votingEndDate,
     this.categoryCount = 0,
   });
 
-  bool get isOpenSubmission => status == 'open_submission';
-  bool get isVoting => status == 'voting';
+  bool get isActive => status == 'active';
   bool get isCompleted => status == 'completed';
+
+  bool get isWithinCampaignPeriod {
+    final start = submissionStartDate;
+    final end = submissionDeadline;
+    if (start == null || end == null) return false;
+    final now = DateTime.now();
+    return !now.isBefore(start) && !now.isAfter(end);
+  }
+
+  bool get canSubmit => isActive && isWithinCampaignPeriod;
+  bool get canVote => isActive && isWithinCampaignPeriod;
 
   String get statusLabel {
     switch (status) {
-      case 'open_submission':
-        return 'Open for Submission';
-      case 'voting':
-        return 'Voting Active';
+      case 'active':
+        return 'Submissions & Voting Open';
       case 'completed':
         return 'Campaign Ended';
       default:
@@ -40,34 +44,16 @@ class ArtworkCampaignModel {
   }
 
   factory ArtworkCampaignModel.fromJson(Map<String, dynamic> json) {
-    final sessions =
-        (json['artwork_voting_sessions'] as List<dynamic>? ?? const [])
-            .whereType<Map<String, dynamic>>()
-            .toList();
-    final session = sessions.isEmpty ? null : sessions.first;
-    final databaseStatus = json['status'] as String;
-    final uiStatus = switch (databaseStatus) {
-      'submission_open' => 'open_submission',
-      'voting_open' => 'voting',
-      'completed' => 'completed',
-      _ => databaseStatus,
-    };
     return ArtworkCampaignModel(
       id: json['artwork_campaign_id'] as String,
       title: json['campaign_title'] as String,
       description: json['description'] as String? ?? '',
-      status: uiStatus,
+      status: json['status'] as String,
       submissionDeadline: DateTime.tryParse(
         json['submission_end_at'] as String? ?? '',
       ),
       submissionStartDate: DateTime.tryParse(
         json['submission_start_at'] as String? ?? '',
-      ),
-      votingStartDate: DateTime.tryParse(
-        session?['voting_start_at'] as String? ?? '',
-      ),
-      votingEndDate: DateTime.tryParse(
-        session?['voting_end_at'] as String? ?? '',
       ),
       categoryCount:
           (json['artwork_campaign_categories'] as List<dynamic>? ?? const [])

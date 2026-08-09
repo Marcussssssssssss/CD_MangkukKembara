@@ -596,6 +596,82 @@ values (
         'active',
         0.00,
         0
+    ),
+    (
+        'V0005',
+        'PM0001',
+        'S0001',
+        'Sister Lee Hokkien Mee',
+        'night_market_stall',
+        'A late-night noodle stall serving Penang-style prawn mee with a rich chilli broth.',
+        'Lee Jia Wen',
+        '+60123456785',
+        'sisterlee@example.com',
+        'Lot 18, George Town Heritage Night Market',
+        5.4147200,
+        100.3383400,
+        'demo_vendor_5',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v5.jpg',
+        'active',
+        4.80,
+        15
+    ),
+    (
+        'V0006',
+        'PM0001',
+        'S0001',
+        'Heritage Rice Bowl Penang',
+        'night_market_stall',
+        'A market stall pairing local rice dishes with rotating heritage side dishes.',
+        'Aisha Rahman',
+        '+60123456786',
+        'ricebowl.penang@example.com',
+        'Lot 25, George Town Heritage Night Market',
+        5.4143800,
+        100.3379400,
+        'demo_vendor_6',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v6.jpg',
+        'active',
+        0.00,
+        0
+    ),
+    (
+        'V0007',
+        'PM0002',
+        'S0002',
+        'Jonker Nyonya Kitchen',
+        'night_market_stall',
+        'A Peranakan family stall known for savoury rice dishes and traditional spice blends.',
+        'Chong Pei Ling',
+        '+60123456787',
+        'jonkernyonya@example.com',
+        'Lot 14, Melaka Riverside Night Market',
+        2.1946100,
+        102.2495600,
+        'demo_vendor_7',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v7.jpg',
+        'active',
+        4.25,
+        8
+    ),
+    (
+        'V0008',
+        'PM0002',
+        'S0002',
+        'Riverside Heritage Bites',
+        'night_market_stall',
+        'A friendly night-market stall offering small portions of Malaysian heritage favourites.',
+        'Muhammad Hafiz',
+        '+60123456788',
+        'riversidebites@example.com',
+        'Lot 21, Melaka Riverside Night Market',
+        2.1942400,
+        102.2499100,
+        'demo_vendor_8',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v8.jpg',
+        'active',
+        3.75,
+        4
     );
 insert into public.vendor_operating_hours (
         vendor_operating_hours_id,
@@ -610,7 +686,15 @@ values ('VOH0001', 'V0001', 5, '18:00', '23:00', false),
     ('VOH0003', 'V0002', 5, '17:00', '23:30', false),
     ('VOH0004', 'V0002', 6, '17:00', '23:30', false),
     ('VOH0005', 'V0003', 1, '08:00', '17:00', false),
-    ('VOH0006', 'V0004', 2, '08:00', '18:00', false);
+    ('VOH0006', 'V0004', 2, '08:00', '18:00', false),
+    ('VOH0007', 'V0005', 5, '18:30', '23:00', false),
+    ('VOH0008', 'V0005', 6, '18:30', '23:00', false),
+    ('VOH0009', 'V0006', 5, '18:00', '22:30', false),
+    ('VOH0010', 'V0006', 6, '18:00', '22:30', false),
+    ('VOH0011', 'V0007', 5, '17:30', '23:30', false),
+    ('VOH0012', 'V0007', 6, '17:30', '23:30', false),
+    ('VOH0013', 'V0008', 5, '17:00', '22:00', false),
+    ('VOH0014', 'V0008', 6, '17:00', '22:00', false);
 insert into public.vendor_foods (
         vendor_food_id,
         vendor_id,
@@ -620,7 +704,15 @@ insert into public.vendor_foods (
 values ('VF0001', 'V0001', 'HF0001', true),
     ('VF0002', 'V0002', 'HF0002', true),
     ('VF0003', 'V0003', 'HF0003', true),
-    ('VF0004', 'V0004', 'HF0004', true);
+    ('VF0004', 'V0004', 'HF0004', true),
+    ('VF0005', 'V0005', 'HF0001', true),
+    ('VF0006', 'V0005', 'HF0002', false),
+    ('VF0007', 'V0006', 'HF0002', true),
+    ('VF0008', 'V0006', 'HF0003', false),
+    ('VF0009', 'V0007', 'HF0002', true),
+    ('VF0010', 'V0007', 'HF0003', false),
+    ('VF0011', 'V0008', 'HF0004', true),
+    ('VF0012', 'V0008', 'HF0001', false);
 insert into public.vendor_tiffins (
         vendor_tiffin_id,
         vendor_id,
@@ -629,7 +721,13 @@ insert into public.vendor_tiffins (
 values ('VT0001', 'V0001', 'HT0001'),
     ('VT0002', 'V0002', 'HT0002'),
     ('VT0003', 'V0003', 'HT0003'),
-    ('VT0004', 'V0004', 'HT0004');
+    ('VT0004', 'V0004', 'HT0004'),
+    ('VT0005', 'V0005', 'HT0001'),
+    ('VT0006', 'V0005', 'HT0002'),
+    ('VT0007', 'V0006', 'HT0002'),
+    ('VT0008', 'V0007', 'HT0002'),
+    ('VT0009', 'V0007', 'HT0003'),
+    ('VT0010', 'V0008', 'HT0004');
 -- ============================================================================
 -- 6. COMMUNITY DATA
 -- ============================================================================
@@ -752,6 +850,15 @@ values (
         '2026-03-31 23:59:59+08',
         'completed',
         'P0001'
+    ),
+    (
+        'AC0002',
+        'Flavours of Malaysia Tiffin Design Campaign',
+        'An active campaign inviting tourists to submit new tiffin artwork inspired by food stories from across Malaysia.',
+        now() - interval '30 days',
+        now() + interval '60 days',
+        'active',
+        'P0001'
     );
 insert into public.artwork_campaign_categories (
         artwork_campaign_category_id,
@@ -770,6 +877,42 @@ values (
         'AC0001',
         'S0002',
         'Melaka Heritage Design'
+    ),
+    (
+        'ACC0003',
+        'AC0001',
+        'S0003',
+        'Kelantan Heritage Design'
+    ),
+    (
+        'ACC0004',
+        'AC0001',
+        'S0004',
+        'Sarawak Heritage Design'
+    ),
+    (
+        'ACC0005',
+        'AC0002',
+        'S0001',
+        'Penang Food Stories'
+    ),
+    (
+        'ACC0006',
+        'AC0002',
+        'S0002',
+        'Melaka Food Stories'
+    ),
+    (
+        'ACC0007',
+        'AC0002',
+        'S0003',
+        'Kelantan Food Stories'
+    ),
+    (
+        'ACC0008',
+        'AC0002',
+        'S0004',
+        'Sarawak Food Stories'
     );
 insert into public.artwork_submissions (
         artwork_submission_id,
@@ -826,6 +969,160 @@ values (
         '2026-02-15 11:00:00+08',
         'P0001',
         '2026-04-02 09:20:00+08'
+    ),
+    (
+        'AS0004',
+        'ACC0002',
+        'P0002',
+        'River of Spices',
+        'Flowing spice motifs connect Melaka river scenes with traditional serving ware.',
+        'Melaka River trade and Peranakan kitchens.',
+        'The layered river pattern celebrates ingredients carried between communities.',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/river-of-spices.jpg',
+        'approved',
+        '2026-02-25 16:00:00+08',
+        'P0001',
+        '2026-04-02 09:30:00+08'
+    ),
+    (
+        'AS0005',
+        'ACC0003',
+        'P0001',
+        'Moonlight Wau',
+        'A bold tiffin pattern combining the wau bulan with rice grains and local flowers.',
+        'Kelantan kite craftsmanship and nasi kerabu colours.',
+        'The circular composition reflects a shared meal beneath the moon.',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/moonlight-wau.jpg',
+        'approved',
+        '2026-02-12 09:15:00+08',
+        'P0001',
+        '2026-04-02 09:40:00+08'
+    ),
+    (
+        'AS0006',
+        'ACC0003',
+        'P0003',
+        'Blue Rice Garden',
+        'Butterfly-pea blossoms and herb leaves form a garden around each tiffin tier.',
+        'The natural ingredients and colours of nasi kerabu.',
+        'Every illustrated herb honours the growers and cooks behind the dish.',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/blue-rice-garden.jpg',
+        'approved',
+        '2026-03-01 12:30:00+08',
+        'P0001',
+        '2026-04-02 09:50:00+08'
+    ),
+    (
+        'AS0007',
+        'ACC0004',
+        'P0002',
+        'Borneo Morning Mist',
+        'A layered design of river lines, pepper vines, and the colours of a Kuching sunrise.',
+        'Sarawak river life and laksa ingredients.',
+        'Soft gradients represent recipes remembered across generations.',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/borneo-morning-mist.jpg',
+        'approved',
+        '2026-02-18 15:45:00+08',
+        'P0001',
+        '2026-04-02 10:00:00+08'
+    ),
+    (
+        'AS0008',
+        'ACC0004',
+        'P0003',
+        'Hornbill Supper',
+        'A graphic hornbill watches over bowls, chopsticks, and native foliage.',
+        'Sarawak wildlife, forests, and communal dining.',
+        'The design connects care for cultural foodways with care for the land.',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/hornbill-supper.jpg',
+        'approved',
+        '2026-03-05 18:20:00+08',
+        'P0001',
+        '2026-04-02 10:10:00+08'
+    ),
+    (
+        'AS0009',
+        'ACC0005',
+        'P0002',
+        'Hawker Lanterns',
+        'Warm lanterns illuminate illustrated hawker tools and noodle bowls.',
+        'George Town night markets and hawker culture.',
+        'The artwork captures the warmth of discovering food after sunset.',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/hawker-lanterns.jpg',
+        'pending',
+        now() - interval '6 days',
+        null,
+        null
+    ),
+    (
+        'AS0010',
+        'ACC0005',
+        'P0003',
+        'Five-Foot Way Feast',
+        'Shophouse arches frame a sequence of Penang dishes and tableware.',
+        'George Town architecture and shared street-side meals.',
+        'Each arch is a doorway into a different family food memory.',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/five-foot-way-feast.jpg',
+        'approved',
+        now() - interval '12 days',
+        'P0001',
+        now() - interval '10 days'
+    ),
+    (
+        'AS0011',
+        'ACC0006',
+        'P0002',
+        'Tile and Tiffin',
+        'Peranakan tile geometry wraps around stacked tiffin tiers in vivid colour.',
+        'Decorative tiles found in historic Melaka homes.',
+        'Repeating patterns show how traditions adapt while keeping their roots.',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/tile-and-tiffin.jpg',
+        'rejected',
+        now() - interval '9 days',
+        'P0001',
+        now() - interval '7 days'
+    ),
+    (
+        'AS0012',
+        'ACC0006',
+        'P0003',
+        'Melaka Family Table',
+        'A round table illustration surrounded by rice balls, ceramics, and family hands.',
+        'Family-run eateries and recipes passed down in Melaka.',
+        'The open composition invites everyone to take a place at the table.',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/melaka-family-table.jpg',
+        'approved',
+        now() - interval '4 days',
+        'P0001',
+        now() - interval '3 days'
+    ),
+    (
+        'AS0013',
+        'ACC0007',
+        'P0002',
+        'Kelantan Bloom',
+        'Blue blossoms, woven motifs, and grains of rice create a bright botanical design.',
+        'Butterfly-pea flowers, songket, and Kelantanese cuisine.',
+        'The piece celebrates colour drawn from nature and craft.',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/kelantan-bloom.jpg',
+        'approved',
+        now() - interval '2 days',
+        'P0001',
+        now() - interval '1 day'
+    ),
+    (
+        'AS0014',
+        'ACC0008',
+        'P0003',
+        'Laksa Lines',
+        'Steam and noodle lines weave through pepper leaves and river contours.',
+        'The aroma of Sarawak laksa and the rivers of Borneo.',
+        'Continuous lines represent the journeys that keep food traditions alive.',
+        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/laksa-lines.jpg',
+        'approved',
+        now() - interval '1 day',
+        'P0001',
+        now() - interval '12 hours'
     );
 insert into public.artwork_voting_sessions (
         artwork_voting_session_id,
@@ -840,6 +1137,13 @@ values (
         '2026-04-10 00:00:00+08',
         '2026-05-10 23:59:59+08',
         'closed'
+    ),
+    (
+        'AVS0002',
+        'AC0002',
+        now() - interval '30 days',
+        now() + interval '60 days',
+        'active'
     );
 insert into public.artwork_voting_entries (
         artwork_voting_entry_id,
@@ -872,6 +1176,78 @@ values (
         'AS0003',
         1,
         '2026-04-05 10:10:00+08'
+    ),
+    (
+        'AVE0004',
+        'AVS0001',
+        'ACC0002',
+        'AS0004',
+        0,
+        '2026-04-05 10:15:00+08'
+    ),
+    (
+        'AVE0005',
+        'AVS0001',
+        'ACC0003',
+        'AS0005',
+        2,
+        '2026-04-05 10:20:00+08'
+    ),
+    (
+        'AVE0006',
+        'AVS0001',
+        'ACC0003',
+        'AS0006',
+        1,
+        '2026-04-05 10:25:00+08'
+    ),
+    (
+        'AVE0007',
+        'AVS0001',
+        'ACC0004',
+        'AS0007',
+        1,
+        '2026-04-05 10:30:00+08'
+    ),
+    (
+        'AVE0008',
+        'AVS0001',
+        'ACC0004',
+        'AS0008',
+        2,
+        '2026-04-05 10:35:00+08'
+    ),
+    (
+        'AVE0009',
+        'AVS0002',
+        'ACC0005',
+        'AS0010',
+        0,
+        now() - interval '9 days'
+    ),
+    (
+        'AVE0010',
+        'AVS0002',
+        'ACC0006',
+        'AS0012',
+        0,
+        now() - interval '3 days'
+    ),
+    (
+        'AVE0011',
+        'AVS0002',
+        'ACC0007',
+        'AS0013',
+        0,
+        now() - interval '1 day'
+    ),
+    (
+        'AVE0012',
+        'AVS0002',
+        'ACC0008',
+        'AS0014',
+        0,
+        now() - interval '12 hours'
     );
 insert into public.artwork_votes (
         artwork_vote_id,
@@ -904,6 +1280,54 @@ values (
         'AVE0003',
         'P0001',
         '2026-04-17 14:00:00+08'
+    ),
+    (
+        'AV0004',
+        'AVS0001',
+        'ACC0003',
+        'AVE0005',
+        'P0001',
+        '2026-04-18 10:00:00+08'
+    ),
+    (
+        'AV0005',
+        'AVS0001',
+        'ACC0003',
+        'AVE0005',
+        'P0002',
+        '2026-04-18 10:05:00+08'
+    ),
+    (
+        'AV0006',
+        'AVS0001',
+        'ACC0003',
+        'AVE0006',
+        'P0003',
+        '2026-04-18 10:10:00+08'
+    ),
+    (
+        'AV0007',
+        'AVS0001',
+        'ACC0004',
+        'AVE0007',
+        'P0001',
+        '2026-04-19 11:00:00+08'
+    ),
+    (
+        'AV0008',
+        'AVS0001',
+        'ACC0004',
+        'AVE0008',
+        'P0002',
+        '2026-04-19 11:05:00+08'
+    ),
+    (
+        'AV0009',
+        'AVS0001',
+        'ACC0004',
+        'AVE0008',
+        'P0003',
+        '2026-04-19 11:10:00+08'
     );
 insert into public.artwork_campaign_winners (
         artwork_campaign_winner_id,
@@ -934,6 +1358,26 @@ values (
         1,
         'P0001',
         '2026-05-15 10:05:00+08'
+    ),
+    (
+        'ACW0003',
+        'AC0001',
+        'ACC0003',
+        'AVE0005',
+        2,
+        1,
+        'P0001',
+        '2026-05-15 10:10:00+08'
+    ),
+    (
+        'ACW0004',
+        'AC0001',
+        'ACC0004',
+        'AVE0008',
+        2,
+        1,
+        'P0001',
+        '2026-05-15 10:15:00+08'
     );
 -- ============================================================================
 -- 8. RESTORE PROFILES FOR PRESERVED SUPABASE AUTH USERS

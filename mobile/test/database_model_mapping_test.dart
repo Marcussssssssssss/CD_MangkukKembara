@@ -69,7 +69,7 @@ void main() {
   test('featured artwork campaign prefers the live campaign', () {
     final campaigns = [
       _campaign('AC0003', 'completed'),
-      _campaign('AC0002', 'voting'),
+      _campaign('AC0002', 'active'),
       _campaign('AC0001', 'completed'),
     ];
 
