@@ -27,13 +27,13 @@ class ArtworkCampaignViewModel extends ChangeNotifier {
     return null;
   }
 
-  /// Campaigns arrive newest-first. A live campaign always takes precedence;
+  /// Campaigns arrive newest-first. An active campaign always takes precedence;
   /// otherwise the newest completed campaign is the public fallback.
   static ArtworkCampaignModel? selectFeatured(
     List<ArtworkCampaignModel> campaigns,
   ) {
     for (final campaign in campaigns) {
-      if (campaign.isOpenSubmission || campaign.isVoting) return campaign;
+      if (campaign.isActive) return campaign;
     }
     for (final campaign in campaigns) {
       if (campaign.isCompleted) return campaign;

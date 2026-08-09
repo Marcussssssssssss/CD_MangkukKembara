@@ -350,7 +350,7 @@ class HeritageCommunityRepository {
       () => _api.client
           .from('artwork_campaigns')
           .select()
-          .inFilter('status', const ['open_submission', 'voting', 'completed'])
+          .inFilter('status', const ['active', 'completed'])
           .order('created_at', ascending: false),
     );
     if (rows.isEmpty) return [];
@@ -358,33 +358,17 @@ class HeritageCommunityRepository {
     final campaignIds = rows
         .map((row) => row['artwork_campaign_id'] as String)
         .toList();
-    final related = await Future.wait<List<Map<String, dynamic>>>([
-      _api.guard(
-        () => _api.client
-            .from('artwork_campaign_categories')
-            .select('artwork_campaign_category_id, artwork_campaign_id')
-            .inFilter('artwork_campaign_id', campaignIds),
-      ),
-      _api.guard(
-        () => _api.client
-            .from('artwork_voting_sessions')
-            .select(
-              'artwork_campaign_id, voting_start_at, voting_end_at, status',
-            )
-            .inFilter('artwork_campaign_id', campaignIds)
-            .order('voting_start_at', ascending: false),
-      ),
-    ]);
-    final categories = related[0];
-    final sessions = related[1];
+    final categories = await _api.guard(
+      () => _api.client
+          .from('artwork_campaign_categories')
+          .select('artwork_campaign_category_id, artwork_campaign_id')
+          .inFilter('artwork_campaign_id', campaignIds),
+    );
     return rows.map((raw) {
       final row = Map<String, dynamic>.from(raw);
       final campaignId = row['artwork_campaign_id'];
       row['artwork_campaign_categories'] = categories
           .where((category) => category['artwork_campaign_id'] == campaignId)
-          .toList();
-      row['artwork_voting_sessions'] = sessions
-          .where((session) => session['artwork_campaign_id'] == campaignId)
           .toList();
       return ArtworkCampaignModel.fromJson(row);
     }).toList();
@@ -543,10 +527,26 @@ class HeritageCommunityRepository {
     final campaign = await _api.guard(
       () => _api.client
           .from('artwork_campaigns')
-          .select('campaign_title')
+          .select(
+            'campaign_title, status, submission_start_at, submission_end_at',
+          )
           .eq('artwork_campaign_id', campaignId)
           .single(),
     );
+    final campaignStart = DateTime.tryParse(
+      campaign['submission_start_at'] as String? ?? '',
+    );
+    final campaignEnd = DateTime.tryParse(
+      campaign['submission_end_at'] as String? ?? '',
+    );
+    final now = DateTime.now();
+    if (campaign['status'] != 'active' ||
+        campaignStart == null ||
+        campaignEnd == null ||
+        now.isBefore(campaignStart) ||
+        now.isAfter(campaignEnd)) {
+      throw const AppException('This campaign is no longer accepting artwork.');
+    }
     final category = await _api.guard(
       () => _api.client
           .from('artwork_campaign_categories')

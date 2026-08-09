@@ -444,8 +444,8 @@ create table public.artwork_campaigns (
     description         text,
     submission_start_at timestamptz not null,
     submission_end_at   timestamptz not null,
-    status              varchar(30) not null
-                        check (status in ('draft', 'open_submission', 'voting', 'completed', 'cancelled')),
+    status              varchar(30) not null default 'active'
+                        check (status in ('active', 'completed')),
     created_by_profile_id varchar(5) not null references public.profiles(profile_id),
     created_at          timestamptz not null default now(),
 
@@ -454,12 +454,11 @@ create table public.artwork_campaigns (
         check (artwork_campaign_id ~ '^AC[0-9]{4}$')
 );
 
--- A campaign moves from submission to voting without another public campaign
--- becoming live in parallel. Historical, draft, and cancelled records remain
--- unrestricted.
+-- Submission and voting run together for the full active campaign period.
+-- Only one campaign can accept submissions and votes at a time.
 create unique index uq_single_live_artwork_campaign
 on public.artwork_campaigns ((true))
-where status in ('open_submission', 'voting');
+where status = 'active';
 
 create table public.artwork_campaign_categories (
     artwork_campaign_category_id varchar(7) primary key,
@@ -1018,7 +1017,7 @@ with check (
 -- Artwork campaign reads and user-owned participation.
 create policy campaigns_public_read on public.artwork_campaigns
 for select to anon, authenticated
-using (status in ('open_submission', 'voting', 'completed'));
+using (status in ('active', 'completed'));
 
 create policy campaign_categories_public_read
 on public.artwork_campaign_categories
@@ -1027,7 +1026,7 @@ using (
     exists (
         select 1 from public.artwork_campaigns campaigns
         where campaigns.artwork_campaign_id = artwork_campaign_categories.artwork_campaign_id
-          and campaigns.status in ('open_submission', 'voting', 'completed')
+          and campaigns.status in ('active', 'completed')
     )
 );
 
@@ -1050,7 +1049,7 @@ with check (
         join public.artwork_campaigns campaigns
           on campaigns.artwork_campaign_id = categories.artwork_campaign_id
         where categories.artwork_campaign_category_id = artwork_submissions.artwork_campaign_category_id
-          and campaigns.status = 'open_submission'
+          and campaigns.status = 'active'
           and now() between campaigns.submission_start_at
                         and campaigns.submission_end_at
     )
@@ -1062,7 +1061,7 @@ using (
     exists (
         select 1 from public.artwork_campaigns campaigns
         where campaigns.artwork_campaign_id = artwork_voting_sessions.artwork_campaign_id
-          and campaigns.status in ('voting', 'completed')
+          and campaigns.status in ('active', 'completed')
     )
 );
 
@@ -1088,11 +1087,16 @@ with check (
         select 1 from public.artwork_voting_entries entries
         join public.artwork_voting_sessions sessions
           on sessions.artwork_voting_session_id = entries.artwork_voting_session_id
+        join public.artwork_campaigns campaigns
+          on campaigns.artwork_campaign_id = sessions.artwork_campaign_id
         where entries.artwork_voting_entry_id = artwork_votes.artwork_voting_entry_id
           and entries.artwork_voting_session_id = artwork_votes.artwork_voting_session_id
           and entries.artwork_campaign_category_id = artwork_votes.artwork_campaign_category_id
           and sessions.status = 'active'
           and now() between sessions.voting_start_at and sessions.voting_end_at
+          and campaigns.status = 'active'
+          and now() between campaigns.submission_start_at
+                        and campaigns.submission_end_at
     )
 );
 
