@@ -38,9 +38,9 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
         builder: (ctx, vm, auth, _) {
           if (vm.voteSuccess) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
-              ScaffoldMessenger.of(ctx).showSnackBar(
-                const SnackBar(content: Text('🎉 Vote submitted!')),
-              );
+              ScaffoldMessenger.of(
+                ctx,
+              ).showSnackBar(const SnackBar(content: Text('Vote submitted!')));
               _vm.clearVoteSuccess();
             });
           }
@@ -89,58 +89,15 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
               ),
             ),
             child: e.artworkUrl.isNotEmpty
-                ? Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      AppNetworkImage(
-                        imageUrl: e.artworkUrl,
-                        fit: BoxFit.cover,
-                        targetOptimizationWidth: 1000,
-                      ),
-                      Align(
-                        alignment: Alignment.bottomCenter,
-                        child: ColoredBox(
-                          color: Colors.black54,
-                          child: Padding(
-                            padding: const EdgeInsets.all(10),
-                            child: Text(
-                              '${e.artworkTitle} · ${e.submitterName}',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                              textAlign: TextAlign.center,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                ? AppNetworkImage(
+                    imageUrl: e.artworkUrl,
+                    fit: BoxFit.cover,
+                    targetOptimizationWidth: 1000,
                   )
-                : Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        Icons.palette_rounded,
-                        size: 64,
-                        color: Colors.white.withAlpha(200),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        e.artworkTitle,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 20,
-                        ),
-                      ),
-                      Text(
-                        'by ${e.submitterName}',
-                        style: TextStyle(
-                          color: Colors.white.withAlpha(200),
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
+                : Icon(
+                    Icons.palette_rounded,
+                    size: 64,
+                    color: Colors.white.withAlpha(200),
                   ),
           ),
 
@@ -149,6 +106,61 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Text(
+                  e.artworkTitle,
+                  style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                    height: 1.2,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(7),
+                      decoration: const BoxDecoration(
+                        color: AppColors.primaryContainer,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.person_outline_rounded,
+                        color: AppColors.primary,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'ARTWORK BY',
+                            style: TextStyle(
+                              color: AppColors.textHint,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.8,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            e.submitterName,
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                const Divider(height: 1),
+                const SizedBox(height: 16),
                 // Rank + votes
                 Row(
                   children: [
@@ -193,44 +205,44 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
 
                 const SizedBox(height: 12),
 
-                // Vote button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: e.hasCurrentUserVoted
-                          ? AppColors.successLight
-                          : AppColors.primary,
-                      foregroundColor: e.hasCurrentUserVoted
-                          ? AppColors.success
-                          : Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                    ),
-                    icon: Icon(
-                      e.hasCurrentUserVoted
-                          ? Icons.check_circle_rounded
-                          : Icons.how_to_vote_rounded,
-                    ),
-                    label: Text(
-                      e.hasCurrentUserVoted
-                          ? 'You Voted for This Entry'
-                          : 'Vote for This Artwork',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 15,
+                if (e.isVotingOpen)
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: e.hasCurrentUserVoted
+                            ? AppColors.successLight
+                            : AppColors.primary,
+                        foregroundColor: e.hasCurrentUserVoted
+                            ? AppColors.success
+                            : Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
+                      icon: Icon(
+                        e.hasCurrentUserVoted
+                            ? Icons.check_circle_rounded
+                            : Icons.how_to_vote_rounded,
+                      ),
+                      label: Text(
+                        e.hasCurrentUserVoted
+                            ? 'You Voted for This Entry'
+                            : 'Vote for This Artwork',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 15,
+                        ),
+                      ),
+                      onPressed: vm.isVoting || e.hasCurrentUserVoted
+                          ? null
+                          : () async {
+                              if (!auth.isLoggedIn) {
+                                await Navigator.pushNamed(ctx, AppRoutes.login);
+                                return;
+                              }
+                              await _vm.vote(e.id, auth.currentUser!.id);
+                            },
                     ),
-                    onPressed: vm.isVoting || e.hasCurrentUserVoted
-                        ? null
-                        : () async {
-                            if (!auth.isLoggedIn) {
-                              await Navigator.pushNamed(ctx, AppRoutes.login);
-                              return;
-                            }
-                            await _vm.vote(e.id, auth.currentUser!.id);
-                          },
                   ),
-                ),
                 const SizedBox(height: 32),
               ],
             ),

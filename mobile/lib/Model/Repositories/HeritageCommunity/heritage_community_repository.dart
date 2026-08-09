@@ -433,7 +433,7 @@ class HeritageCommunityRepository {
       *, artwork_submissions(
         profile_id, artwork_title, design_description, cultural_inspiration,
         artist_statement, artwork_file_url, submitted_at
-      )
+      ), artwork_voting_sessions(status, voting_start_at, voting_end_at)
     ''')
         .eq('artwork_campaign_category_id', categoryId);
     final rows = await _api.guard(
@@ -613,7 +613,8 @@ class HeritageCommunityRepository {
       return ArtworkSubmissionModel.fromJson(
         row,
         categoryName: category?['category_name'] as String? ?? 'Category',
-        campaignName: campaign?['campaign_title'] as String? ?? 'Artwork campaign',
+        campaignName:
+            campaign?['campaign_title'] as String? ?? 'Artwork campaign',
       );
     }).toList();
   }

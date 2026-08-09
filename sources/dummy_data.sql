@@ -747,7 +747,7 @@ insert into public.artwork_campaigns (
 values (
         'AC0001',
         'Heritage Tiffin Design Campaign 2026',
-        'A campaign for tourists to submit state-themed heritage tiffin artwork.',
+        'This campaign has ended. Tourists submitted state-themed heritage tiffin artwork inspired by Malaysian culture.',
         '2026-01-01 00:00:00+08',
         '2026-03-31 23:59:59+08',
         'completed',

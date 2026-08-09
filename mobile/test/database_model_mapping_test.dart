@@ -6,6 +6,8 @@ import 'package:mangkuk_kembara/Model/Repositories/HeritageExperience/heritage_m
 import 'package:mangkuk_kembara/Model/Repositories/HeritageExperience/heritage_story_model.dart';
 import 'package:mangkuk_kembara/Model/Repositories/HeritageExperience/heritage_tiffin_model.dart';
 import 'package:mangkuk_kembara/Model/Repositories/HeritageTreasureMap/vendor_tiffin_model.dart';
+import 'package:mangkuk_kembara/Model/Repositories/HeritageCommunity/artwork_campaign_model.dart';
+import 'package:mangkuk_kembara/ViewModel/HeritageCommunity/artwork_campaign_view_model.dart';
 
 void main() {
   test('heritage experience models map the reset schema identifiers', () {
@@ -63,4 +65,41 @@ void main() {
     expect(vendorTiffin.tiffinEditionName, 'Penang Edition');
     expect(vendorTiffin.coverImageUrl, 'https://example.com/tiffin.jpg');
   });
+
+  test('featured artwork campaign prefers the live campaign', () {
+    final campaigns = [
+      _campaign('AC0003', 'completed'),
+      _campaign('AC0002', 'voting'),
+      _campaign('AC0001', 'completed'),
+    ];
+
+    expect(ArtworkCampaignViewModel.selectFeatured(campaigns)?.id, 'AC0002');
+  });
+
+  test('featured artwork campaign falls back to newest completed campaign', () {
+    final campaigns = [
+      _campaign('AC0003', 'completed'),
+      _campaign('AC0002', 'completed'),
+    ];
+
+    expect(ArtworkCampaignViewModel.selectFeatured(campaigns)?.id, 'AC0003');
+  });
+
+  test('featured artwork campaign ignores non-public statuses', () {
+    final campaigns = [
+      _campaign('AC0002', 'draft'),
+      _campaign('AC0001', 'cancelled'),
+    ];
+
+    expect(ArtworkCampaignViewModel.selectFeatured(campaigns), isNull);
+  });
+}
+
+ArtworkCampaignModel _campaign(String id, String status) {
+  return ArtworkCampaignModel(
+    id: id,
+    title: id,
+    description: '',
+    status: status,
+  );
 }
