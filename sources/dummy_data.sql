@@ -158,7 +158,7 @@ values (
         'Penang Char Kway Teow',
         'A wok-fried flat rice noodle dish associated with Penang hawker culture.',
         'Represents Penang food traditions shaped by migration and trade.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/foods/char-kway-teow.jpg'
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290630/Penang_Char_Kway_Teow_xwkaoq.jpg'
     ),
     (
         'HF0002',
@@ -167,7 +167,7 @@ values (
         'Melaka Chicken Rice Ball',
         'Chicken rice served with rice shaped into small balls.',
         'Associated with Melaka food heritage and family-run eateries.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/foods/chicken-rice-ball.jpg'
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290629/Melaka_Chicken_Rice_Ball_egx2ky.jpg'
     ),
     (
         'HF0003',
@@ -176,7 +176,7 @@ values (
         'Nasi Kerabu',
         'Blue-coloured rice served with herbs, vegetables, and side dishes.',
         'Highlights Kelantanese ingredients, colours, and communal eating.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/foods/nasi-kerabu.jpg'
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290630/Nasi_Kerabu_h0zkda.jpg'
     ),
     (
         'HF0004',
@@ -185,7 +185,7 @@ values (
         'Sarawak Laksa',
         'Rice vermicelli served in an aromatic Sarawak-style broth.',
         'A well-known representation of Sarawak food identity.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/foods/sarawak-laksa.jpg'
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290629/Sarawak_Laksa_yyvjsc.jpg'
     );
 -- ============================================================================
 -- 4. ARTWORKS AND HERITAGE TIFFINS
@@ -535,7 +535,7 @@ values (
         5.4146000,
         100.3382000,
         'demo_vendor_1',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v1.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786293488/ChatGPT_Image_Aug_10_2026_12_37_40_AM_5_lyyamv.png',
         'active',
         4.50,
         2
@@ -554,7 +554,7 @@ values (
         2.1945000,
         102.2498000,
         'demo_vendor_2',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v2.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786293490/ChatGPT_Image_Aug_10_2026_12_37_39_AM_2_bltwe7.png',
         'active',
         5.00,
         1
@@ -573,7 +573,7 @@ values (
         6.1254000,
         102.2381000,
         'demo_vendor_3',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v3.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786293489/ChatGPT_Image_Aug_10_2026_12_37_40_AM_6_lfgjoi.png',
         'active',
         4.00,
         1
@@ -592,7 +592,7 @@ values (
         1.5535000,
         110.3593000,
         'demo_vendor_4',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v4.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786292362/ChatGPT_Image_Aug_10_2026_12_18_23_AM_2_u8p2k9.png',
         'active',
         0.00,
         0
@@ -611,7 +611,7 @@ values (
         5.4147200,
         100.3383400,
         'demo_vendor_5',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v5.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786293487/ChatGPT_Image_Aug_10_2026_12_37_39_AM_4_yuobtm.png',
         'active',
         4.80,
         15
@@ -630,7 +630,7 @@ values (
         5.4143800,
         100.3379400,
         'demo_vendor_6',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v6.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786293488/ChatGPT_Image_Aug_10_2026_12_37_38_AM_1_fnrsoz.png',
         'active',
         0.00,
         0
@@ -649,7 +649,7 @@ values (
         2.1946100,
         102.2495600,
         'demo_vendor_7',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v7.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786292363/ChatGPT_Image_Aug_10_2026_12_18_23_AM_1_nqg4nl.png',
         'active',
         4.25,
         8
@@ -668,7 +668,7 @@ values (
         2.1942400,
         102.2499100,
         'demo_vendor_8',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v8.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786293490/ChatGPT_Image_Aug_10_2026_12_37_39_AM_3_ba0mch.png',
         'active',
         3.75,
         4
@@ -784,19 +784,19 @@ insert into public.community_post_photos (
 values (
         'CPP0001',
         'CP0001',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/posts/cp1-1.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786297888/ChatGPT_Image_Aug_10_2026_01_51_06_AM_2_cteav7.png',
         1
     ),
     (
         'CPP0002',
         'CP0001',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/posts/cp1-2.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786297888/ChatGPT_Image_Aug_10_2026_01_51_06_AM_3_jaoaws.png',
         2
     ),
     (
         'CPP0003',
         'CP0002',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/posts/cp2-1.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786297888/ChatGPT_Image_Aug_10_2026_01_51_05_AM_1_exarhe.png',
         1
     );
 insert into public.community_post_likes (
@@ -978,7 +978,7 @@ values (
         'Flowing spice motifs connect Melaka river scenes with traditional serving ware.',
         'Melaka River trade and Peranakan kitchens.',
         'The layered river pattern celebrates ingredients carried between communities.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/river-of-spices.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786288745/river-of-spices_rov5ls.jpg',
         'approved',
         '2026-02-25 16:00:00+08',
         'P0001',
@@ -992,7 +992,7 @@ values (
         'A bold tiffin pattern combining the wau bulan with rice grains and local flowers.',
         'Kelantan kite craftsmanship and nasi kerabu colours.',
         'The circular composition reflects a shared meal beneath the moon.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/moonlight-wau.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786288628/ChatGPT_Image_Aug_9_2026_11_16_03_PM_psxzdz.png',
         'approved',
         '2026-02-12 09:15:00+08',
         'P0001',
@@ -1006,7 +1006,7 @@ values (
         'Butterfly-pea blossoms and herb leaves form a garden around each tiffin tier.',
         'The natural ingredients and colours of nasi kerabu.',
         'Every illustrated herb honours the growers and cooks behind the dish.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/blue-rice-garden.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786288630/ChatGPT_Image_Aug_9_2026_11_14_16_PM_3_cnivmm.png',
         'approved',
         '2026-03-01 12:30:00+08',
         'P0001',
@@ -1020,7 +1020,7 @@ values (
         'A layered design of river lines, pepper vines, and the colours of a Kuching sunrise.',
         'Sarawak river life and laksa ingredients.',
         'Soft gradients represent recipes remembered across generations.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/borneo-morning-mist.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786288622/ChatGPT_Image_Aug_9_2026_11_14_16_PM_4_hnmx6f.png',
         'approved',
         '2026-02-18 15:45:00+08',
         'P0001',
@@ -1034,7 +1034,7 @@ values (
         'A graphic hornbill watches over bowls, chopsticks, and native foliage.',
         'Sarawak wildlife, forests, and communal dining.',
         'The design connects care for cultural foodways with care for the land.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/hornbill-supper.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786288625/ChatGPT_Image_Aug_9_2026_11_14_17_PM_5_tlurhx.png',
         'approved',
         '2026-03-05 18:20:00+08',
         'P0001',
@@ -1048,7 +1048,7 @@ values (
         'Warm lanterns illuminate illustrated hawker tools and noodle bowls.',
         'George Town night markets and hawker culture.',
         'The artwork captures the warmth of discovering food after sunset.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/hawker-lanterns.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786288622/ChatGPT_Image_Aug_9_2026_11_14_18_PM_6_eslqmr.png',
         'pending',
         now() - interval '6 days',
         null,
@@ -1062,7 +1062,7 @@ values (
         'Shophouse arches frame a sequence of Penang dishes and tableware.',
         'George Town architecture and shared street-side meals.',
         'Each arch is a doorway into a different family food memory.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/five-foot-way-feast.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786288637/ChatGPT_Image_Aug_9_2026_11_14_19_PM_7_nrfrh9.png',
         'approved',
         now() - interval '12 days',
         'P0001',
@@ -1076,7 +1076,7 @@ values (
         'Peranakan tile geometry wraps around stacked tiffin tiers in vivid colour.',
         'Decorative tiles found in historic Melaka homes.',
         'Repeating patterns show how traditions adapt while keeping their roots.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/tile-and-tiffin.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786288623/ChatGPT_Image_Aug_9_2026_11_14_20_PM_8_ahkhkj.png',
         'rejected',
         now() - interval '9 days',
         'P0001',
@@ -1090,7 +1090,7 @@ values (
         'A round table illustration surrounded by rice balls, ceramics, and family hands.',
         'Family-run eateries and recipes passed down in Melaka.',
         'The open composition invites everyone to take a place at the table.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/melaka-family-table.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786288625/ChatGPT_Image_Aug_9_2026_11_14_20_PM_9_yonosd.png',
         'approved',
         now() - interval '4 days',
         'P0001',
@@ -1104,7 +1104,7 @@ values (
         'Blue blossoms, woven motifs, and grains of rice create a bright botanical design.',
         'Butterfly-pea flowers, songket, and Kelantanese cuisine.',
         'The piece celebrates colour drawn from nature and craft.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/kelantan-bloom.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786288627/ChatGPT_Image_Aug_9_2026_11_14_20_PM_10_fl61wb.png',
         'approved',
         now() - interval '2 days',
         'P0001',
@@ -1118,7 +1118,7 @@ values (
         'Steam and noodle lines weave through pepper leaves and river contours.',
         'The aroma of Sarawak laksa and the rivers of Borneo.',
         'Continuous lines represent the journeys that keep food traditions alive.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/laksa-lines.jpg',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786288626/ChatGPT_Image_Aug_9_2026_11_14_21_PM_11_vdpydo.png',
         'approved',
         now() - interval '1 day',
         'P0001',
