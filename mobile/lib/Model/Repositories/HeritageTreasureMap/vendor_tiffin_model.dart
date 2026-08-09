@@ -1,27 +1,24 @@
-/// Tiffin availability at a vendor — links vendor to a heritage tiffin.
-class TiffinAvailabilityModel {
+/// A heritage tiffin design carried by a vendor.
+class VendorTiffinModel {
   final String vendorId;
   final String tiffinId;
   final String tiffinEditionName;
-  final bool isAvailable;
-  final String? notes;
+  final String? coverImageUrl;
 
-  const TiffinAvailabilityModel({
+  const VendorTiffinModel({
     required this.vendorId,
     required this.tiffinId,
     required this.tiffinEditionName,
-    required this.isAvailable,
-    this.notes,
+    this.coverImageUrl,
   });
 
-  factory TiffinAvailabilityModel.fromJson(Map<String, dynamic> json) {
+  factory VendorTiffinModel.fromJson(Map<String, dynamic> json) {
     final tiffin = json['heritage_tiffins'] as Map<String, dynamic>?;
-    return TiffinAvailabilityModel(
+    return VendorTiffinModel(
       vendorId: json['vendor_id'] as String,
       tiffinId: json['heritage_tiffin_id'] as String,
       tiffinEditionName: tiffin?['edition_name'] as String? ?? '',
-      isAvailable: json['availability_status'] != 'unavailable',
-      notes: null,
+      coverImageUrl: tiffin?['cover_image_url'] as String?,
     );
   }
 }

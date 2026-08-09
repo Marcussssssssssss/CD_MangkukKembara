@@ -5,7 +5,7 @@ import 'package:mangkuk_kembara/Model/Repositories/HeritageExperience/heritage_f
 import 'package:mangkuk_kembara/Model/Repositories/HeritageExperience/heritage_media_model.dart';
 import 'package:mangkuk_kembara/Model/Repositories/HeritageExperience/heritage_story_model.dart';
 import 'package:mangkuk_kembara/Model/Repositories/HeritageExperience/heritage_tiffin_model.dart';
-import 'package:mangkuk_kembara/Model/Repositories/HeritageTreasureMap/tiffin_availability_model.dart';
+import 'package:mangkuk_kembara/Model/Repositories/HeritageTreasureMap/vendor_tiffin_model.dart';
 
 void main() {
   test('heritage experience models map the reset schema identifiers', () {
@@ -48,17 +48,19 @@ void main() {
     expect(food.categoryName, 'Noodles');
   });
 
-  test('vendor tiffin availability maps heritage_tiffin_id', () {
-    final availability = TiffinAvailabilityModel.fromJson({
+  test('vendor tiffin maps heritage_tiffin_id and cover image', () {
+    final vendorTiffin = VendorTiffinModel.fromJson({
       'vendor_id': 'V0001',
       'heritage_tiffin_id': 'HT0001',
-      'availability_status': 'available',
-      'heritage_tiffins': {'edition_name': 'Penang Edition'},
+      'heritage_tiffins': {
+        'edition_name': 'Penang Edition',
+        'cover_image_url': 'https://example.com/tiffin.jpg',
+      },
     });
 
-    expect(availability.vendorId, 'V0001');
-    expect(availability.tiffinId, 'HT0001');
-    expect(availability.tiffinEditionName, 'Penang Edition');
-    expect(availability.isAvailable, isTrue);
+    expect(vendorTiffin.vendorId, 'V0001');
+    expect(vendorTiffin.tiffinId, 'HT0001');
+    expect(vendorTiffin.tiffinEditionName, 'Penang Edition');
+    expect(vendorTiffin.coverImageUrl, 'https://example.com/tiffin.jpg');
   });
 }

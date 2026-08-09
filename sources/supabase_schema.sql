@@ -31,6 +31,7 @@ drop table if exists public.community_post_likes cascade;
 drop table if exists public.community_post_photos cascade;
 drop table if exists public.community_posts cascade;
 
+drop table if exists public.vendor_tiffins cascade;
 drop table if exists public.vendor_tiffin_availability cascade;
 drop table if exists public.vendor_foods cascade;
 drop table if exists public.vendor_operating_hours cascade;
@@ -366,18 +367,14 @@ create table public.vendor_foods (
         check (vendor_food_id ~ '^VF[0-9]{4}$')
 );
 
-create table public.vendor_tiffin_availability (
-    vendor_tiffin_availability_id varchar(7) primary key,
+create table public.vendor_tiffins (
+    vendor_tiffin_id    varchar(6) primary key,
     vendor_id           varchar(5) not null references public.vendors(vendor_id) on delete cascade,
     heritage_tiffin_id  varchar(6) not null references public.heritage_tiffins(heritage_tiffin_id),
-    quantity_available  integer not null default 0 check (quantity_available >= 0),
-    availability_status varchar(20) not null default 'available'
-                        check (availability_status in ('available', 'low_stock', 'unavailable')),
-    updated_at          timestamptz not null default now(),
 
     constraint uq_vendor_tiffin unique (vendor_id, heritage_tiffin_id),
-    constraint chk_vendor_tiffin_availability_id_format
-        check (vendor_tiffin_availability_id ~ '^VTA[0-9]{4}$')
+    constraint chk_vendor_tiffin_id_format
+        check (vendor_tiffin_id ~ '^VT[0-9]{4}$')
 );
 
 -- ============================================================================
@@ -782,7 +779,7 @@ alter table public.pasar_malam_operating_hours enable row level security;
 alter table public.vendors enable row level security;
 alter table public.vendor_operating_hours enable row level security;
 alter table public.vendor_foods enable row level security;
-alter table public.vendor_tiffin_availability enable row level security;
+alter table public.vendor_tiffins enable row level security;
 alter table public.community_posts enable row level security;
 alter table public.community_post_photos enable row level security;
 alter table public.community_post_likes enable row level security;
@@ -906,12 +903,12 @@ using (
     )
 );
 
-create policy vendor_tiffin_public_read on public.vendor_tiffin_availability
+create policy vendor_tiffin_public_read on public.vendor_tiffins
 for select to anon, authenticated
 using (
     exists (
         select 1 from public.vendors parent_vendor
-        where parent_vendor.vendor_id = vendor_tiffin_availability.vendor_id
+        where parent_vendor.vendor_id = vendor_tiffins.vendor_id
           and parent_vendor.participation_status = 'active'
     )
 );
@@ -1167,7 +1164,7 @@ grant select on public.states, public.food_categories, public.heritage_foods,
     public.heritage_media, public.pasar_malam,
     public.pasar_malam_operating_hours, public.vendors,
     public.vendor_operating_hours, public.vendor_foods,
-    public.vendor_tiffin_availability, public.community_posts,
+    public.vendor_tiffins, public.community_posts,
     public.community_post_photos, public.community_comments,
     public.artwork_campaigns, public.artwork_campaign_categories,
     public.artwork_submissions, public.artwork_voting_sessions,

@@ -1,7 +1,7 @@
 import '../../Services/supabase_api_service.dart';
 import 'operating_hour_model.dart';
 import 'pasar_malam_model.dart';
-import 'tiffin_availability_model.dart';
+import 'vendor_tiffin_model.dart';
 import 'vendor_model.dart';
 
 class TreasureMapRepository {
@@ -192,19 +192,16 @@ class TreasureMapRepository {
     return rows.map(OperatingHourModel.fromJson).toList();
   }
 
-  Future<List<TiffinAvailabilityModel>> fetchTiffinAvailability(
-    String vendorId,
-  ) async {
+  Future<List<VendorTiffinModel>> fetchVendorTiffins(String vendorId) async {
     final rows = await _api.guard(
       () => _api.client
-          .from('vendor_tiffin_availability')
+          .from('vendor_tiffins')
           .select('''
-        *, heritage_tiffins(edition_name)
+        *, heritage_tiffins(edition_name, cover_image_url)
       ''')
-          .eq('vendor_id', vendorId)
-          .neq('availability_status', 'unavailable'),
+          .eq('vendor_id', vendorId),
     );
-    return rows.map(TiffinAvailabilityModel.fromJson).toList();
+    return rows.map(VendorTiffinModel.fromJson).toList();
   }
 
   static bool _isOpenNow(
