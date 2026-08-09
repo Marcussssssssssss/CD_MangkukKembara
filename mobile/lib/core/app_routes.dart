@@ -28,7 +28,6 @@ import '../View/HeritageCommunity/artwork_category_list_view.dart';
 import '../View/HeritageCommunity/artwork_voting_detail_view.dart';
 import '../View/HeritageCommunity/artwork_submission_view.dart';
 import '../View/HeritageCommunity/artwork_submission_success_view.dart';
-import '../View/HeritageCommunity/campaign_rankings_view.dart';
 
 // Module D — Account Management
 import '../View/AccountManagement/account_landing_view.dart';
@@ -71,7 +70,6 @@ abstract final class AppRoutes {
   static const String artworkVotingDetail = '/artwork-voting-detail';
   static const String artworkSubmission = '/artwork-submission';
   static const String artworkSubmissionSuccess = '/artwork-submission-success';
-  static const String campaignRankings = '/campaign-rankings';
 
   // ── Module D ─────────────────────────────────────────────────────────────────
   static const String accountLanding = '/account-landing';
@@ -191,12 +189,6 @@ abstract final class AppRoutes {
         );
       case artworkSubmissionSuccess:
         return _build(const ArtworkSubmissionSuccessView(), settings);
-      case campaignRankings:
-        return _build(
-          CampaignRankingsView(campaignId: settings.arguments as String? ?? ''),
-          settings,
-        );
-
       // Module D
       case accountLanding:
         return _build(const AccountLandingView(), settings);

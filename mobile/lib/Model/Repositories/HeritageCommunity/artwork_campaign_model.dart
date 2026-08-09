@@ -33,7 +33,7 @@ class ArtworkCampaignModel {
       case 'voting':
         return 'Voting Active';
       case 'completed':
-        return 'Completed';
+        return 'Campaign Ended';
       default:
         return 'Unknown';
     }
@@ -126,6 +126,7 @@ class ArtworkVotingEntryModel {
   final int voteCount;
   final int currentRank;
   final bool hasCurrentUserVoted;
+  final bool isVotingOpen;
   final String artworkUrl;
 
   const ArtworkVotingEntryModel({
@@ -139,6 +140,7 @@ class ArtworkVotingEntryModel {
     this.voteCount = 0,
     this.currentRank = 0,
     this.hasCurrentUserVoted = false,
+    this.isVotingOpen = false,
     required this.artworkUrl,
   });
 
@@ -150,6 +152,21 @@ class ArtworkVotingEntryModel {
   }) {
     final submission =
         json['artwork_submissions'] as Map<String, dynamic>? ?? const {};
+    final session =
+        json['artwork_voting_sessions'] as Map<String, dynamic>? ?? const {};
+    final votingStart = DateTime.tryParse(
+      session['voting_start_at'] as String? ?? '',
+    );
+    final votingEnd = DateTime.tryParse(
+      session['voting_end_at'] as String? ?? '',
+    );
+    final now = DateTime.now();
+    final votingIsOpen =
+        session['status'] == 'active' &&
+        votingStart != null &&
+        votingEnd != null &&
+        !now.isBefore(votingStart) &&
+        !now.isAfter(votingEnd);
     return ArtworkVotingEntryModel(
       id: json['artwork_voting_entry_id'] as String,
       categoryId: json['artwork_campaign_category_id'] as String,
@@ -162,6 +179,7 @@ class ArtworkVotingEntryModel {
       voteCount: (json['vote_count'] as num? ?? 0).toInt(),
       currentRank: rank,
       hasCurrentUserVoted: hasVoted,
+      isVotingOpen: votingIsOpen,
       artworkUrl: submission['artwork_file_url'] as String? ?? '',
     );
   }

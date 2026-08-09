@@ -50,15 +50,7 @@ class _PostDetailViewState extends State<PostDetailView> {
       child: Consumer2<PostDetailViewModel, AuthViewModel>(
         builder: (context, vm, auth, _) => Scaffold(
           backgroundColor: AppColors.surface,
-          appBar: AppBar(
-            title: const Text('Post'),
-            backgroundColor: AppColors.surface,
-            foregroundColor: AppColors.textPrimary,
-            surfaceTintColor: Colors.transparent,
-            elevation: 0,
-            iconTheme: const IconThemeData(color: AppColors.textPrimary),
-            titleTextStyle: Theme.of(context).textTheme.titleLarge,
-          ),
+          appBar: AppBar(title: const Text('Post')),
           body: vm.isLoading
               ? const LoadingSpinner()
               : vm.hasError || vm.post == null

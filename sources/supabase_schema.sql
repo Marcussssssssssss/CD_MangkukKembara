@@ -454,6 +454,13 @@ create table public.artwork_campaigns (
         check (artwork_campaign_id ~ '^AC[0-9]{4}$')
 );
 
+-- A campaign moves from submission to voting without another public campaign
+-- becoming live in parallel. Historical, draft, and cancelled records remain
+-- unrestricted.
+create unique index uq_single_live_artwork_campaign
+on public.artwork_campaigns ((true))
+where status in ('open_submission', 'voting');
+
 create table public.artwork_campaign_categories (
     artwork_campaign_category_id varchar(7) primary key,
     artwork_campaign_id varchar(6) not null references public.artwork_campaigns(artwork_campaign_id) on delete cascade,
