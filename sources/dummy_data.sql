@@ -29,7 +29,7 @@ truncate table
     public.community_post_likes,
     public.community_post_photos,
     public.community_posts,
-    public.vendor_tiffin_availability,
+    public.vendor_tiffins,
     public.vendor_foods,
     public.vendor_operating_hours,
     public.vendors,
@@ -361,15 +361,14 @@ values
     ('VF0003', 'V0003', 'HF0003', true),
     ('VF0004', 'V0004', 'HF0004', true);
 
-insert into public.vendor_tiffin_availability (
-    vendor_tiffin_availability_id, vendor_id, heritage_tiffin_id,
-    quantity_available, availability_status
+insert into public.vendor_tiffins (
+    vendor_tiffin_id, vendor_id, heritage_tiffin_id
 )
 values
-    ('VTA0001', 'V0001', 'HT0001', 12, 'available'),
-    ('VTA0002', 'V0002', 'HT0002', 5, 'low_stock'),
-    ('VTA0003', 'V0003', 'HT0003', 9, 'available'),
-    ('VTA0004', 'V0004', 'HT0004', 0, 'unavailable');
+    ('VT0001', 'V0001', 'HT0001'),
+    ('VT0002', 'V0002', 'HT0002'),
+    ('VT0003', 'V0003', 'HT0003'),
+    ('VT0004', 'V0004', 'HT0004');
 
 -- ============================================================================
 -- 6. COMMUNITY DATA

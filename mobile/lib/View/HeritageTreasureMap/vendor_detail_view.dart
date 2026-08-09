@@ -209,52 +209,35 @@ class _VendorDetailViewState extends State<VendorDetailView> {
                   children: [...vm.operatingHours.map((h) => _HoursRow(h))],
                 ),
 
-              // Tiffin availability
-              if (vm.tiffinAvailability.isNotEmpty)
+              // Tiffin designs carried by this vendor
+              if (vm.tiffins.isNotEmpty)
                 _InfoCard(
-                  title: 'Heritage Tiffin Availability',
+                  title: 'Heritage Tiffin Designs',
                   children: [
-                    ...vm.tiffinAvailability.map(
+                    ...vm.tiffins.map(
                       (t) => ListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          Icons.kitchen_rounded,
-                          color: t.isAvailable
-                              ? AppColors.success
-                              : AppColors.textHint,
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox(
+                            width: 56,
+                            height: 56,
+                            child: t.coverImageUrl != null
+                                ? Image.network(
+                                    t.coverImageUrl!,
+                                    fit: BoxFit.cover,
+                                    errorBuilder: (_, _, _) =>
+                                        const _TiffinImagePlaceholder(),
+                                  )
+                                : const _TiffinImagePlaceholder(),
+                          ),
                         ),
                         title: Text(
                           t.tiffinEditionName,
                           style: Theme.of(ctx).textTheme.bodyMedium,
                         ),
-                        subtitle: t.notes != null
-                            ? Text(
-                                t.notes!,
-                                style: Theme.of(ctx).textTheme.bodySmall,
-                              )
-                            : null,
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: t.isAvailable
-                                ? AppColors.successLight
-                                : AppColors.errorLight,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            t.isAvailable ? 'Available' : 'Unavailable',
-                            style: TextStyle(
-                              color: t.isAvailable
-                                  ? AppColors.success
-                                  : AppColors.error,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () => Navigator.pushNamed(
                           ctx,
                           AppRoutes.tiffinExperience,
@@ -317,6 +300,16 @@ class _VendorDetailViewState extends State<VendorDetailView> {
       ],
     );
   }
+}
+
+class _TiffinImagePlaceholder extends StatelessWidget {
+  const _TiffinImagePlaceholder();
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: AppColors.surfaceVariant,
+    child: const Icon(Icons.kitchen_rounded, color: AppColors.textHint),
+  );
 }
 
 class _InfoCard extends StatelessWidget {
