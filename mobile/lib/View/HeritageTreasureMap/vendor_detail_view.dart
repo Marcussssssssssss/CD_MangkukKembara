@@ -5,6 +5,7 @@ import '../../core/app_routes.dart';
 import '../../ViewModel/HeritageTreasureMap/vendor_detail_view_model.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../Model/Repositories/HeritageTreasureMap/operating_hour_model.dart';
+import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
 import '../Widgets/rating_bar.dart';
@@ -224,11 +225,11 @@ class _VendorDetailViewState extends State<VendorDetailView> {
                             width: 56,
                             height: 56,
                             child: t.coverImageUrl != null
-                                ? Image.network(
-                                    t.coverImageUrl!,
+                                ? AppNetworkImage(
+                                    imageUrl: t.coverImageUrl,
                                     fit: BoxFit.cover,
-                                    errorBuilder: (_, _, _) =>
-                                        const _TiffinImagePlaceholder(),
+                                    targetOptimizationWidth: 200,
+                                    errorWidget: const _TiffinImagePlaceholder(),
                                   )
                                 : const _TiffinImagePlaceholder(),
                           ),

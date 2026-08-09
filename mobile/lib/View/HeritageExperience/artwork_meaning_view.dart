@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
 import '../../ViewModel/HeritageExperience/tiffin_content_view_model.dart';
+import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
 
@@ -70,7 +71,11 @@ class _ArtworkMeaningViewState extends State<ArtworkMeaningView> {
               ),
             ),
             child: a.imageUrl.isNotEmpty
-                ? Image.network(a.imageUrl, fit: BoxFit.cover)
+                ? AppNetworkImage(
+                    imageUrl: a.imageUrl,
+                    fit: BoxFit.cover,
+                    targetOptimizationWidth: 1000,
+                  )
                 : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [

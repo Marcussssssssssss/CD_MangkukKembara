@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../Model/Repositories/HeritageExperience/heritage_tiffin_model.dart';
+import 'app_network_image.dart';
 
 /// Heritage tiffin card for the experience grid.
 class TiffinCard extends StatelessWidget {
@@ -16,27 +17,27 @@ class TiffinCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(20),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              color: Colors.black12,
+              blurRadius: 10,
+              offset: Offset(0, 3),
             ),
           ],
         ),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Published cover artwork, with a branded fallback when absent.
-            Expanded(
+            // Image / Banner
+            SizedBox(
+              height: 120,
               child: Stack(
                 children: [
                   Container(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
                         colors: [
                           cardColor.withAlpha(200),
                           cardColor.withAlpha(120),
@@ -51,10 +52,12 @@ class TiffinCard extends StatelessWidget {
                             borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(14),
                             ),
-                            child: Image.network(
-                              tiffin.coverImageUrl!,
+                            child: AppNetworkImage(
+                              imageUrl: tiffin.coverImageUrl,
                               fit: BoxFit.cover,
-                              errorBuilder: (_, _, _) => _fallback(tiffin),
+                              width: double.infinity,
+                              height: double.infinity,
+                              errorWidget: _fallback(tiffin),
                             ),
                           )
                         : _fallback(tiffin),
