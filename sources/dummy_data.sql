@@ -596,82 +596,6 @@ values (
         'active',
         0.00,
         0
-    ),
-    (
-        'V0005',
-        'PM0001',
-        'S0001',
-        'Auntie Lee Assam Laksa',
-        'night_market_stall',
-        'A family-run stall serving tangy Penang assam laksa.',
-        'Lee Siew Peng',
-        '+60123456785',
-        'assamlaksa@example.com',
-        'Lot 18, George Town Heritage Night Market',
-        5.4147200,
-        100.3383100,
-        'demo_vendor_5',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v5.jpg',
-        'active',
-        4.25,
-        12
-    ),
-    (
-        'V0006',
-        'PM0001',
-        'S0001',
-        'Jelutong Heritage Bites',
-        'night_market_stall',
-        'A new participant offering rotating Penang heritage snacks.',
-        'Goh Wei Jian',
-        '+60123456786',
-        'jelutongbites@example.com',
-        'Lot 24, George Town Heritage Night Market',
-        5.4148200,
-        100.3383900,
-        'demo_vendor_6',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v6.jpg',
-        'pending',
-        0.00,
-        0
-    ),
-    (
-        'V0007',
-        'PM0002',
-        'S0002',
-        'Baba Nyonya Kuih Corner',
-        'night_market_stall',
-        'Colourful handmade Nyonya kuih based on family recipes.',
-        'Chong Li Ann',
-        '+60123456787',
-        'nyonyakuih@example.com',
-        'Lot 15, Melaka Riverside Night Market',
-        2.1946100,
-        102.2499100,
-        'demo_vendor_7',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v7.jpg',
-        'active',
-        4.80,
-        20
-    ),
-    (
-        'V0008',
-        'PM0002',
-        'S0002',
-        'Jonker Satay Celup',
-        'night_market_stall',
-        'A riverside stall serving skewers with classic satay celup sauce.',
-        'Ong Kah Leong',
-        '+60123456788',
-        'sataycelup@example.com',
-        'Lot 21, Melaka Riverside Night Market',
-        2.1946900,
-        102.2500200,
-        'demo_vendor_8',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/vendors/v8.jpg',
-        'inactive',
-        3.90,
-        7
     );
 insert into public.vendor_operating_hours (
         vendor_operating_hours_id,
@@ -686,15 +610,7 @@ values ('VOH0001', 'V0001', 5, '18:00', '23:00', false),
     ('VOH0003', 'V0002', 5, '17:00', '23:30', false),
     ('VOH0004', 'V0002', 6, '17:00', '23:30', false),
     ('VOH0005', 'V0003', 1, '08:00', '17:00', false),
-    ('VOH0006', 'V0004', 2, '08:00', '18:00', false),
-    ('VOH0007', 'V0005', 5, '18:00', '23:00', false),
-    ('VOH0008', 'V0005', 6, '18:00', '23:00', false),
-    ('VOH0009', 'V0006', 5, '18:00', '22:30', false),
-    ('VOH0010', 'V0006', 6, '18:00', '22:30', false),
-    ('VOH0011', 'V0007', 5, '17:00', '23:30', false),
-    ('VOH0012', 'V0007', 6, '17:00', '23:30', false),
-    ('VOH0013', 'V0008', 5, '17:30', '23:00', false),
-    ('VOH0014', 'V0008', 6, '17:30', '23:00', false);
+    ('VOH0006', 'V0004', 2, '08:00', '18:00', false);
 insert into public.vendor_foods (
         vendor_food_id,
         vendor_id,
@@ -704,11 +620,7 @@ insert into public.vendor_foods (
 values ('VF0001', 'V0001', 'HF0001', true),
     ('VF0002', 'V0002', 'HF0002', true),
     ('VF0003', 'V0003', 'HF0003', true),
-    ('VF0004', 'V0004', 'HF0004', true),
-    ('VF0005', 'V0005', 'HF0001', true),
-    ('VF0006', 'V0006', 'HF0001', false),
-    ('VF0007', 'V0007', 'HF0002', true),
-    ('VF0008', 'V0008', 'HF0002', false);
+    ('VF0004', 'V0004', 'HF0004', true);
 insert into public.vendor_tiffins (
         vendor_tiffin_id,
         vendor_id,
@@ -717,11 +629,7 @@ insert into public.vendor_tiffins (
 values ('VT0001', 'V0001', 'HT0001'),
     ('VT0002', 'V0002', 'HT0002'),
     ('VT0003', 'V0003', 'HT0003'),
-    ('VT0004', 'V0004', 'HT0004'),
-    ('VT0005', 'V0005', 'HT0001'),
-    ('VT0006', 'V0006', 'HT0001'),
-    ('VT0007', 'V0007', 'HT0002'),
-    ('VT0008', 'V0008', 'HT0002');
+    ('VT0004', 'V0004', 'HT0004');
 -- ============================================================================
 -- 6. COMMUNITY DATA
 -- ============================================================================
@@ -844,15 +752,6 @@ values (
         '2026-03-31 23:59:59+08',
         'completed',
         'P0001'
-    ),
-    (
-        'AC0002',
-        'Malaysia Food Stories Tiffin Design Campaign 2026',
-        'An active campaign inviting tourists to turn regional food memories into collectible tiffin artwork.',
-        '2026-07-01 00:00:00+08',
-        '2026-10-31 23:59:59+08',
-        'open_submission',
-        'P0001'
     );
 insert into public.artwork_campaign_categories (
         artwork_campaign_category_id,
@@ -871,42 +770,6 @@ values (
         'AC0001',
         'S0002',
         'Melaka Heritage Design'
-    ),
-    (
-        'ACC0003',
-        'AC0001',
-        'S0003',
-        'Kelantan Heritage Design'
-    ),
-    (
-        'ACC0004',
-        'AC0001',
-        'S0004',
-        'Sarawak Heritage Design'
-    ),
-    (
-        'ACC0005',
-        'AC0002',
-        'S0001',
-        'Penang Street Food Stories'
-    ),
-    (
-        'ACC0006',
-        'AC0002',
-        'S0002',
-        'Melaka Family Food Traditions'
-    ),
-    (
-        'ACC0007',
-        'AC0002',
-        'S0003',
-        'Kelantan Colours and Flavours'
-    ),
-    (
-        'ACC0008',
-        'AC0002',
-        'S0004',
-        'Sarawak River and Rainforest Foods'
     );
 insert into public.artwork_submissions (
         artwork_submission_id,
@@ -963,146 +826,6 @@ values (
         '2026-02-15 11:00:00+08',
         'P0001',
         '2026-04-02 09:20:00+08'
-    ),
-    (
-        'AS0004',
-        'ACC0003',
-        'P0002',
-        'Moon Kite Feast',
-        'A layered tiffin design combining wau bulan curves, blue rice, herbs, and songket geometry.',
-        'Kelantan wau bulan, nasi kerabu, and textile traditions.',
-        'The rising kite celebrates recipes carried forward by younger generations.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/moon-kite-feast.png',
-        'approved',
-        '2026-03-01 16:00:00+08',
-        'P0001',
-        '2026-04-02 09:30:00+08'
-    ),
-    (
-        'AS0005',
-        'ACC0004',
-        'P0003',
-        'River Weave',
-        'Flowing river lines meet woven motifs and bowls of Sarawak laksa.',
-        'Sarawak river journeys, indigenous weaving, and communal meals.',
-        'Every band represents a community connected by water and food.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/river-weave.png',
-        'approved',
-        '2026-03-05 11:30:00+08',
-        'P0001',
-        '2026-04-02 09:40:00+08'
-    ),
-    (
-        'AS0006',
-        'ACC0005',
-        'P0002',
-        'Five-Foot-Way Supper',
-        'Warm lanterns and shophouse arches frame a lively hawker supper.',
-        'George Town five-foot ways and night-time street food.',
-        'I wanted the container to feel like walking into a welcoming food street.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/five-foot-way-supper.png',
-        'approved',
-        '2026-07-12 20:15:00+08',
-        'P0001',
-        '2026-07-14 10:00:00+08'
-    ),
-    (
-        'AS0007',
-        'ACC0005',
-        'P0003',
-        'Nutmeg Island',
-        'Botanical forms, nutmeg fruit, and sea-blue bands wrap each tiffin tier.',
-        'Penang nutmeg farms and island coastlines.',
-        'The design connects lesser-known produce with the island landscape.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/nutmeg-island.png',
-        'pending',
-        '2026-08-07 09:30:00+08',
-        null,
-        null
-    ),
-    (
-        'AS0008',
-        'ACC0006',
-        'P0002',
-        'Tile Table Memories',
-        'Peranakan tiles form a tablecloth around illustrated family dishes.',
-        'Melaka family kitchens and colourful Peranakan ceramics.',
-        'Each tile holds a small memory of meals prepared together.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/tile-table-memories.png',
-        'approved',
-        '2026-07-20 13:00:00+08',
-        'P0001',
-        '2026-07-22 08:45:00+08'
-    ),
-    (
-        'AS0009',
-        'ACC0006',
-        'P0003',
-        'Riverside Recipe Book',
-        'A sketchbook-style design of riverfront buildings and handwritten recipes.',
-        'Melaka River, old family notebooks, and market ingredients.',
-        'The loose drawings make the tiffin feel like a travelling recipe journal.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/riverside-recipe-book.png',
-        'rejected',
-        '2026-07-25 17:40:00+08',
-        'P0001',
-        '2026-07-27 11:20:00+08'
-    ),
-    (
-        'AS0010',
-        'ACC0007',
-        'P0002',
-        'Blue Rice Garden',
-        'Butterfly pea flowers open across tiers filled with rice, herbs, and budu motifs.',
-        'The natural colours and garden ingredients of nasi kerabu.',
-        'This is a tribute to growers and cooks who build flavour from the garden.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/blue-rice-garden.png',
-        'approved',
-        '2026-07-28 12:10:00+08',
-        'P0001',
-        '2026-07-30 09:15:00+08'
-    ),
-    (
-        'AS0011',
-        'ACC0007',
-        'P0003',
-        'Wayang Flavours',
-        'Shadow-puppet silhouettes surround bowls, herbs, and traditional serving tools.',
-        'Kelantan wayang kulit and evening food gatherings.',
-        'Food and performance both bring stories to life after sunset.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/wayang-flavours.png',
-        'pending',
-        '2026-08-08 18:25:00+08',
-        null,
-        null
-    ),
-    (
-        'AS0012',
-        'ACC0008',
-        'P0002',
-        'Rainforest Pantry',
-        'Fern spirals, pepper vines, and forest produce create a dense botanical pattern.',
-        'Sarawak jungle ingredients, midin, and pepper farming.',
-        'The pattern honours the biodiversity behind familiar dishes.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/rainforest-pantry.png',
-        'approved',
-        '2026-08-01 14:50:00+08',
-        'P0001',
-        '2026-08-03 10:10:00+08'
-    ),
-    (
-        'AS0013',
-        'ACC0008',
-        'P0003',
-        'Longhouse Table',
-        'A continuous communal table circles the tiffin through longhouse-inspired geometry.',
-        'Longhouse hospitality and shared Sarawak meals.',
-        'The unbroken table represents generosity and belonging.',
-        'https://res.cloudinary.com/demo/image/upload/mangkukkembara/submissions/longhouse-table.png',
-        'pending',
-        '2026-08-09 08:00:00+08',
-        null,
-        null
     );
 insert into public.artwork_voting_sessions (
         artwork_voting_session_id,
