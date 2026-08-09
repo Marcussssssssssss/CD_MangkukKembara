@@ -46,7 +46,7 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
           }
           return Scaffold(
             backgroundColor: AppColors.background,
-            appBar: AppBar(title: const Text('Artwork Entry')),
+            appBar: AppBar(title: const Text('Artwork')),
             body: vm.isLoading
                 ? const LoadingSpinner()
                 : vm.hasError || vm.selectedEntry == null
@@ -89,10 +89,21 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
               ),
             ),
             child: e.artworkUrl.isNotEmpty
-                ? AppNetworkImage(
-                    imageUrl: e.artworkUrl,
-                    fit: BoxFit.cover,
-                    targetOptimizationWidth: 1000,
+                ? GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: () => Navigator.of(ctx).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => _FullscreenArtworkView(
+                          imageUrl: e.artworkUrl,
+                          title: e.artworkTitle,
+                        ),
+                      ),
+                    ),
+                    child: AppNetworkImage(
+                      imageUrl: e.artworkUrl,
+                      fit: BoxFit.cover,
+                      targetOptimizationWidth: 1000,
+                    ),
                   )
                 : Icon(
                     Icons.palette_rounded,
@@ -101,8 +112,21 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
                   ),
           ),
 
-          Padding(
+          Container(
+            margin: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.surface,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: AppColors.primaryContainer, width: 1.4),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x12000000),
+                  blurRadius: 10,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -248,6 +272,38 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FullscreenArtworkView extends StatelessWidget {
+  final String imageUrl;
+  final String title;
+
+  const _FullscreenArtworkView({required this.imageUrl, required this.title});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: InteractiveViewer(
+            minScale: 0.8,
+            maxScale: 5,
+            child: AppNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.contain,
+              targetOptimizationWidth: 1800,
+            ),
+          ),
+        ),
       ),
     );
   }
