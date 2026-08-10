@@ -343,7 +343,9 @@ class _TreasureMapViewState extends State<TreasureMapView> {
     }
 
     return _VendorGoogleMap(
-      vendors: vm.mapVendors,
+      // Vendors belonging to a Pasar Malam are accessed through the market
+      // marker, so only standalone vendors receive their own map pin.
+      vendors: vm.vendors,
       pasarMalam: vm.pasarMalam,
       showCurrentLocation: vm.canShowCurrentLocation,
       onVendorTap: vm.showVendorPreview,

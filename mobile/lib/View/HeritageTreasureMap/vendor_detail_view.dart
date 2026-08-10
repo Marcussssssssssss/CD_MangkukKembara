@@ -54,7 +54,6 @@ class _VendorDetailViewState extends State<VendorDetailView> {
 
   Widget _buildContent(BuildContext ctx, VendorDetailViewModel vm) {
     final v = vm.vendor!;
-    const coverColor = AppColors.primary;
     final authVm = ctx.read<AuthViewModel>();
 
     return CustomScrollView(
@@ -65,26 +64,14 @@ class _VendorDetailViewState extends State<VendorDetailView> {
           pinned: true,
           backgroundColor: AppColors.primary,
           flexibleSpace: FlexibleSpaceBar(
-            background: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [coverColor, coverColor.withAlpha(180)],
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 40),
-                  Icon(
-                    Icons.restaurant_rounded,
-                    size: 64,
-                    color: Colors.white.withAlpha(200),
-                  ),
-                ],
-              ),
-            ),
+            background: v.coverImageUrl != null && v.coverImageUrl!.isNotEmpty
+                ? AppNetworkImage(
+                    imageUrl: v.coverImageUrl,
+                    fit: BoxFit.cover,
+                    targetOptimizationWidth: 1200,
+                    errorWidget: const _VendorCoverPlaceholder(),
+                  )
+                : const _VendorCoverPlaceholder(),
           ),
           actions: [
             IconButton(
@@ -229,7 +216,8 @@ class _VendorDetailViewState extends State<VendorDetailView> {
                                     imageUrl: t.coverImageUrl,
                                     fit: BoxFit.cover,
                                     targetOptimizationWidth: 200,
-                                    errorWidget: const _TiffinImagePlaceholder(),
+                                    errorWidget:
+                                        const _TiffinImagePlaceholder(),
                                   )
                                 : const _TiffinImagePlaceholder(),
                           ),
@@ -301,6 +289,28 @@ class _VendorDetailViewState extends State<VendorDetailView> {
       ],
     );
   }
+}
+
+class _VendorCoverPlaceholder extends StatelessWidget {
+  const _VendorCoverPlaceholder();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [AppColors.primary, AppColors.primary.withAlpha(180)],
+      ),
+    ),
+    child: Center(
+      child: Icon(
+        Icons.restaurant_rounded,
+        size: 64,
+        color: Colors.white.withAlpha(200),
+      ),
+    ),
+  );
 }
 
 class _TiffinImagePlaceholder extends StatelessWidget {
