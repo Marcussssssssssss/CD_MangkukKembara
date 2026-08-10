@@ -9,6 +9,7 @@ class VendorModel {
   final String? contactNumber;
   final String? email;
   final String businessType;
+  final String? coverImageUrl;
   final String? pasarMalamId;
   final double latitude;
   final double longitude;
@@ -29,6 +30,7 @@ class VendorModel {
     this.contactNumber,
     this.email,
     required this.businessType,
+    this.coverImageUrl,
     this.pasarMalamId,
     required this.latitude,
     required this.longitude,
@@ -70,6 +72,7 @@ class VendorModel {
         '_',
         ' ',
       ),
+      coverImageUrl: (json['cover_image_url'] as String?)?.trim(),
       pasarMalamId: json['pasar_malam_id'] as String?,
       latitude: (json['latitude'] as num).toDouble(),
       longitude: (json['longitude'] as num).toDouble(),
@@ -98,6 +101,7 @@ class VendorModel {
     contactNumber: contactNumber,
     email: email,
     businessType: businessType,
+    coverImageUrl: coverImageUrl,
     pasarMalamId: pasarMalamId,
     latitude: latitude,
     longitude: longitude,

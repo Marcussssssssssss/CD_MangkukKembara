@@ -184,7 +184,7 @@ class _HeritageExperienceHomeViewState
                     crossAxisCount: 2,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 0.75,
+                    mainAxisExtent: 240,
                   ),
                 ),
               ),
