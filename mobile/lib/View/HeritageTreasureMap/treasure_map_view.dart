@@ -416,6 +416,7 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
       children: [
         GoogleMap(
           initialCameraPosition: _malaysia,
+          mapType: MapType.hybrid,
           markers: _markers,
           myLocationButtonEnabled: widget.showCurrentLocation,
           myLocationEnabled: widget.showCurrentLocation,

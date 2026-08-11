@@ -114,6 +114,7 @@ class ArtworkVotingEntryModel {
   final bool hasCurrentUserVoted;
   final bool isVotingOpen;
   final String artworkUrl;
+  final DateTime? publishedAt;
 
   const ArtworkVotingEntryModel({
     required this.id,
@@ -128,7 +129,24 @@ class ArtworkVotingEntryModel {
     this.hasCurrentUserVoted = false,
     this.isVotingOpen = false,
     required this.artworkUrl,
+    this.publishedAt,
   });
+
+  ArtworkVotingEntryModel withRank(int rank) => ArtworkVotingEntryModel(
+    id: id,
+    categoryId: categoryId,
+    artworkTitle: artworkTitle,
+    designDescription: designDescription,
+    culturalInspiration: culturalInspiration,
+    artistStatement: artistStatement,
+    submitterName: submitterName,
+    voteCount: voteCount,
+    currentRank: rank,
+    hasCurrentUserVoted: hasCurrentUserVoted,
+    isVotingOpen: isVotingOpen,
+    artworkUrl: artworkUrl,
+    publishedAt: publishedAt,
+  );
 
   factory ArtworkVotingEntryModel.fromJson(
     Map<String, dynamic> json, {
@@ -167,6 +185,7 @@ class ArtworkVotingEntryModel {
       hasCurrentUserVoted: hasVoted,
       isVotingOpen: votingIsOpen,
       artworkUrl: submission['artwork_file_url'] as String? ?? '',
+      publishedAt: DateTime.tryParse(json['published_at'] as String? ?? ''),
     );
   }
 }

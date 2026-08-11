@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
 import '../../ViewModel/HeritageTreasureMap/vendor_detail_view_model.dart';
-import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../Model/Repositories/HeritageTreasureMap/operating_hour_model.dart';
 import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
@@ -54,7 +53,6 @@ class _VendorDetailViewState extends State<VendorDetailView> {
 
   Widget _buildContent(BuildContext ctx, VendorDetailViewModel vm) {
     final v = vm.vendor!;
-    final authVm = ctx.read<AuthViewModel>();
 
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -65,11 +63,21 @@ class _VendorDetailViewState extends State<VendorDetailView> {
           backgroundColor: AppColors.primary,
           flexibleSpace: FlexibleSpaceBar(
             background: v.coverImageUrl != null && v.coverImageUrl!.isNotEmpty
-                ? AppNetworkImage(
-                    imageUrl: v.coverImageUrl,
-                    fit: BoxFit.cover,
-                    targetOptimizationWidth: 1200,
-                    errorWidget: const _VendorCoverPlaceholder(),
+                ? GestureDetector(
+                    onTap: () => Navigator.of(ctx).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => _FullscreenVendorImageView(
+                          imageUrl: v.coverImageUrl!,
+                          vendorName: v.name,
+                        ),
+                      ),
+                    ),
+                    child: AppNetworkImage(
+                      imageUrl: v.coverImageUrl,
+                      fit: BoxFit.cover,
+                      targetOptimizationWidth: 1200,
+                      errorWidget: const _VendorCoverPlaceholder(),
+                    ),
                   )
                 : const _VendorCoverPlaceholder(),
           ),
@@ -240,46 +248,17 @@ class _VendorDetailViewState extends State<VendorDetailView> {
               // Action buttons
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.rate_review_rounded),
-                        label: const Text('Write a Review'),
-                        onPressed: () async {
-                          if (!authVm.isLoggedIn) {
-                            await Navigator.pushNamed(ctx, AppRoutes.login);
-                            return;
-                          }
-                          Navigator.pushNamed(ctx, AppRoutes.createPost);
-                        },
-                      ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.directions_rounded),
+                    label: const Text('Get Directions'),
+                    onPressed: () => Navigator.pushNamed(
+                      ctx,
+                      AppRoutes.routeNavigation,
+                      arguments: v.id,
                     ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.forum_rounded),
-                        label: const Text('View Community Reviews'),
-                        onPressed: () =>
-                            Navigator.pushNamed(ctx, AppRoutes.community),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.directions_rounded),
-                        label: const Text('Get Directions'),
-                        onPressed: () => Navigator.pushNamed(
-                          ctx,
-                          AppRoutes.routeNavigation,
-                          arguments: v.id,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -287,6 +266,41 @@ class _VendorDetailViewState extends State<VendorDetailView> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _FullscreenVendorImageView extends StatelessWidget {
+  final String imageUrl;
+  final String vendorName;
+
+  const _FullscreenVendorImageView({
+    required this.imageUrl,
+    required this.vendorName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(vendorName, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: InteractiveViewer(
+            minScale: 0.8,
+            maxScale: 5,
+            child: AppNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.contain,
+              targetOptimizationWidth: 1800,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

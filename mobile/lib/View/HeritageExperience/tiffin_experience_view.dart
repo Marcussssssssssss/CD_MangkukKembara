@@ -70,11 +70,21 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView> {
                   colors: [tiffinColor, tiffinColor.withAlpha(180)],
                 ),
               ),
-              child: t.coverImageUrl != null
-                  ? AppNetworkImage(
-                      imageUrl: t.coverImageUrl,
-                      fit: BoxFit.cover,
-                      targetOptimizationWidth: 1000,
+              child: t.coverImageUrl != null && t.coverImageUrl!.isNotEmpty
+                  ? GestureDetector(
+                      onTap: () => Navigator.of(ctx).push(
+                        MaterialPageRoute<void>(
+                          builder: (_) => _FullscreenTiffinImageView(
+                            imageUrl: t.coverImageUrl!,
+                            tiffinName: t.editionName,
+                          ),
+                        ),
+                      ),
+                      child: AppNetworkImage(
+                        imageUrl: t.coverImageUrl,
+                        fit: BoxFit.cover,
+                        targetOptimizationWidth: 1000,
+                      ),
                     )
                   : Column(
                       mainAxisAlignment: MainAxisAlignment.center,
@@ -215,6 +225,41 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView> {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _FullscreenTiffinImageView extends StatelessWidget {
+  final String imageUrl;
+  final String tiffinName;
+
+  const _FullscreenTiffinImageView({
+    required this.imageUrl,
+    required this.tiffinName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(tiffinName, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: InteractiveViewer(
+            minScale: 0.8,
+            maxScale: 5,
+            child: AppNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.contain,
+              targetOptimizationWidth: 1800,
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
