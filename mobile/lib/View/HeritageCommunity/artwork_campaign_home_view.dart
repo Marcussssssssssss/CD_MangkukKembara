@@ -30,8 +30,7 @@ class ArtworkCampaignHomeView extends StatelessWidget {
   }
 }
 
-/// Loads the single live campaign, or the newest completed campaign when no
-/// campaign is live. [campaignId] keeps the legacy campaign-detail route usable.
+/// Shows all campaigns, or a single campaign's artworks for the detail route.
 class ArtworkCampaignPanel extends StatefulWidget {
   final String? campaignId;
 
@@ -69,13 +68,13 @@ class _ArtworkCampaignPanelState extends State<ArtworkCampaignPanel>
       child: Consumer<ArtworkCampaignViewModel>(
         builder: (ctx, vm, _) {
           final campaign = widget.campaignId == null
-              ? vm.featuredCampaign
+              ? null
               : vm.campaignById(widget.campaignId!);
           return ColoredBox(
             color: AppColors.background,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 240),
-              child: vm.isLoading && campaign == null
+              child: vm.isLoading && vm.campaigns.isEmpty
                   ? const LoadingWidget(key: ValueKey('campaign-loading'))
                   : vm.hasError
                   ? ErrorStateWidget(
@@ -85,7 +84,7 @@ class _ArtworkCampaignPanelState extends State<ArtworkCampaignPanel>
                           'Artwork campaign could not be loaded.',
                       onRetry: _vm.retry,
                     )
-                  : campaign == null
+                  : widget.campaignId == null && vm.campaigns.isEmpty
                   ? RefreshableStateView(
                       key: const ValueKey('campaign-empty'),
                       onRefresh: () => vm.loadCampaigns(showLoading: false),
@@ -96,12 +95,105 @@ class _ArtworkCampaignPanelState extends State<ArtworkCampaignPanel>
                             'There is no live or completed artwork campaign yet.',
                       ),
                     )
+                  : widget.campaignId == null
+                  ? _CampaignList(
+                      key: const ValueKey('campaign-list'),
+                      campaigns: vm.campaigns,
+                      onRefresh: () => vm.loadCampaigns(showLoading: false),
+                    )
+                  : campaign == null
+                  ? RefreshableStateView(
+                      key: const ValueKey('campaign-not-found'),
+                      onRefresh: () => vm.loadCampaigns(showLoading: false),
+                      child: const EmptyStateWidget(
+                        icon: Icons.search_off_rounded,
+                        title: 'Campaign not found',
+                        subtitle: 'This artwork campaign is unavailable.',
+                      ),
+                    )
                   : ArtworkCampaignContent(
                       key: ValueKey(campaign.id),
                       campaign: campaign,
                       onRefreshCampaign: () =>
                           vm.loadCampaigns(showLoading: false),
                     ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _CampaignList extends StatelessWidget {
+  final List<ArtworkCampaignModel> campaigns;
+  final Future<void> Function() onRefresh;
+
+  const _CampaignList({
+    super.key,
+    required this.campaigns,
+    required this.onRefresh,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return RefreshIndicator(
+      onRefresh: onRefresh,
+      child: ListView.builder(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+        itemCount: campaigns.length,
+        itemBuilder: (context, index) {
+          final campaign = campaigns[index];
+          return Card(
+            margin: const EdgeInsets.only(bottom: 14),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => Navigator.pushNamed(
+                context,
+                AppRoutes.campaignDetail,
+                arguments: campaign.id,
+              ),
+              child: Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            campaign.title,
+                            style: Theme.of(context).textTheme.titleMedium
+                                ?.copyWith(fontWeight: FontWeight.w900),
+                          ),
+                        ),
+                        const Icon(Icons.chevron_right_rounded),
+                      ],
+                    ),
+                    if (campaign.description.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Text(
+                        campaign.description,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Chip(
+                      avatar: Icon(
+                        campaign.isActive
+                            ? Icons.how_to_vote_rounded
+                            : Icons.event_busy_rounded,
+                        size: 17,
+                      ),
+                      label: Text(campaign.statusLabel),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+              ),
             ),
           );
         },
@@ -176,10 +268,6 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
     AuthViewModel auth,
   ) {
     final campaign = widget.campaign;
-    ArtworkCampaignCategoryModel? selectedCategory;
-    for (final category in vm.categories) {
-      if (category.id == vm.selectedCategoryId) selectedCategory = category;
-    }
     final showSubmitButton =
         campaign.canSubmit && vm.selectedCategoryId != null;
     return Stack(
@@ -190,16 +278,6 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _CampaignHeader(campaign: campaign)),
-              if (vm.categories.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
-                    child: _CategorySelector(
-                      selectedCategory: selectedCategory,
-                      onTap: () => _showCategoryPicker(context, vm),
-                    ),
-                  ),
-                ),
               if (vm.categories.isNotEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
@@ -263,93 +341,6 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
     );
   }
 
-  Future<void> _showCategoryPicker(
-    BuildContext context,
-    ArtworkVotingViewModel vm,
-  ) async {
-    final selectedId = await showModalBottomSheet<String>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      builder: (sheetContext) => SafeArea(
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(sheetContext).height * 0.72,
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(20, 4, 20, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Choose category or state',
-                      style: TextStyle(
-                        color: AppColors.textPrimary,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      'Artwork and results are shown for one category at a time.',
-                      style: TextStyle(color: AppColors.textSecondary),
-                    ),
-                  ],
-                ),
-              ),
-              const Divider(height: 1),
-              Flexible(
-                child: ListView.builder(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  itemCount: vm.categories.length,
-                  itemBuilder: (_, index) {
-                    final category = vm.categories[index];
-                    final selected = category.id == vm.selectedCategoryId;
-                    return ListTile(
-                      leading: Icon(
-                        selected
-                            ? Icons.check_circle_rounded
-                            : Icons.location_on_outlined,
-                        color: selected
-                            ? AppColors.primary
-                            : AppColors.textHint,
-                      ),
-                      title: Text(
-                        category.stateName.isEmpty
-                            ? category.categoryName
-                            : category.stateName,
-                        style: TextStyle(
-                          fontWeight: selected
-                              ? FontWeight.w800
-                              : FontWeight.w600,
-                        ),
-                      ),
-                      subtitle: category.stateName.isNotEmpty
-                          ? Text(category.categoryName)
-                          : null,
-                      selected: selected,
-                      selectedTileColor: AppColors.primaryContainer.withAlpha(
-                        90,
-                      ),
-                      onTap: () => Navigator.pop(sheetContext, category.id),
-                    );
-                  },
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-    if (selectedId == null || selectedId == vm.selectedCategoryId) return;
-    await _vm.loadEntries(selectedId);
-  }
-
   List<Widget> _buildCampaignSlivers(
     BuildContext context,
     ArtworkVotingViewModel vm,
@@ -375,7 +366,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
           child: EmptyStateWidget(
             icon: Icons.image_search_outlined,
             title: 'No artwork designs yet',
-            subtitle: 'No approved artwork is available in this category.',
+            subtitle: 'No approved artwork is available in this campaign.',
           ),
         ),
       ];
@@ -444,7 +435,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('Vote submitted!')));
-      await _vm.loadEntries(entry.categoryId, showLoading: false);
+      await _vm.refreshCampaign();
     }
   }
 }
@@ -672,96 +663,6 @@ class _CampaignHeader extends StatelessWidget {
   }
 
   String _date(DateTime date) => '${date.day}/${date.month}/${date.year}';
-}
-
-class _CategorySelector extends StatelessWidget {
-  final ArtworkCampaignCategoryModel? selectedCategory;
-  final VoidCallback onTap;
-
-  const _CategorySelector({
-    required this.selectedCategory,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final category = selectedCategory;
-    final primaryText = category == null
-        ? 'Choose a category'
-        : category.stateName.isEmpty
-        ? category.categoryName
-        : category.stateName;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Padding(
-          padding: EdgeInsets.only(left: 2, bottom: 7),
-          child: Text(
-            'Category / State',
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ),
-        Material(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(14),
-          child: InkWell(
-            onTap: onTap,
-            borderRadius: BorderRadius.circular(14),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              decoration: BoxDecoration(
-                border: Border.all(color: AppColors.divider),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.location_on_outlined,
-                    color: AppColors.primary,
-                  ),
-                  const SizedBox(width: 11),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          primaryText,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        if (category != null && category.stateName.isNotEmpty)
-                          Text(
-                            category.categoryName,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: AppColors.textHint,
-                              fontSize: 12,
-                            ),
-                          ),
-                      ],
-                    ),
-                  ),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    color: AppColors.textHint,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
 }
 
 class _ArtworkEntryCard extends StatelessWidget {

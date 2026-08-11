@@ -20,6 +20,7 @@ class ArtworkVotingViewModel extends ChangeNotifier {
   bool _voteSuccess = false;
   String? _errorMessage;
   String _sort = 'Most Voted';
+  String? _campaignId;
 
   List<ArtworkVotingEntryModel> get entries => _entries;
   ArtworkVotingEntryModel? get selectedEntry => _selectedEntry;
@@ -43,11 +44,16 @@ class ArtworkVotingViewModel extends ChangeNotifier {
     _errorMessage = null;
     if (showLoading) notifyListeners();
     try {
+      _campaignId = campaignId;
       _categories = await _repo.fetchCategoriesByCampaign(campaignId);
       _selectedCategoryId = _categories.isEmpty ? null : _categories.first.id;
-      _entries = _selectedCategoryId == null
-          ? []
-          : await _repo.fetchVotingEntries(_selectedCategoryId!, sort: _sort);
+      final entriesByCategory = await Future.wait(
+        _categories.map(
+          (category) => _repo.fetchVotingEntries(category.id, sort: _sort),
+        ),
+      );
+      _entries = entriesByCategory.expand((entries) => entries).toList();
+      _sortEntries();
     } catch (error) {
       _hasError = true;
       _errorMessage = error.toString();
@@ -129,7 +135,30 @@ class ArtworkVotingViewModel extends ChangeNotifier {
 
   void setSort(String s) {
     _sort = s;
-    if (_selectedCategoryId != null) loadEntries(_selectedCategoryId!);
+    _sortEntries();
+    notifyListeners();
+  }
+
+  void _sortEntries() {
+    if (_sort == 'New') {
+      _entries.sort(
+        (a, b) => (b.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0))
+            .compareTo(a.publishedAt ?? DateTime.fromMillisecondsSinceEpoch(0)),
+      );
+    } else {
+      _entries.sort((a, b) => b.voteCount.compareTo(a.voteCount));
+    }
+    _entries = [
+      for (var index = 0; index < _entries.length; index++)
+        _entries[index].withRank(index + 1),
+    ];
+  }
+
+  Future<void> refreshCampaign({bool showLoading = false}) async {
+    final campaignId = _campaignId;
+    if (campaignId != null) {
+      await loadCampaign(campaignId, showLoading: showLoading);
+    }
   }
 
   void clearVoteSuccess() {
