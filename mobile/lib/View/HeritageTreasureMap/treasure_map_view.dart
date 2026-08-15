@@ -13,6 +13,22 @@ import '../Widgets/loading_widget.dart';
 import '../Widgets/empty_state_widget.dart';
 import '../Widgets/error_state_widget.dart';
 
+/// Visual tokens used exclusively by the treasure-map home screen.
+/// Keeping these local prevents the refreshed map design from altering the
+/// existing heritage theme used by the rest of the app.
+abstract final class _MapPageColors {
+  static const Color background = Color(0xFFFFFFFF);
+  static const Color softBackground = Color(0xFFF5F7F3);
+  static const Color searchField = Color(0xFFEEF3EC);
+  static const Color border = Color(0xFFCCD6C8);
+  static const Color darkGreen = Color(0xFF335C31);
+  static const Color mediumGreen = Color(0xFF61885B);
+  static const Color yellow = Color(0xFFF9B10E);
+  static const Color selectedTab = Color(0xFFFEF5E4);
+  static const Color text = Color(0xFF283427);
+  static const Color hint = Color(0xFF929992);
+}
+
 /// A1. Heritage Treasure Map View — the application home screen.
 class TreasureMapView extends StatefulWidget {
   const TreasureMapView({super.key});
@@ -44,7 +60,7 @@ class _TreasureMapViewState extends State<TreasureMapView> {
       value: _vm,
       child: Consumer<TreasureMapViewModel>(
         builder: (ctx, vm, _) => Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: _MapPageColors.background,
           body: Stack(
             children: [
               Column(
@@ -72,7 +88,12 @@ class _TreasureMapViewState extends State<TreasureMapView> {
                 ),
             ],
           ),
-          bottomNavigationBar: const AppBottomNav(selectedIndex: -1),
+          bottomNavigationBar: const AppBottomNav(
+            backgroundColor: _MapPageColors.background,
+            selectedColor: _MapPageColors.yellow,
+            unselectedColor: _MapPageColors.mediumGreen,
+            selectedBackgroundColor: _MapPageColors.selectedTab,
+          ),
         ),
       ),
     );
@@ -80,7 +101,7 @@ class _TreasureMapViewState extends State<TreasureMapView> {
 
   Widget _buildHeader(BuildContext ctx, TreasureMapViewModel vm) {
     return Container(
-      color: AppColors.primary,
+      color: _MapPageColors.background,
       child: SafeArea(
         bottom: false,
         child: Padding(
@@ -95,21 +116,34 @@ class _TreasureMapViewState extends State<TreasureMapView> {
                       image: true,
                       label:
                           '${AppConstants.appName}, ${AppConstants.appTagline}',
-                      child: SizedBox(
-                        height: 58,
-                        child: Image.asset(
-                          'asset/image/logo_light.png',
-                          alignment: Alignment.centerLeft,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                          errorBuilder: (_, _, _) => const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              AppConstants.appName,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: SizedBox(
+                          width: 180,
+                          height: 58,
+                          child: ClipRect(
+                            child: OverflowBox(
+                              minWidth: 180,
+                              maxWidth: 180,
+                              minHeight: 112,
+                              maxHeight: 112,
+                              child: Image.asset(
+                                'asset/image/mangkuk_kembara_logo_green.png',
+                                width: 180,
+                                height: 112,
+                                fit: BoxFit.fill,
+                                filterQuality: FilterQuality.high,
+                                errorBuilder: (_, _, _) => const Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: Text(
+                                    AppConstants.appName,
+                                    style: TextStyle(
+                                      color: _MapPageColors.darkGreen,
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
@@ -121,8 +155,9 @@ class _TreasureMapViewState extends State<TreasureMapView> {
                   // Map/List toggle
                   Container(
                     decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(30),
+                      color: _MapPageColors.softBackground,
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: _MapPageColors.border),
                     ),
                     child: Row(
                       children: [
@@ -146,19 +181,19 @@ class _TreasureMapViewState extends State<TreasureMapView> {
               // Search bar
               TextField(
                 controller: _searchController,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: _MapPageColors.text),
                 decoration: InputDecoration(
                   hintText: 'Search vendors, foods, states...',
-                  hintStyle: TextStyle(color: Colors.white.withAlpha(160)),
+                  hintStyle: const TextStyle(color: _MapPageColors.hint),
                   prefixIcon: const Icon(
                     Icons.search_rounded,
-                    color: Colors.white70,
+                    color: _MapPageColors.darkGreen,
                   ),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(
                             Icons.clear_rounded,
-                            color: Colors.white70,
+                            color: _MapPageColors.darkGreen,
                           ),
                           onPressed: () {
                             _searchController.clear();
@@ -167,23 +202,23 @@ class _TreasureMapViewState extends State<TreasureMapView> {
                         )
                       : null,
                   filled: true,
-                  fillColor: Colors.white.withAlpha(25),
+                  fillColor: _MapPageColors.searchField,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 12,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    borderSide: const BorderSide(color: _MapPageColors.border),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    borderSide: const BorderSide(color: _MapPageColors.border),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(
-                      color: AppColors.accent,
+                      color: _MapPageColors.darkGreen,
                       width: 1.5,
                     ),
                   ),
@@ -204,7 +239,7 @@ class _TreasureMapViewState extends State<TreasureMapView> {
 
   Widget _buildFilters(BuildContext ctx, TreasureMapViewModel vm) {
     return Container(
-      color: AppColors.primaryDark,
+      color: _MapPageColors.background,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       child: Row(
         children: [
@@ -212,7 +247,7 @@ class _TreasureMapViewState extends State<TreasureMapView> {
             padding: EdgeInsets.only(top: 18, right: 10),
             child: Icon(
               Icons.filter_alt_rounded,
-              color: AppColors.accent,
+              color: _MapPageColors.yellow,
               size: 22,
             ),
           ),
@@ -414,22 +449,32 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        GoogleMap(
-          initialCameraPosition: _malaysia,
-          mapType: MapType.hybrid,
-          markers: _markers,
-          myLocationButtonEnabled: widget.showCurrentLocation,
-          myLocationEnabled: widget.showCurrentLocation,
-          compassEnabled: true,
-          buildingsEnabled: true,
-          mapToolbarEnabled: false,
-          zoomControlsEnabled: false,
-          onMapCreated: (controller) {
-            _controller = controller;
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => _fitVisiblePlaces(),
-            );
-          },
+        ColorFiltered(
+          // Calibrated from the reference's ocean tones: raise the imagery's
+          // brightness without adding a grey-white veil over the land.
+          colorFilter: const ColorFilter.matrix(<double>[
+            1.42, 0, 0, 0, 0,
+            0, 1.47, 0, 0, 0,
+            0, 0, 1.36, 0, 0,
+            0, 0, 0, 1, 0,
+          ]),
+          child: GoogleMap(
+            initialCameraPosition: _malaysia,
+            mapType: MapType.hybrid,
+            markers: _markers,
+            myLocationButtonEnabled: widget.showCurrentLocation,
+            myLocationEnabled: widget.showCurrentLocation,
+            compassEnabled: true,
+            buildingsEnabled: true,
+            mapToolbarEnabled: false,
+            zoomControlsEnabled: false,
+            onMapCreated: (controller) {
+              _controller = controller;
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _fitVisiblePlaces(),
+              );
+            },
+          ),
         ),
         Positioned(
           top: 12,
@@ -744,7 +789,7 @@ class _LabeledFilterDropdown extends StatelessWidget {
           child: Text(
             label,
             style: const TextStyle(
-              color: Colors.white,
+              color: _MapPageColors.darkGreen,
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
@@ -754,9 +799,9 @@ class _LabeledFilterDropdown extends StatelessWidget {
           height: 42,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _MapPageColors.background,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.accent, width: 1.2),
+            border: Border.all(color: _MapPageColors.mediumGreen, width: 1.2),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -764,14 +809,14 @@ class _LabeledFilterDropdown extends StatelessWidget {
               isExpanded: true,
               icon: const Icon(
                 Icons.keyboard_arrow_down_rounded,
-                color: AppColors.primary,
+                color: _MapPageColors.mediumGreen,
               ),
               style: const TextStyle(
-                color: AppColors.textPrimary,
+                color: _MapPageColors.text,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
-              dropdownColor: Colors.white,
+              dropdownColor: _MapPageColors.background,
               items: values
                   .map(
                     (item) => DropdownMenuItem<String>(
@@ -812,13 +857,13 @@ class _ToggleButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.accent : Colors.transparent,
+          color: selected ? _MapPageColors.yellow : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
         child: Icon(
           icon,
           size: 18,
-          color: selected ? AppColors.textPrimary : Colors.white70,
+          color: _MapPageColors.darkGreen,
         ),
       ),
     );

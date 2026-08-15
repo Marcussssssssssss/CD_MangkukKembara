@@ -8,14 +8,27 @@ import '../../ViewModel/AccountManagement/auth_view_model.dart';
 /// [selectedIndex]: -1 = on map (none selected), 0 = Experience, 1 = Community, 2 = Account
 class AppBottomNav extends StatelessWidget {
   final int selectedIndex;
+  final int? highlightedIndex;
+  final Color? backgroundColor;
+  final Color? selectedColor;
+  final Color? unselectedColor;
+  final Color? selectedBackgroundColor;
 
-  const AppBottomNav({super.key, this.selectedIndex = -1});
+  const AppBottomNav({
+    super.key,
+    this.selectedIndex = -1,
+    this.highlightedIndex,
+    this.backgroundColor,
+    this.selectedColor,
+    this.unselectedColor,
+    this.selectedBackgroundColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppColors.navBackground,
+      decoration: BoxDecoration(
+        color: backgroundColor ?? AppColors.navBackground,
         boxShadow: [
           BoxShadow(
             color: Colors.black38,
@@ -34,6 +47,10 @@ class AppBottomNav extends StatelessWidget {
                 icon: Icons.auto_awesome,
                 label: 'Experience',
                 selected: selectedIndex == 0,
+                highlighted: highlightedIndex == 0 || selectedIndex == 0,
+                selectedColor: selectedColor,
+                unselectedColor: unselectedColor,
+                selectedBackgroundColor: selectedBackgroundColor,
                 onTap: selectedIndex == 0
                     ? null
                     : () => _navigate(context, AppRoutes.heritageExperience, 0),
@@ -42,6 +59,10 @@ class AppBottomNav extends StatelessWidget {
                 icon: Icons.people_alt_rounded,
                 label: 'Community',
                 selected: selectedIndex == 1,
+                highlighted: highlightedIndex == 1 || selectedIndex == 1,
+                selectedColor: selectedColor,
+                unselectedColor: unselectedColor,
+                selectedBackgroundColor: selectedBackgroundColor,
                 onTap: selectedIndex == 1
                     ? null
                     : () => _navigate(context, AppRoutes.community, 1),
@@ -50,6 +71,10 @@ class AppBottomNav extends StatelessWidget {
                 icon: Icons.person_rounded,
                 label: 'Account',
                 selected: selectedIndex == 2,
+                highlighted: highlightedIndex == 2 || selectedIndex == 2,
+                selectedColor: selectedColor,
+                unselectedColor: unselectedColor,
+                selectedBackgroundColor: selectedBackgroundColor,
                 onTap: selectedIndex == 2
                     ? null
                     : () => _navigateAccount(context),
@@ -91,18 +116,28 @@ class _NavItem extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool selected;
+  final bool highlighted;
+  final Color? selectedColor;
+  final Color? unselectedColor;
+  final Color? selectedBackgroundColor;
   final VoidCallback? onTap;
 
   const _NavItem({
     required this.icon,
     required this.label,
     required this.selected,
+    required this.highlighted,
+    this.selectedColor,
+    this.unselectedColor,
+    this.selectedBackgroundColor,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final color = selected ? AppColors.navSelected : AppColors.navUnselected;
+    final color = highlighted
+        ? (selectedColor ?? AppColors.navSelected)
+        : (unselectedColor ?? AppColors.navUnselected);
     return Expanded(
       child: InkWell(
         onTap: onTap,
@@ -113,9 +148,10 @@ class _NavItem extends StatelessWidget {
             AnimatedContainer(
               duration: const Duration(milliseconds: 200),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-              decoration: selected
+              decoration: highlighted
                   ? BoxDecoration(
-                      color: AppColors.navSelected.withAlpha(30),
+                      color: selectedBackgroundColor ??
+                          AppColors.navSelected.withAlpha(30),
                       borderRadius: BorderRadius.circular(20),
                     )
                   : null,
@@ -127,7 +163,7 @@ class _NavItem extends StatelessWidget {
               style: TextStyle(
                 color: color,
                 fontSize: 10,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                fontWeight: highlighted ? FontWeight.w700 : FontWeight.w500,
               ),
               child: Text(label),
             ),

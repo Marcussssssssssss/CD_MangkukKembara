@@ -76,6 +76,7 @@ class _MyReviewsViewState extends State<MyReviewsView> {
                       return PostCard(
                         post: review,
                         isLoggedIn: true,
+                        borderColor: AppColors.divider,
                         onTap: () => Navigator.pushNamed(
                           ctx,
                           AppRoutes.postDetail,

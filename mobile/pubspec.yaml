@@ -48,11 +48,15 @@ flutter:
     - asset/image/logo_light.png
     - asset/image/welcome_base_background.png
     - asset/image/mangkuk_kembara_logo_white.png
-    - asset/image/moving_mini_tiffin.png
+    - asset/image/mangkuk_kembara_logo_green.png
     - asset/image/penang_marker_photo.png
     - asset/image/kelantan_marker_photo.png
     - asset/image/melaka_marker_photo.png
     - asset/image/sarawak_marker_photo.png
+    - asset/image/tiffin_background_green.png
+    - asset/image/tiffin_background_yellow.png
+    - asset/image/profile_background_green.png
+    - asset/image/campaign_background.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

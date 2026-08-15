@@ -4,8 +4,13 @@ import '../../core/constants.dart';
 
 class AuthBranding extends StatelessWidget {
   final String subtitle;
+  final String imageAsset;
 
-  const AuthBranding({super.key, required this.subtitle});
+  const AuthBranding({
+    super.key,
+    required this.subtitle,
+    this.imageAsset = 'asset/image/logo.png',
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -15,7 +20,7 @@ class AuthBranding extends StatelessWidget {
       child: Column(
         children: [
           Image.asset(
-            'asset/image/logo.png',
+            imageAsset,
             width: 260,
             height: 94,
             fit: BoxFit.contain,

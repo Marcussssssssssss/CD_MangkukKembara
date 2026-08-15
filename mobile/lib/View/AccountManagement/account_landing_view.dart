@@ -62,7 +62,6 @@ class _WelcomePageState extends State<_WelcomePage>
   static const _assets = [
     'asset/image/welcome_base_background.png',
     'asset/image/mangkuk_kembara_logo_white.png',
-    'asset/image/moving_mini_tiffin.png',
     'asset/image/penang_marker_photo.png',
     'asset/image/kelantan_marker_photo.png',
     'asset/image/melaka_marker_photo.png',
@@ -273,12 +272,11 @@ class _WelcomeStage extends StatelessWidget {
           center: sarawakPoint,
           arrival: _marker(.70, .79),
         ),
-        if (!reducedMotion) _MovingTiffin(progress: route),
         if (!reducedMotion) _LargeTiffinShine(progress: shine),
         Positioned(
           left: 55,
-          top: 98,
-          width: 400,
+          top: 64,
+          width: 370,
           child: FadeTransition(
             opacity: logo,
             child: Image.asset('asset/image/mangkuk_kembara_logo_white.png'),
@@ -326,52 +324,6 @@ class _WelcomeStage extends StatelessWidget {
       ],
     ),
   );
-}
-
-class _MovingTiffin extends StatelessWidget {
-  const _MovingTiffin({required this.progress});
-
-  final Animation<double> progress;
-
-  @override
-  Widget build(BuildContext context) {
-    final metric = buildJourneyPath().computeMetrics().first;
-    final journeyProgress = clampProgress(progress.value);
-    final routeOffset =
-        (metric.length * journeyProgress).clamp(0.0, metric.length).toDouble();
-    final tangent = metric.getTangentForOffset(routeOffset)!;
-    final fade = journeyProgress < .91
-        ? 1.0
-        : clampProgress(1 - ((journeyProgress - .91) / .09));
-    final tilt = tangent.vector.direction.clamp(-.12, .12).toDouble();
-    return Positioned(
-      left: tangent.position.dx - 21,
-      top: tangent.position.dy - 30 + 2 * (1 - journeyProgress),
-      child: Opacity(
-        opacity: fade,
-        child: Transform.rotate(
-          angle: tilt,
-          child: Container(
-            decoration: const BoxDecoration(
-              boxShadow: [
-                BoxShadow(
-                  color: Color(0x88E3B52C),
-                  blurRadius: 14,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Image.asset(
-              'asset/image/moving_mini_tiffin.png',
-              width: 42,
-              height: 60,
-              fit: BoxFit.contain,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
 }
 
 class _LargeTiffinShine extends StatelessWidget {

@@ -79,15 +79,9 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
         children: [
           // Artwork hero
           Container(
-            height: 200,
+            height: 360,
             width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [artColor, artColor.withAlpha(160)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+            color: AppColors.background,
             child: e.artworkUrl.isNotEmpty
                 ? GestureDetector(
                     behavior: HitTestBehavior.opaque,
@@ -99,16 +93,24 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
                         ),
                       ),
                     ),
-                    child: AppNetworkImage(
-                      imageUrl: e.artworkUrl,
-                      fit: BoxFit.cover,
-                      targetOptimizationWidth: 1000,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 28,
+                        vertical: 12,
+                      ),
+                      child: AppNetworkImage(
+                        imageUrl: e.artworkUrl,
+                        fit: BoxFit.contain,
+                        targetOptimizationWidth: 1000,
+                      ),
                     ),
                   )
-                : Icon(
-                    Icons.palette_rounded,
-                    size: 64,
-                    color: Colors.white.withAlpha(200),
+                : Center(
+                    child: Icon(
+                      Icons.palette_rounded,
+                      size: 64,
+                      color: AppColors.primary.withAlpha(180),
+                    ),
                   ),
           ),
 
@@ -225,49 +227,54 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
 
                 _Section('Design Description', e.designDescription),
                 _Section('Cultural Inspiration', e.culturalInspiration),
-                _Section('Artist Statement', e.artistStatement),
-
-                const SizedBox(height: 12),
+                _Section(
+                  'Artist Statement',
+                  e.artistStatement,
+                  bottomPadding: 0,
+                ),
 
                 if (e.isVotingOpen)
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: e.hasCurrentUserVoted
-                            ? AppColors.successLight
-                            : AppColors.primary,
-                        foregroundColor: e.hasCurrentUserVoted
-                            ? AppColors.success
-                            : Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                      ),
-                      icon: Icon(
-                        e.hasCurrentUserVoted
-                            ? Icons.check_circle_rounded
-                            : Icons.how_to_vote_rounded,
-                      ),
-                      label: Text(
-                        e.hasCurrentUserVoted
-                            ? 'You Voted for This Entry'
-                            : 'Vote for This Artwork',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
+                  ...[
+                    const SizedBox(height: 16),
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: e.hasCurrentUserVoted
+                              ? AppColors.successLight
+                              : AppColors.primary,
+                          foregroundColor: e.hasCurrentUserVoted
+                              ? AppColors.success
+                              : Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                         ),
+                        icon: Icon(
+                          e.hasCurrentUserVoted
+                              ? Icons.check_circle_rounded
+                              : Icons.how_to_vote_rounded,
+                        ),
+                        label: Text(
+                          e.hasCurrentUserVoted
+                              ? 'You Voted for This Entry'
+                              : 'Vote for This Artwork',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 15,
+                          ),
+                        ),
+                        onPressed: vm.isVoting || e.hasCurrentUserVoted
+                            ? null
+                            : () async {
+                                if (!auth.isLoggedIn) {
+                                  await Navigator.pushNamed(ctx, AppRoutes.login);
+                                  return;
+                                }
+                                await _vm.vote(e.id, auth.currentUser!.id);
+                              },
                       ),
-                      onPressed: vm.isVoting || e.hasCurrentUserVoted
-                          ? null
-                          : () async {
-                              if (!auth.isLoggedIn) {
-                                await Navigator.pushNamed(ctx, AppRoutes.login);
-                                return;
-                              }
-                              await _vm.vote(e.id, auth.currentUser!.id);
-                            },
                     ),
-                  ),
-                const SizedBox(height: 32),
+                    const SizedBox(height: 8),
+                  ],
               ],
             ),
           ),
@@ -312,12 +319,14 @@ class _FullscreenArtworkView extends StatelessWidget {
 class _Section extends StatelessWidget {
   final String title;
   final String body;
-  const _Section(this.title, this.body);
+  final double bottomPadding;
+
+  const _Section(this.title, this.body, {this.bottomPadding = 18});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 18),
+      padding: EdgeInsets.only(bottom: bottomPadding),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
