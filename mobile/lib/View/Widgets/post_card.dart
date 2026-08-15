@@ -10,6 +10,10 @@ class PostCard extends StatelessWidget {
   final VoidCallback onTap;
   final VoidCallback? onLike;
   final bool isLoggedIn;
+  final Color? primaryColor;
+  final Color? mutedColor;
+  final Color? ratingColor;
+  final Color? borderColor;
 
   const PostCard({
     super.key,
@@ -17,12 +21,22 @@ class PostCard extends StatelessWidget {
     required this.onTap,
     this.onLike,
     this.isLoggedIn = false,
+    this.primaryColor,
+    this.mutedColor,
+    this.ratingColor,
+    this.borderColor,
   });
 
   @override
   Widget build(BuildContext context) {
+    final primary = primaryColor ?? AppColors.primary;
+    final muted = mutedColor ?? AppColors.textHint;
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(color: borderColor ?? Colors.transparent),
+      ),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(16),
@@ -37,6 +51,7 @@ class PostCard extends StatelessWidget {
                   _Avatar(
                     name: post.authorName,
                     imageUrl: post.authorAvatarUrl,
+                    backgroundColor: primary,
                   ),
                   const SizedBox(width: 10),
                   Expanded(
@@ -58,6 +73,8 @@ class PostCard extends StatelessWidget {
                     rating: post.vendorRating,
                     size: 14,
                     showLabel: true,
+                    filledColor: ratingColor,
+                    labelColor: muted,
                   ),
                 ],
               ),
@@ -66,17 +83,17 @@ class PostCard extends StatelessWidget {
               // Vendor tag
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.storefront_rounded,
                     size: 14,
-                    color: AppColors.primary,
+                    color: primary,
                   ),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       '${post.vendorName} · ${post.vendorState}',
                       style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: AppColors.primary,
+                        color: primary,
                       ),
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -96,7 +113,7 @@ class PostCard extends StatelessWidget {
               if (post.photoUrls.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 SizedBox(
-                  height: 70,
+                  height: 150,
                   child: Row(
                     children: post.photoUrls.take(3).map((url) {
                       final isLast =
@@ -152,14 +169,14 @@ class PostCard extends StatelessWidget {
                     label: '${post.likeCount}',
                     color: post.isLikedByCurrentUser
                         ? AppColors.error
-                        : AppColors.textHint,
+                        : muted,
                     onTap: onLike,
                   ),
                   const SizedBox(width: 16),
                   _ActionButton(
                     icon: Icons.chat_bubble_outline_rounded,
                     label: '${post.commentCount}',
-                    color: AppColors.textHint,
+                    color: muted,
                     onTap: onTap,
                   ),
                 ],
@@ -175,13 +192,18 @@ class PostCard extends StatelessWidget {
 class _Avatar extends StatelessWidget {
   final String name;
   final String? imageUrl;
-  const _Avatar({required this.name, this.imageUrl});
+  final Color backgroundColor;
+  const _Avatar({
+    required this.name,
+    this.imageUrl,
+    required this.backgroundColor,
+  });
 
   @override
   Widget build(BuildContext context) {
     return CircleAvatar(
       radius: 20,
-      backgroundColor: AppColors.primary,
+      backgroundColor: backgroundColor,
       backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl!),
       child: imageUrl == null
           ? Text(

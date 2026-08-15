@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../ViewModel/HeritageCommunity/community_feed_view_model.dart';
-import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
 import '../Widgets/app_bottom_nav.dart';
 import '../Widgets/empty_state_widget.dart';
@@ -12,6 +11,20 @@ import '../Widgets/loading_widget.dart';
 import '../Widgets/map_home_button.dart';
 import '../Widgets/post_card.dart';
 import 'artwork_campaign_home_view.dart';
+
+/// Map-inspired palette used only by the Community landing page.
+abstract final class _CommunityPageColors {
+  static const Color background = Color(0xFFFFFFFF);
+  static const Color softBackground = Color(0xFFF5F7F3);
+  static const Color searchField = Color(0xFFEEF3EC);
+  static const Color border = Color(0xFFCCD6C8);
+  static const Color darkGreen = Color(0xFF335C31);
+  static const Color mediumGreen = Color(0xFF61885B);
+  static const Color yellow = Color(0xFFF9B10E);
+  static const Color selectedTab = Color(0xFFFEF5E4);
+  static const Color text = Color(0xFF283427);
+  static const Color hint = Color(0xFF929992);
+}
 
 /// C1. Heritage Community and artwork campaigns home view.
 class CommunityHomeView extends StatefulWidget {
@@ -58,10 +71,20 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
       child: Consumer2<CommunityFeedViewModel, AuthViewModel>(
         builder: (ctx, vm, auth, _) => MapBackScope(
           child: Scaffold(
-            backgroundColor: AppColors.background,
+            backgroundColor: _CommunityPageColors.background,
             appBar: AppBar(
-              title: const Text('Heritage Community'),
-              leading: const MapHomeButton(),
+              backgroundColor: _CommunityPageColors.background,
+              foregroundColor: _CommunityPageColors.darkGreen,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              title: const Text(
+                'Heritage Community',
+                style: TextStyle(
+                  color: _CommunityPageColors.darkGreen,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              leading: const MapHomeButton(color: _CommunityPageColors.darkGreen),
             ),
             body: Column(
               children: [
@@ -101,11 +124,17 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
                     },
                     icon: const Icon(Icons.add_rounded),
                     label: const Text('Create Post'),
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: _CommunityPageColors.darkGreen,
                     foregroundColor: Colors.white,
                   )
                 : null,
-            bottomNavigationBar: const AppBottomNav(selectedIndex: 1),
+            bottomNavigationBar: const AppBottomNav(
+              selectedIndex: 1,
+              backgroundColor: _CommunityPageColors.background,
+              selectedColor: _CommunityPageColors.yellow,
+              unselectedColor: _CommunityPageColors.mediumGreen,
+              selectedBackgroundColor: _CommunityPageColors.selectedTab,
+            ),
           ),
         ),
       ),
@@ -123,9 +152,31 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
           child: TextField(
             controller: _searchCtrl,
+            style: const TextStyle(color: _CommunityPageColors.text),
             decoration: InputDecoration(
               hintText: 'Search community posts...',
-              prefixIcon: const Icon(Icons.search_rounded),
+              hintStyle: const TextStyle(color: _CommunityPageColors.hint),
+              prefixIcon: const Icon(
+                Icons.search_rounded,
+                color: _CommunityPageColors.darkGreen,
+              ),
+              filled: true,
+              fillColor: _CommunityPageColors.searchField,
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: _CommunityPageColors.border),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: _CommunityPageColors.border),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(
+                  color: _CommunityPageColors.darkGreen,
+                  width: 1.5,
+                ),
+              ),
               suffixIcon: _searchCtrl.text.isNotEmpty
                   ? IconButton(
                       tooltip: 'Clear search',
@@ -157,11 +208,11 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
                       label: Text(sort, style: const TextStyle(fontSize: 12)),
                       selected: vm.sort == sort,
                       onSelected: (_) => vm.setSort(sort),
-                      selectedColor: AppColors.primary,
+                      selectedColor: _CommunityPageColors.selectedTab,
                       labelStyle: TextStyle(
                         color: vm.sort == sort
-                            ? Colors.white
-                            : AppColors.textSecondary,
+                            ? _CommunityPageColors.yellow
+                            : _CommunityPageColors.mediumGreen,
                         fontWeight: FontWeight.w600,
                       ),
                       visualDensity: VisualDensity.compact,
@@ -201,6 +252,10 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
                       return PostCard(
                         post: post,
                         isLoggedIn: auth.isLoggedIn,
+                        primaryColor: _CommunityPageColors.darkGreen,
+                        mutedColor: _CommunityPageColors.mediumGreen,
+                        ratingColor: _CommunityPageColors.yellow,
+                        borderColor: _CommunityPageColors.border,
                         onTap: () => Navigator.pushNamed(
                           context,
                           AppRoutes.postDetail,
@@ -238,7 +293,7 @@ class _CommunityTabs extends StatelessWidget {
     const labels = ['Heritage Community', 'Heritage Artwork Campaigns'];
     const icons = [Icons.forum_rounded, Icons.palette_rounded];
     return Material(
-      color: AppColors.surface,
+      color: _CommunityPageColors.background,
       elevation: 2,
       child: Column(
         children: [
@@ -260,8 +315,8 @@ class _CommunityTabs extends StatelessWidget {
                           icons[index],
                           size: 18,
                           color: selectedIndex == index
-                              ? AppColors.primary
-                              : AppColors.textHint,
+                              ? _CommunityPageColors.darkGreen
+                              : _CommunityPageColors.mediumGreen,
                         ),
                         const SizedBox(width: 6),
                         Flexible(
@@ -271,8 +326,8 @@ class _CommunityTabs extends StatelessWidget {
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: selectedIndex == index
-                                  ? AppColors.primary
-                                  : AppColors.textSecondary,
+                                  ? _CommunityPageColors.darkGreen
+                                  : _CommunityPageColors.mediumGreen,
                               fontSize: 12,
                               fontWeight: selectedIndex == index
                                   ? FontWeight.w800
@@ -299,7 +354,7 @@ class _CommunityTabs extends StatelessWidget {
                   child: Container(
                     width: constraints.maxWidth / 2,
                     height: 3,
-                    color: AppColors.primary,
+                    color: _CommunityPageColors.yellow,
                   ),
                 ),
               ],

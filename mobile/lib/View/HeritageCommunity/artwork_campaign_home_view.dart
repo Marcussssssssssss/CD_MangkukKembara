@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../Model/Repositories/HeritageCommunity/artwork_campaign_model.dart';
@@ -13,6 +14,17 @@ import '../Widgets/error_state_widget.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/map_home_button.dart';
 
+/// Visual tokens for the refreshed artwork campaign experience.
+abstract final class _CampaignColors {
+  static const Color background = Color(0xFFFFFFFF);
+  static const Color border = Color(0xFFCCD6C8);
+  static const Color darkGreen = Color(0xFF335C31);
+  static const Color mediumGreen = Color(0xFF61885B);
+  static const Color yellow = Color(0xFFF9B10E);
+  static const Color softYellow = Color(0xFFFEF5E4);
+  static const Color text = Color(0xFF283427);
+}
+
 /// C5. Artwork Campaign Home View.
 class ArtworkCampaignHomeView extends StatelessWidget {
   const ArtworkCampaignHomeView({super.key});
@@ -20,10 +32,25 @@ class ArtworkCampaignHomeView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: _CampaignColors.background,
       appBar: AppBar(
-        title: const Text('Heritage Artwork Campaign'),
-        leading: const MapHomeButton(),
+        backgroundColor: _CampaignColors.background,
+        foregroundColor: _CampaignColors.darkGreen,
+        surfaceTintColor: Colors.transparent,
+        systemOverlayStyle: SystemUiOverlayStyle.dark.copyWith(
+          statusBarColor: _CampaignColors.background,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+        ),
+        elevation: 0,
+        title: const Text(
+          'Campaign Artwork',
+          style: TextStyle(
+            color: _CampaignColors.darkGreen,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        leading: const MapHomeButton(color: _CampaignColors.darkGreen),
       ),
       body: const ArtworkCampaignPanel(),
     );
@@ -71,7 +98,7 @@ class _ArtworkCampaignPanelState extends State<ArtworkCampaignPanel>
               ? null
               : vm.campaignById(widget.campaignId!);
           return ColoredBox(
-            color: AppColors.background,
+            color: _CampaignColors.background,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 240),
               child: vm.isLoading && vm.campaigns.isEmpty
@@ -148,6 +175,10 @@ class _CampaignList extends StatelessWidget {
           return Card(
             margin: const EdgeInsets.only(bottom: 14),
             clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: _CampaignColors.border),
+            ),
             child: InkWell(
               onTap: () => Navigator.pushNamed(
                 context,
@@ -287,7 +318,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
                         const Text(
                           'Sort artworks',
                           style: TextStyle(
-                            color: AppColors.textSecondary,
+                            color: _CampaignColors.darkGreen,
                             fontSize: 12,
                             fontWeight: FontWeight.w700,
                           ),
@@ -305,9 +336,22 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
                           onSelectionChanged: (selection) =>
                               _vm.setSort(selection.first),
                           showSelectedIcon: false,
-                          style: const ButtonStyle(
+                          style: ButtonStyle(
                             visualDensity: VisualDensity.compact,
-                            textStyle: WidgetStatePropertyAll(
+                            backgroundColor: WidgetStateProperty.resolveWith(
+                              (states) => states.contains(WidgetState.selected)
+                                  ? _CampaignColors.softYellow
+                                  : _CampaignColors.background,
+                            ),
+                            foregroundColor: WidgetStateProperty.resolveWith(
+                              (states) => states.contains(WidgetState.selected)
+                                  ? _CampaignColors.yellow
+                                  : _CampaignColors.darkGreen,
+                            ),
+                            side: const WidgetStatePropertyAll(
+                              BorderSide(color: _CampaignColors.border),
+                            ),
+                            textStyle: const WidgetStatePropertyAll(
                               TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
@@ -333,7 +377,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
               onPressed: () => _openSubmission(context, auth, vm),
               icon: const Icon(Icons.add_rounded),
               label: const Text('Submit Artwork'),
-              backgroundColor: AppColors.primary,
+              backgroundColor: _CampaignColors.darkGreen,
               foregroundColor: Colors.white,
             ),
           ),
@@ -448,8 +492,8 @@ class _CampaignHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final statusColor = campaign.isCompleted
-        ? AppColors.accentDark
-        : AppColors.success;
+        ? _CampaignColors.yellow
+        : _CampaignColors.mediumGreen;
     final statusIcon = campaign.isCompleted
         ? Icons.event_busy_rounded
         : Icons.how_to_vote_rounded;
@@ -461,84 +505,81 @@ class _CampaignHeader extends StatelessWidget {
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+        height: 180,
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: _CampaignColors.background,
           borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: _CampaignColors.yellow),
         ),
-        foregroundDecoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: campaign.isCompleted
-                ? AppColors.accentDark
-                : AppColors.divider,
-            width: campaign.isCompleted ? 2.5 : 1,
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              color: campaign.isCompleted
-                  ? AppColors.accentLight.withAlpha(105)
-                  : AppColors.successLight,
-              padding: const EdgeInsets.all(14),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface.withAlpha(190),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(statusIcon, size: 20, color: statusColor),
+        // Keep the background artwork one pixel inside the outline. This
+        // prevents it from bleeding into or softening the rounded corners.
+        padding: const EdgeInsets.all(1),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(19),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: Opacity(
+                  opacity: .72,
+                  child: Image.asset(
+                    'asset/image/campaign_background.png',
+                    fit: BoxFit.cover,
+                    alignment: Alignment.centerRight,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
                       children: [
+                        Container(
+                          padding: const EdgeInsets.all(9),
+                          decoration: const BoxDecoration(
+                            color: _CampaignColors.softYellow,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(statusIcon, size: 22, color: statusColor),
+                        ),
+                        const SizedBox(width: 12),
                         Text(
                           statusTitle,
                           style: TextStyle(
                             color: statusColor,
-                            fontSize: 15,
-                            fontWeight: FontWeight.w900,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 13, 12, 15),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      campaign.title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w900,
-                      ),
+                    const Spacer(),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            campaign.title,
+                            style: const TextStyle(
+                              color: _CampaignColors.darkGreen,
+                              fontSize: 22,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        const Icon(
+                          Icons.info_outline_rounded,
+                          color: _CampaignColors.yellow,
+                          size: 22,
+                        ),
+                      ],
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  Icon(
-                    Icons.info_outline_rounded,
-                    color: campaign.isCompleted
-                        ? statusColor
-                        : AppColors.textHint,
-                    size: 21,
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -682,20 +723,26 @@ class _ArtworkEntryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: _CampaignColors.background,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: _CampaignColors.border),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onOpen,
         child: Row(
           children: [
             SizedBox(
-              width: 96,
-              height: 108,
+              width: 120,
+              height: 124,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
                   AppNetworkImage(
                     imageUrl: entry.artworkUrl,
-                    fit: BoxFit.cover,
+                    fit: BoxFit.contain,
                     targetOptimizationWidth: 300,
                   ),
                   Align(
@@ -707,7 +754,7 @@ class _ArtworkEntryCard extends StatelessWidget {
                         vertical: 3,
                       ),
                       decoration: BoxDecoration(
-                        color: Colors.black54,
+                        color: _CampaignColors.darkGreen,
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
@@ -730,14 +777,18 @@ class _ArtworkEntryCard extends StatelessWidget {
                 children: [
                   Text(
                     entry.artworkTitle,
-                    style: Theme.of(context).textTheme.titleSmall,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: _CampaignColors.darkGreen,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 3),
                   Text(
                     'by ${entry.submitterName}',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: _CampaignColors.text,
+                    ),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -745,7 +796,7 @@ class _ArtworkEntryCard extends StatelessWidget {
                   Text(
                     '${entry.voteCount} votes',
                     style: const TextStyle(
-                      color: AppColors.textSecondary,
+                      color: _CampaignColors.darkGreen,
                       fontWeight: FontWeight.w600,
                       fontSize: 12,
                     ),
@@ -773,7 +824,7 @@ class _ArtworkEntryCard extends StatelessWidget {
                 padding: EdgeInsets.only(right: 12),
                 child: Icon(
                   Icons.chevron_right_rounded,
-                  color: AppColors.textHint,
+                  color: _CampaignColors.darkGreen,
                 ),
               ),
           ],

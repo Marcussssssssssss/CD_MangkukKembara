@@ -1,11 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
 import '../../ViewModel/HeritageExperience/tiffin_content_view_model.dart';
 import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
+
+/// Visual tokens for the tiffin experience detail presentation.
+abstract final class _TiffinDetailColors {
+  static const Color background = Color(0xFFFFFFFF);
+  static const Color darkGreen = Color(0xFF335C31);
+  static const Color mediumGreen = Color(0xFF61885B);
+  static const Color yellow = Color(0xFFF9B10E);
+  static const Color softYellow = Color(0xFFFEF5E4);
+  static const Color text = Color(0xFF283427);
+}
 
 /// B4. Tiffin Experience Overview — full heritage content for a tiffin.
 class TiffinExperienceView extends StatefulWidget {
@@ -34,7 +43,7 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView> {
       value: _vm,
       child: Consumer<TiffinContentViewModel>(
         builder: (ctx, vm, _) => Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: _TiffinDetailColors.background,
           body: vm.isLoading
               ? const LoadingSpinner(message: 'Loading heritage experience...')
               : vm.hasError || vm.tiffin == null
@@ -51,103 +60,120 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView> {
 
   Widget _buildContent(BuildContext ctx, TiffinContentViewModel vm) {
     final t = vm.tiffin!;
-    const tiffinColor = AppColors.primary;
-
+    final backgroundAsset = _backgroundForState(t.state);
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       slivers: [
         // Hero header
         SliverAppBar(
-          expandedHeight: 220,
-          pinned: true,
-          backgroundColor: tiffinColor,
-          flexibleSpace: FlexibleSpaceBar(
-            background: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [tiffinColor, tiffinColor.withAlpha(180)],
+          expandedHeight: 380,
+          backgroundColor: _TiffinDetailColors.background,
+          automaticallyImplyLeading: false,
+          flexibleSpace: Stack(
+            fit: StackFit.expand,
+            children: [
+              Image.asset(
+                backgroundAsset,
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+              ),
+              if (t.coverImageUrl != null && t.coverImageUrl!.isNotEmpty)
+                GestureDetector(
+                  onTap: () => Navigator.of(ctx).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => _FullscreenTiffinImageView(
+                        imageUrl: t.coverImageUrl!,
+                        tiffinName: t.editionName,
+                      ),
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(40, 24, 40, 0),
+                    child: AppNetworkImage(
+                      imageUrl: t.coverImageUrl,
+                      fit: BoxFit.contain,
+                      targetOptimizationWidth: 1200,
+                    ),
+                  ),
+                )
+              else
+                Center(
+                  child: Icon(
+                    Icons.kitchen_rounded,
+                    size: 96,
+                    color: _TiffinDetailColors.darkGreen,
+                  ),
+                ),
+              Positioned(
+                top: MediaQuery.paddingOf(ctx).top + 12,
+                left: 20,
+                child: Material(
+                  color: Colors.white,
+                  shape: const CircleBorder(),
+                  elevation: 4,
+                  child: IconButton(
+                    tooltip: 'Back',
+                    icon: const Icon(
+                      Icons.arrow_back_rounded,
+                      color: _TiffinDetailColors.darkGreen,
+                    ),
+                    onPressed: () => Navigator.maybePop(ctx),
+                  ),
                 ),
               ),
-              child: t.coverImageUrl != null && t.coverImageUrl!.isNotEmpty
-                  ? GestureDetector(
-                      onTap: () => Navigator.of(ctx).push(
-                        MaterialPageRoute<void>(
-                          builder: (_) => _FullscreenTiffinImageView(
-                            imageUrl: t.coverImageUrl!,
-                            tiffinName: t.editionName,
-                          ),
-                        ),
-                      ),
-                      child: AppNetworkImage(
-                        imageUrl: t.coverImageUrl,
-                        fit: BoxFit.cover,
-                        targetOptimizationWidth: 1000,
-                      ),
-                    )
-                  : Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const SizedBox(height: 40),
-                        Icon(
-                          Icons.kitchen_rounded,
-                          size: 72,
-                          color: Colors.white.withAlpha(220),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          t.stateCode,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ],
-                    ),
-            ),
-            title: Text(t.editionName, style: const TextStyle(fontSize: 14)),
+            ],
           ),
         ),
 
         SliverToBoxAdapter(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
+          child: Transform.translate(
+            offset: const Offset(0, -24),
+            child: Container(
+              padding: const EdgeInsets.fromLTRB(12, 20, 12, 24),
+              decoration: const BoxDecoration(
+                color: _TiffinDetailColors.background,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
               // Edition title
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 4),
-                child: Text(
-                  t.editionName,
-                  style: Theme.of(ctx).textTheme.headlineSmall,
-                ),
+                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
+                child: Text(t.editionName, style: const TextStyle(
+                  color: _TiffinDetailColors.darkGreen,
+                  fontSize: 25,
+                  fontWeight: FontWeight.w800,
+                )),
               ),
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.location_on_outlined,
                       size: 14,
-                      color: AppColors.textHint,
+                      color: _TiffinDetailColors.mediumGreen,
                     ),
                     const SizedBox(width: 4),
-                    Text(t.state, style: Theme.of(ctx).textTheme.bodySmall),
+                    Text(
+                      t.state,
+                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                        color: _TiffinDetailColors.darkGreen,
+                      ),
+                    ),
                   ],
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
                 child: Text(
                   t.summary,
                   style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
+                    color: _TiffinDetailColors.text,
                   ),
                 ),
               ),
-
-              const Divider(indent: 16, endIndent: 16),
 
               // Content cards
               if (vm.artwork != null)
@@ -220,12 +246,23 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView> {
                   ),
                 ),
 
-              const SizedBox(height: 32),
+              const SizedBox(height: 8),
             ],
+              ),
+            ),
           ),
         ),
       ],
     );
+  }
+
+  String _backgroundForState(String state) {
+    final normalized = state.toLowerCase();
+    return normalized.contains('penang') ||
+            normalized.contains('sarawak') ||
+            normalized.contains('borneo')
+        ? 'asset/image/tiffin_background_green.png'
+        : 'asset/image/tiffin_background_yellow.png';
   }
 }
 
@@ -281,26 +318,31 @@ class _ContentCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const accent = AppColors.primary;
     return Card(
-      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
+      color: _TiffinDetailColors.softYellow,
+      elevation: 2,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: const BorderSide(color: _TiffinDetailColors.yellow),
+      ),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(18),
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(14),
           child: Row(
             children: [
               Container(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 decoration: BoxDecoration(
-                  color: accent.withAlpha(40),
+                  color: _TiffinDetailColors.softYellow,
                   shape: BoxShape.circle,
                 ),
-                child: Icon(icon, color: accent, size: 24),
+                child: Icon(icon, color: _TiffinDetailColors.darkGreen, size: 22),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -310,18 +352,22 @@ class _ContentCard extends StatelessWidget {
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
-                        color: AppColors.primary,
+                        color: _TiffinDetailColors.darkGreen,
                         letterSpacing: 0.5,
                       ),
                     ),
                     Text(
                       subtitle,
-                      style: Theme.of(context).textTheme.titleSmall,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: _TiffinDetailColors.darkGreen,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       description,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: _TiffinDetailColors.text,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
@@ -331,7 +377,7 @@ class _ContentCard extends StatelessWidget {
               const Icon(
                 Icons.arrow_forward_ios_rounded,
                 size: 14,
-                color: AppColors.textHint,
+                color: _TiffinDetailColors.darkGreen,
               ),
             ],
           ),

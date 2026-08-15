@@ -7,18 +7,32 @@ import 'app_network_image.dart';
 class TiffinCard extends StatelessWidget {
   final HeritageTiffinModel tiffin;
   final VoidCallback onTap;
+  final Color? primaryColor;
+  final Color? mutedColor;
+  final Color? borderColor;
+  final String? backgroundAsset;
 
-  const TiffinCard({super.key, required this.tiffin, required this.onTap});
+  const TiffinCard({
+    super.key,
+    required this.tiffin,
+    required this.onTap,
+    this.primaryColor,
+    this.mutedColor,
+    this.borderColor,
+    this.backgroundAsset,
+  });
 
   @override
   Widget build(BuildContext context) {
-    const cardColor = AppColors.primary;
+    final cardColor = primaryColor ?? AppColors.primary;
+    final muted = mutedColor ?? AppColors.textHint;
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: borderColor ?? Colors.transparent),
           boxShadow: [
             BoxShadow(
               color: Colors.black12,
@@ -32,36 +46,39 @@ class TiffinCard extends StatelessWidget {
           children: [
             // Image / Banner
             SizedBox(
-              height: 120,
+              height: 164,
               child: Stack(
                 children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          cardColor.withAlpha(200),
-                          cardColor.withAlpha(120),
-                        ],
-                      ),
+                  ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(14),
+                    ),
+                    child: backgroundAsset == null
+                        ? Container(
+                            color: cardColor.withAlpha(25),
+                          )
+                        : Image.asset(
+                            backgroundAsset!,
+                            fit: BoxFit.cover,
+                            width: double.infinity,
+                            height: double.infinity,
+                          ),
+                  ),
+                  if (tiffin.coverImageUrl != null)
+                    ClipRRect(
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(14),
                       ),
-                    ),
-                    child: tiffin.coverImageUrl != null
-                        ? ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(14),
-                            ),
-                            child: AppNetworkImage(
-                              imageUrl: tiffin.coverImageUrl,
-                              fit: BoxFit.cover,
-                              width: double.infinity,
-                              height: double.infinity,
-                              errorWidget: _fallback(tiffin),
-                            ),
-                          )
-                        : _fallback(tiffin),
-                  ),
+                      child: AppNetworkImage(
+                        imageUrl: tiffin.coverImageUrl,
+                        fit: BoxFit.contain,
+                        width: double.infinity,
+                        height: double.infinity,
+                        errorWidget: _fallback(tiffin),
+                      ),
+                    )
+                  else
+                    _fallback(tiffin),
                 ],
               ),
             ),
@@ -73,23 +90,27 @@ class TiffinCard extends StatelessWidget {
                 children: [
                   Text(
                     tiffin.editionName,
-                    style: Theme.of(context).textTheme.labelLarge,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      color: cardColor,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 2),
                   Row(
                     children: [
-                      const Icon(
+                      Icon(
                         Icons.location_on_outlined,
                         size: 12,
-                        color: AppColors.textHint,
+                        color: muted,
                       ),
                       const SizedBox(width: 2),
                       Expanded(
                         child: Text(
                           tiffin.state,
-                          style: Theme.of(context).textTheme.labelSmall,
+                          style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                            color: muted,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
@@ -98,9 +119,9 @@ class TiffinCard extends StatelessWidget {
                   const SizedBox(height: 4),
                   Text(
                     'Tap to explore',
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppColors.textHint,
+                      color: muted,
                       fontWeight: FontWeight.w600,
                     ),
                   ),

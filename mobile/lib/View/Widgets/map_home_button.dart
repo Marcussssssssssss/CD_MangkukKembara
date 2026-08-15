@@ -3,7 +3,9 @@ import '../../core/app_routes.dart';
 
 /// AppBar leading button that returns to the Heritage Treasure Map.
 class MapHomeButton extends StatelessWidget {
-  const MapHomeButton({super.key});
+  final Color? color;
+
+  const MapHomeButton({super.key, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -13,7 +15,7 @@ class MapHomeButton extends StatelessWidget {
       child: Tooltip(
         message: 'Return to Heritage Treasure Map',
         child: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded),
+          icon: Icon(Icons.arrow_back_rounded, color: color),
           onPressed: () => returnToTreasureMap(context),
         ),
       ),
