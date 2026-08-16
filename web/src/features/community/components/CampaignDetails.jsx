@@ -2,37 +2,39 @@ import { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
 import { fetchCampaignWinners } from '../services/communityService';
 
-export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onComplete, onPromote, onViewWinner }) {
+export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onViewWinner }) {
   const [winners, setWinners] = useState([]);
   const [isLoadingWinners, setIsLoadingWinners] = useState(false);
 
   useEffect(() => {
-    if (isOpen && campaign && campaign.status === 'completed') {
-      const loadWinners = async () => {
-        try {
-          setIsLoadingWinners(true);
-          const data = await fetchCampaignWinners(campaign.artwork_campaign_id);
-          setWinners(data);
-        } catch (err) {
-          console.error('Failed to load winners:', err);
-        } finally {
-          setIsLoadingWinners(false);
-        }
-      };
-      loadWinners();
-    } else {
-      setWinners([]);
-    }
+    if (!isOpen || !campaign || campaign.status !== 'completed') return undefined;
+
+    let cancelled = false;
+    const loadWinners = async () => {
+      try {
+        setIsLoadingWinners(true);
+        const data = await fetchCampaignWinners(campaign.artwork_campaign_id);
+        if (!cancelled) setWinners(data);
+      } catch (err) {
+        console.error('Failed to load winners:', err);
+        if (!cancelled) setWinners([]);
+      } finally {
+        if (!cancelled) setIsLoadingWinners(false);
+      }
+    };
+
+    loadWinners();
+    return () => {
+      cancelled = true;
+    };
   }, [isOpen, campaign]);
 
   if (!campaign) return null;
 
   const statusColors = {
-    draft: 'bg-surface-100 text-surface-700',
-    open_submission: 'bg-blue-100 text-blue-700',
-    voting: 'bg-purple-100 text-purple-700',
+    active: 'bg-blue-100 text-blue-700',
     completed: 'bg-green-100 text-green-700',
-    cancelled: 'bg-red-100 text-red-700',
+    inactive: 'bg-red-100 text-red-700',
   };
 
   const getStatusDisplay = (status) => status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -66,7 +68,16 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onC
           </div>
 
           {/* Timing Information */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 p-4 rounded-lg bg-surface-50 border border-surface-200">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 p-4 rounded-lg bg-surface-50 border border-surface-200">
+            <div>
+              <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">State</h4>
+              <p className="mt-1 font-medium text-surface-900">
+                {campaign.states?.state_name || campaign.state_id || 'Unknown State'}
+              </p>
+              {campaign.states?.state_code && (
+                <p className="mt-0.5 text-xs text-surface-500">{campaign.states.state_code}</p>
+              )}
+            </div>
             <div>
               <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">Submission Start</h4>
               <p className="mt-1 font-medium text-surface-900">{startDate}</p>
@@ -88,27 +99,7 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onC
                   <p className="text-sm text-surface-500 italic">Loading winners...</p>
                 ) : winners.length > 0 ? (
                   (() => {
-                    const topRankWinners = winners.filter(w => w.final_rank === 1);
-                    const isTied = topRankWinners.length > 1;
-
-                    if (isTied) {
-                      return (
-                        <div className="rounded-xl border border-yellow-200 bg-yellow-50 p-8 text-center">
-                          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-yellow-200 mb-4 shadow-sm">
-                            <span className="text-yellow-800 font-bold text-xl">TIE</span>
-                          </div>
-                          <h4 className="text-lg font-bold text-yellow-900 mb-2">Unresolved Tie Detected</h4>
-                          <p className="text-sm text-yellow-700 mb-6">
-                            This campaign ended in a tie between <span className="font-bold">{topRankWinners.length}</span> designs. No winner can be confirmed yet.
-                          </p>
-                          <p className="text-sm font-medium text-yellow-800 bg-yellow-100 py-3 px-4 rounded-lg inline-block">
-                            Please navigate to the <span className="font-bold uppercase tracking-wider">Voting Sessions</span> tab to resolve this tie.
-                          </p>
-                        </div>
-                      );
-                    }
-
-                    const winner = topRankWinners[0];
+                    const winner = winners.find((candidate) => candidate.final_rank === 1) || winners[0];
                     if (!winner) return (
                       <div className="rounded-lg border border-surface-200 border-dashed p-6 text-center bg-surface-50">
                         <p className="text-sm text-surface-500">No confirmed winners found for this campaign.</p>
@@ -117,7 +108,7 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onC
 
                     const submission = winner.artwork_voting_entries?.artwork_submissions;
                     const session = winner.artwork_voting_entries?.artwork_voting_sessions;
-                    const isPromoted = !!winner.artwork_id;
+                    const artwork = winner.artworks;
                     const resultDate = new Date(winner.announced_at).toLocaleString();
 
                     return (
@@ -158,7 +149,11 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onC
                                 <div>
                                   <p className="text-[11px] font-bold text-surface-400 uppercase tracking-wider">Status</p>
                                   <p className="text-sm font-semibold mt-1">
-                                    {isPromoted ? <span className="text-green-600">Promoted ({winner.artwork_id})</span> : <span className="text-surface-900">Pending Promotion</span>}
+                                     {artwork ? (
+                                       <span className="text-green-600">Official Artwork ({artwork.artwork_id})</span>
+                                     ) : (
+                                       <span className="text-red-600">Artwork record unavailable</span>
+                                     )}
                                   </p>
                                 </div>
                               </div>
@@ -172,14 +167,6 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onC
                             >
                               View Full Details
                             </button>
-                            {!isPromoted && (
-                              <button
-                                onClick={() => onPromote(winner, submission)}
-                                className="inline-flex items-center rounded-lg bg-green-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-green-700 transition-colors shadow-sm"
-                              >
-                                Promote to Artwork
-                              </button>
-                            )}
                           </div>
                         </div>
                       </div>
@@ -205,22 +192,13 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onC
             Close
           </button>
           
-          {/* Action Placeholders */}
-          {campaign.status !== 'completed' && campaign.status !== 'cancelled' && (
-            <>
-              <button
-                onClick={() => onEdit(campaign)}
-                className="rounded-lg bg-surface-800 px-4 py-2 text-sm font-medium text-white hover:bg-surface-900"
-              >
-                Edit
-              </button>
-              <button
-                onClick={() => onComplete(campaign)}
-                className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-              >
-                Complete Campaign
-              </button>
-            </>
+          {campaign.status === 'active' && (
+            <button
+              onClick={() => onEdit(campaign)}
+              className="rounded-lg bg-surface-800 px-4 py-2 text-sm font-medium text-white hover:bg-surface-900"
+            >
+              Edit
+            </button>
           )}
         </div>
         

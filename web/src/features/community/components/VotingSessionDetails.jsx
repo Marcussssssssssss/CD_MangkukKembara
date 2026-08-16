@@ -1,6 +1,30 @@
+import { useEffect, useState } from 'react';
 import Modal from '../../../components/Modal';
 
-export default function VotingSessionDetails({ session, isOpen, onClose, onFinalise, onResolveTie }) {
+const asVoteCount = (value) => Number(value) || 0;
+
+const asTimestamp = (value) => {
+  const timestamp = value ? new Date(value).getTime() : Number.NaN;
+  return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp;
+};
+
+export default function VotingSessionDetails({
+  session,
+  isOpen,
+  onClose,
+  onActivate,
+  onCloseVoting,
+  onFinalise,
+  onResolveTie,
+  hasTieBreakChild = false
+}) {
+  const [currentTime, setCurrentTime] = useState(Date.now);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setCurrentTime(Date.now()), 30_000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   if (!session) return null;
 
   const statusColors = {
@@ -9,31 +33,75 @@ export default function VotingSessionDetails({ session, isOpen, onClose, onFinal
     closed: 'bg-surface-100 text-surface-700',
   };
 
-  const getStatusDisplay = (status) => status.charAt(0).toUpperCase() + status.slice(1);
+  const getStatusDisplay = (status) => status
+    ? status.charAt(0).toUpperCase() + status.slice(1)
+    : 'Unknown';
+
   const isTieBreak = session.session_type === 'tie_break';
+  const isClosed = session.status === 'closed';
+  const startTime = new Date(session.voting_start_at).getTime();
+  const endTime = new Date(session.voting_end_at).getTime();
+  const campaignTitle = session.artwork_campaigns?.campaign_title || 'Unknown Campaign';
+  const campaignStatus = session.artwork_campaigns?.status;
+  const campaignCanBeResolved = !campaignStatus || campaignStatus === 'active';
+
+  const entries = Array.isArray(session.artwork_voting_entries)
+    ? session.artwork_voting_entries
+    : [];
+
+  // Display order is deterministic for equal scores, while rank changes only
+  // when the vote count changes (dense ranking: 1, 1, 2 rather than 1, 1, 3).
+  const sortedEntries = [...entries].sort((left, right) => {
+    const voteDifference = asVoteCount(right.vote_count) - asVoteCount(left.vote_count);
+    if (voteDifference !== 0) return voteDifference;
+
+    const publishedDifference = asTimestamp(left.published_at) - asTimestamp(right.published_at);
+    if (publishedDifference !== 0) return publishedDifference;
+
+    return left.artwork_voting_entry_id.localeCompare(right.artwork_voting_entry_id);
+  });
+
+  const distinctVoteCounts = [...new Set(
+    sortedEntries.map(entry => asVoteCount(entry.vote_count))
+  )];
+
+  const rankedEntries = sortedEntries.map((entry, index) => {
+    const voteCount = asVoteCount(entry.vote_count);
+
+    return {
+      ...entry,
+      voteCount,
+      rank: distinctVoteCounts.indexOf(voteCount) + 1,
+      displayOrder: index + 1
+    };
+  });
+
+  const highestVotes = rankedEntries[0]?.voteCount;
+  const topScorers = highestVotes === undefined
+    ? []
+    : rankedEntries.filter(entry => entry.voteCount === highestVotes);
+  const hasTopTie = topScorers.length > 1;
+  const hasUniqueTop = topScorers.length === 1;
+  const isTerminalSession = !hasTieBreakChild;
+
+  const canActivate = session.status === 'scheduled' && currentTime >= startTime && currentTime < endTime;
+  const canCloseVoting = !isClosed && currentTime >= endTime;
+  const canCreateTieBreak = isClosed && isTerminalSession && hasTopTie && campaignCanBeResolved;
+  const canFinalise = isClosed && isTerminalSession && hasUniqueTop && campaignCanBeResolved;
 
   const startDate = new Date(session.voting_start_at).toLocaleString();
   const endDate = new Date(session.voting_end_at).toLocaleString();
-  const campaignTitle = session.artwork_campaigns?.campaign_title || 'Unknown Campaign';
 
   return (
     <Modal open={isOpen} onClose={onClose} title="Voting Session Details" size="4xl">
       <div className="flex flex-col p-6 max-h-[85vh] overflow-y-auto">
-        
-        {/* Header Section */}
         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 border-b border-surface-200 pb-4">
           <div>
             <div className="flex items-center gap-3">
               <h3 className="text-2xl font-bold text-surface-900">{session.artwork_voting_session_id}</h3>
-              {isTieBreak ? (
-                <span className="inline-flex rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-semibold text-purple-800">
-                  Tie-Break Session
-                </span>
-              ) : (
-                <span className="inline-flex rounded-full bg-surface-100 px-2.5 py-0.5 text-xs font-semibold text-surface-700">
-                  Standard Session
-                </span>
-              )}
+              <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-semibold ${isTieBreak ? 'bg-purple-100 text-purple-800' : 'bg-surface-100 text-surface-700'}`}>
+                {isTieBreak ? 'Tie-Break Session' : 'Standard Session'}
+              </span>
             </div>
             <p className="text-sm font-medium text-surface-500 mt-2">
               Campaign: <span className="text-surface-900">{campaignTitle}</span>
@@ -49,7 +117,6 @@ export default function VotingSessionDetails({ session, isOpen, onClose, onFinal
           </span>
         </div>
 
-        {/* Schedule */}
         <div className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-4 bg-surface-50 p-4 rounded-xl border border-surface-200">
           <div>
             <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">Voting Start</h4>
@@ -61,122 +128,92 @@ export default function VotingSessionDetails({ session, isOpen, onClose, onFinal
           </div>
         </div>
 
-        {/* Entries / Results */}
         <div className="mt-8">
-          {session.status === 'closed' ? (
-            <h4 className="text-sm font-bold text-surface-900 mb-4">Final Results</h4>
-          ) : (
-            <h4 className="text-sm font-bold text-surface-900 mb-4">Participating Artworks ({session.artwork_voting_entries?.length || 0})</h4>
-          )}
-          
-          {session.artwork_voting_entries && session.artwork_voting_entries.length > 0 ? (
-            <div className="space-y-6">
-              {Object.entries(
-                session.artwork_voting_entries.reduce((acc, entry) => {
-                  const catId = entry.artwork_campaign_categories?.artwork_campaign_category_id || entry.artwork_campaign_category_id;
-                  const catName = entry.artwork_campaign_categories?.category_name || 'Unknown';
-                  if (!acc[catId]) acc[catId] = { categoryName: catName, entries: [] };
-                  acc[catId].entries.push(entry);
-                  return acc;
-                }, {})
-              ).map(([categoryId, { categoryName, entries }]) => {
-                
-                // Sort descending by vote count
-                const sortedEntries = [...entries].sort((a, b) => b.vote_count - a.vote_count);
-                const highestVotes = sortedEntries[0]?.vote_count || 0;
-                
-                // Identify tie
-                const topScorers = sortedEntries.filter(e => e.vote_count === highestVotes);
-                const isTied = highestVotes > 0 && topScorers.length > 1;
-                const hasWinner = highestVotes > 0 && topScorers.length === 1;
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h4 className="text-sm font-bold text-surface-900">
+              {isClosed ? 'Final Results' : `Participating Artworks (${rankedEntries.length})`}
+            </h4>
+            {isClosed && hasTieBreakChild && (
+              <span className="inline-flex rounded-full bg-purple-100 px-2.5 py-0.5 text-xs font-semibold text-purple-800">
+                Tie-break already created
+              </span>
+            )}
+            {isClosed && isTerminalSession && hasTopTie && (
+              <span className="inline-flex rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-semibold text-yellow-800">
+                Top result tied
+              </span>
+            )}
+            {isClosed && isTerminalSession && hasUniqueTop && (
+              <span className="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">
+                Unique top result
+              </span>
+            )}
+          </div>
 
-                return (
-                  <div key={categoryId} className="overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm">
-                    <div className="bg-surface-50 px-6 py-3 border-b border-surface-200 flex items-center justify-between">
-                      <h5 className="font-semibold text-surface-900">Voting Entries</h5>
-                      <div className="flex items-center gap-3">
-                        {session.status === 'closed' && (
-                          isTied ? (
-                            <>
-                              <span className="inline-flex rounded-full bg-yellow-100 px-2.5 py-0.5 text-xs font-semibold text-yellow-800">Tied Result (Tie-Break Session Required)</span>
-                              <button
-                                onClick={() => onResolveTie(session.artwork_voting_session_id, categoryId, campaignTitle)}
-                                className="inline-flex items-center rounded-lg bg-purple-100 px-3 py-1 text-xs font-semibold text-purple-700 hover:bg-purple-200"
-                              >
-                                Create Tie-Break
-                              </button>
-                            </>
-                          ) : hasWinner ? (
-                            <span className="inline-flex rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-semibold text-green-800">Clear Winner Found</span>
-                          ) : null
-                        )}
-                      </div>
-                    </div>
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-left text-sm text-surface-600">
-                        <thead className="bg-white text-xs uppercase text-surface-500 border-b border-surface-100">
-                          <tr>
-                            {session.status === 'closed' && <th scope="col" className="px-6 py-4 font-semibold w-16">Rank</th>}
-                            <th scope="col" className="px-6 py-4 font-semibold">Artwork</th>
-                            <th scope="col" className="px-6 py-4 font-semibold text-right">Votes</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-surface-100">
-                          {(() => {
-                            let currentRank = 1;
-                            let previousVotes = null;
-                            
-                            return sortedEntries.map((entry, index) => {
-                              if (previousVotes !== null && entry.vote_count < previousVotes) {
-                                currentRank = index + 1;
-                              }
-                              previousVotes = entry.vote_count;
-                              
-                              const artwork = entry.artwork_submissions;
-                              const isWinner = session.status === 'closed' && hasWinner && entry.vote_count === highestVotes;
-                              const isTiedTop = session.status === 'closed' && isTied && entry.vote_count === highestVotes;
-                              
-                              return (
-                                <tr key={entry.artwork_voting_entry_id} className={`hover:bg-surface-50 ${isWinner ? 'bg-green-50' : (isTiedTop ? 'bg-yellow-50' : '')}`}>
-                                  {session.status === 'closed' && (
-                                    <td className="px-6 py-4 font-semibold text-surface-900">
-                                      #{currentRank}
-                                    </td>
+          {rankedEntries.length > 0 ? (
+            <div className="overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-sm text-surface-600">
+                  <thead className="bg-surface-50 text-xs uppercase text-surface-500 border-b border-surface-200">
+                    <tr>
+                      {isClosed && <th scope="col" className="px-6 py-4 font-semibold w-20">Rank</th>}
+                      <th scope="col" className="px-6 py-4 font-semibold">Artwork</th>
+                      <th scope="col" className="px-6 py-4 font-semibold text-center w-24">Display</th>
+                      <th scope="col" className="px-6 py-4 font-semibold text-right">Votes</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-100">
+                    {rankedEntries.map(entry => {
+                      const artwork = entry.artwork_submissions;
+                      const isTop = isClosed && entry.rank === 1;
+                      const isWinnerCandidate = isTop && hasUniqueTop;
+                      const isTiedTop = isTop && hasTopTie;
+
+                      return (
+                        <tr
+                          key={entry.artwork_voting_entry_id}
+                          className={`hover:bg-surface-50 ${isWinnerCandidate ? 'bg-green-50' : (isTiedTop ? 'bg-yellow-50' : '')}`}
+                        >
+                          {isClosed && (
+                            <td className="px-6 py-4 font-semibold text-surface-900">#{entry.rank}</td>
+                          )}
+                          <td className="px-6 py-4">
+                            <div className="flex items-center gap-4">
+                              <div className={`h-12 w-12 shrink-0 overflow-hidden rounded bg-surface-100 border ${isWinnerCandidate ? 'border-green-400 ring-2 ring-green-100' : 'border-surface-200'}`}>
+                                {artwork?.artwork_file_url ? (
+                                  <img src={artwork.artwork_file_url} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  <span className="flex h-full items-center justify-center text-[10px] text-surface-400">No Img</span>
+                                )}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="font-medium text-surface-900 truncate">
+                                  {artwork?.artwork_title || 'Unknown Title'}
+                                  {isWinnerCandidate && (
+                                    <span className="ml-2 inline-flex items-center rounded bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">TOP</span>
                                   )}
-                                <td className="px-6 py-4">
-                                  <div className="flex items-center gap-4">
-                                    <div className={`h-12 w-12 shrink-0 overflow-hidden rounded bg-surface-100 border ${isWinner ? 'border-green-400 ring-2 ring-green-100' : 'border-surface-200'}`}>
-                                      {artwork?.artwork_file_url ? (
-                                        <img src={artwork.artwork_file_url} alt="" className="h-full w-full object-cover" />
-                                      ) : (
-                                        <span className="flex h-full items-center justify-center text-[10px] text-surface-400">No Img</span>
-                                      )}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <p className="font-medium text-surface-900 truncate">
-                                        {artwork?.artwork_title || 'Unknown Title'}
-                                        {isWinner && <span className="ml-2 inline-flex items-center rounded bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">WINNER</span>}
-                                        {isTiedTop && <span className="ml-2 inline-flex items-center rounded bg-yellow-100 px-2 py-0.5 text-[10px] font-bold text-yellow-700">TIED</span>}
-                                      </p>
-                                      <p className="text-xs text-surface-500 truncate mt-0.5">by {artwork?.profiles?.display_name || 'Unknown'}</p>
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-6 py-4 text-right">
-                                  <span className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold ring-1 ring-inset ${isWinner ? 'bg-green-100 text-green-700 ring-green-600/20' : (isTiedTop ? 'bg-yellow-100 text-yellow-700 ring-yellow-600/20' : 'bg-primary-50 text-primary-700 ring-primary-600/20')}`}>
-                                    {entry.vote_count}
-                                  </span>
-                                </td>
-                              </tr>
-                            );
-                          });
-                        })()}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                );
-              })}
+                                  {isTiedTop && (
+                                    <span className="ml-2 inline-flex items-center rounded bg-yellow-100 px-2 py-0.5 text-[10px] font-bold text-yellow-700">TIED</span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-surface-500 truncate mt-0.5">
+                                  by {artwork?.profiles?.display_name || 'Unknown'}
+                                </p>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-6 py-4 text-center text-xs text-surface-500">#{entry.displayOrder}</td>
+                          <td className="px-6 py-4 text-right">
+                            <span className={`inline-flex items-center justify-center rounded-full px-3 py-1 text-sm font-bold ring-1 ring-inset ${isWinnerCandidate ? 'bg-green-100 text-green-700 ring-green-600/20' : (isTiedTop ? 'bg-yellow-100 text-yellow-700 ring-yellow-600/20' : 'bg-primary-50 text-primary-700 ring-primary-600/20')}`}>
+                              {entry.voteCount}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           ) : (
             <div className="rounded-lg border border-surface-200 border-dashed p-8 text-center bg-surface-50">
@@ -185,16 +222,42 @@ export default function VotingSessionDetails({ session, isOpen, onClose, onFinal
           )}
         </div>
 
-        {/* Action Buttons */}
-        <div className="mt-8 flex justify-end gap-3 border-t border-surface-100 pt-4">
+        <div className="mt-8 flex flex-wrap justify-end gap-3 border-t border-surface-100 pt-4">
           <button
             onClick={onClose}
             className="rounded-lg px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-100"
           >
-            Close
+            Close Details
           </button>
-          
-          {session.status !== 'closed' && new Date() > new Date(session.voting_end_at) && (
+
+          {canActivate && (
+            <button
+              onClick={() => onActivate(session)}
+              className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
+            >
+              Activate Voting
+            </button>
+          )}
+
+          {canCloseVoting && (
+            <button
+              onClick={() => onCloseVoting(session)}
+              className="rounded-lg bg-surface-700 px-4 py-2 text-sm font-medium text-white hover:bg-surface-800"
+            >
+              Close Voting
+            </button>
+          )}
+
+          {canCreateTieBreak && (
+            <button
+              onClick={() => onResolveTie(session.artwork_voting_session_id, campaignTitle)}
+              className="rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+            >
+              Create Tie-Break
+            </button>
+          )}
+
+          {canFinalise && (
             <button
               onClick={() => onFinalise(session)}
               className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700"
@@ -203,7 +266,6 @@ export default function VotingSessionDetails({ session, isOpen, onClose, onFinal
             </button>
           )}
         </div>
-        
       </div>
     </Modal>
   );

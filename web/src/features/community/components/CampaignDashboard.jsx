@@ -10,11 +10,9 @@ export default function CampaignDashboard({
   onDeactivate,
 }) {
   const statusColors = {
-    draft: 'bg-surface-100 text-surface-700',
-    open_submission: 'bg-blue-100 text-blue-700',
-    voting: 'bg-purple-100 text-purple-700',
+    active: 'bg-blue-100 text-blue-700',
     completed: 'bg-green-100 text-green-700',
-    cancelled: 'bg-red-100 text-red-700',
+    inactive: 'bg-red-100 text-red-700',
   };
 
   const getStatusDisplay = (status) => status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -66,6 +64,7 @@ export default function CampaignDashboard({
             <thead className="bg-surface-50 text-xs uppercase text-surface-500">
               <tr>
                 <th scope="col" className="px-6 py-4 font-semibold">Campaign Title</th>
+                <th scope="col" className="px-6 py-4 font-semibold">State</th>
                 <th scope="col" className="px-6 py-4 font-semibold">Description Summary</th>
                 <th scope="col" className="px-6 py-4 font-semibold">Submission Period</th>
                 <th scope="col" className="px-6 py-4 font-semibold">Status</th>
@@ -82,6 +81,14 @@ export default function CampaignDashboard({
                     <tr key={campaign.artwork_campaign_id} className="hover:bg-surface-50">
                       <td className="px-6 py-4 font-medium text-surface-900">
                         {campaign.campaign_title}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-medium text-surface-900">
+                          {campaign.states?.state_name || campaign.state_id || 'Unknown State'}
+                        </div>
+                        {campaign.states?.state_code && (
+                          <div className="mt-1 text-xs text-surface-500">{campaign.states.state_code}</div>
+                        )}
                       </td>
                       <td className="px-6 py-4 max-w-xs truncate">
                         {campaign.description || 'No description'}
@@ -103,7 +110,7 @@ export default function CampaignDashboard({
                           >
                             View
                           </button>
-                          {campaign.status !== 'completed' && campaign.status !== 'cancelled' && (
+                          {campaign.status === 'active' && (
                             <>
                               <button
                                 onClick={() => onEdit(campaign)}

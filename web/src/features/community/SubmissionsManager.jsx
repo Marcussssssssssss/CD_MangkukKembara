@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import SubmissionDashboard from './components/SubmissionDashboard';
 import SubmissionDetails from './components/SubmissionDetails';
-import { fetchSubmissions, rejectSubmission } from './services/communityService';
+import { fetchSubmissions, approveSubmission, rejectSubmission } from './services/communityService';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function SubmissionsManager() {
@@ -72,6 +72,30 @@ export default function SubmissionsManager() {
     }
   };
 
+  const handleApprove = async (submission) => {
+    if (!profile || !profile.profile_id) {
+      alert('Unable to determine your profile ID for this action.');
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to approve the submission "${submission.artwork_title}"?`)) {
+      try {
+        const updated = await approveSubmission(submission.artwork_submission_id, profile.profile_id);
+
+        setSubmissions((prev) =>
+          prev.map((item) => (item.artwork_submission_id === updated.artwork_submission_id ? updated : item))
+        );
+
+        if (viewingSubmission?.artwork_submission_id === updated.artwork_submission_id) {
+          setViewingSubmission(updated);
+        }
+        alert('Submission has been approved.');
+      } catch (err) {
+        alert(err.message || 'Failed to approve submission.');
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -101,6 +125,7 @@ export default function SubmissionsManager() {
         submission={viewingSubmission}
         isOpen={!!viewingSubmission}
         onClose={handleClose}
+        onApprove={handleApprove}
         onReject={handleReject}
       />
     </div>

@@ -1,31 +1,32 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from '../../../components/Modal';
+
+const emptyFormData = () => ({
+  voting_start_at: '',
+  voting_end_at: ''
+});
 
 export default function TieBreakForm({
   isOpen,
   onClose,
   onSave,
   parentSessionId,
-  categoryId,
   campaignTitle
 }) {
-  const [formData, setFormData] = useState({
-    voting_start_at: '',
-    voting_end_at: ''
-  });
+  const [formData, setFormData] = useState(emptyFormData);
   
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        voting_start_at: '',
-        voting_end_at: ''
-      });
-      setErrors({});
-    }
-  }, [isOpen]);
+  const resetForm = () => {
+    setFormData(emptyFormData());
+    setErrors({});
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -61,8 +62,8 @@ export default function TieBreakForm({
 
     setIsSubmitting(true);
     try {
-      await onSave(parentSessionId, categoryId, formData.voting_start_at, formData.voting_end_at);
-      onClose();
+      await onSave(parentSessionId, formData.voting_start_at, formData.voting_end_at);
+      handleClose();
     } catch (err) {
       setErrors({ form: err.message || 'Failed to create tie-break session.' });
     } finally {
@@ -71,7 +72,7 @@ export default function TieBreakForm({
   };
 
   return (
-    <Modal open={isOpen} onClose={onClose} title="Create Tie-Break Session" size="md">
+    <Modal open={isOpen} onClose={handleClose} title="Create Tie-Break Session" size="md">
       <form onSubmit={handleSubmit} className="flex flex-col h-full max-h-[85vh]">
         <div className="flex-1 p-6">
           <p className="text-sm text-surface-600 mb-6">
@@ -124,7 +125,7 @@ export default function TieBreakForm({
         <div className="shrink-0 flex items-center justify-end gap-3 border-t border-surface-200 p-6 bg-surface-50">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isSubmitting}
             className="rounded-lg px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-200 disabled:opacity-50"
           >

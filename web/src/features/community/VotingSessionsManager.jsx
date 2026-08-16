@@ -1,9 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import VotingSessionDashboard from './components/VotingSessionDashboard';
 import VotingSessionForm from './components/VotingSessionForm';
 import VotingSessionDetails from './components/VotingSessionDetails';
 import TieBreakForm from './components/TieBreakForm';
-import { fetchVotingSessions, fetchCampaigns, fetchSubmissions, createVotingSession, fetchVotingSessionDetails, finalizeVotingSession, createTieBreakSession } from './services/communityService';
+import {
+  fetchVotingSessions,
+  fetchCampaigns,
+  fetchSubmissions,
+  createVotingSession,
+  fetchVotingSessionDetails,
+  activateVotingSession,
+  closeVotingSession,
+  finalizeVotingSession,
+  createTieBreakSession
+} from './services/communityService';
 
 export default function VotingSessionsManager() {
   const [sessions, setSessions] = useState([]);
@@ -14,18 +24,41 @@ export default function VotingSessionsManager() {
 
   const [isCreating, setIsCreating] = useState(false);
   const [viewingSession, setViewingSession] = useState(null);
+  const selectedSessionIdRef = useRef(null);
+  const detailRequestIdRef = useRef(0);
+
+  const refreshSessions = async () => {
+    const sessionsData = await fetchVotingSessions();
+    setSessions(sessionsData);
+    return sessionsData;
+  };
+
+  const refreshSessionDetails = async (sessionId) => {
+    const requestId = ++detailRequestIdRef.current;
+    const details = await fetchVotingSessionDetails(sessionId);
+
+    if (
+      requestId === detailRequestIdRef.current
+      && selectedSessionIdRef.current === sessionId
+    ) {
+      setViewingSession(details);
+    }
+
+    return details;
+  };
 
   useEffect(() => {
     const loadData = async () => {
       try {
         setIsLoading(true);
+        setError(null);
         const [sessionsData, campaignsData, submissionsData] = await Promise.all([
           fetchVotingSessions(),
           fetchCampaigns(),
           fetchSubmissions()
         ]);
         setSessions(sessionsData);
-        setCampaigns(campaignsData.filter(c => c.status !== 'completed' && c.status !== 'cancelled')); // Eligible active campaigns
+        setCampaigns(campaignsData.filter(c => c.status === 'active'));
         setSubmissions(submissionsData);
       } catch (err) {
         setError(err.message || 'Failed to load voting sessions.');
@@ -41,27 +74,69 @@ export default function VotingSessionsManager() {
   const handleCloseCreate = () => setIsCreating(false);
   
   const handleView = async (session) => {
+    const sessionId = session.artwork_voting_session_id;
+    selectedSessionIdRef.current = sessionId;
+    setViewingSession(null);
+
     try {
-      const details = await fetchVotingSessionDetails(session.artwork_voting_session_id);
-      setViewingSession(details);
-    } catch {
-      alert('Failed to load session details.');
+      await refreshSessionDetails(sessionId);
+    } catch (err) {
+      alert(err.message || 'Failed to load session details.');
     }
   };
 
-  const handleCloseView = () => setViewingSession(null);
+  const handleCloseView = () => {
+    selectedSessionIdRef.current = null;
+    detailRequestIdRef.current += 1;
+    setViewingSession(null);
+  };
+
+  const handleActivate = async (session) => {
+    const sessionId = session.artwork_voting_session_id;
+    if (!window.confirm(`Activate voting session ${sessionId} now?`)) {
+      return;
+    }
+
+    try {
+      await activateVotingSession(sessionId);
+      await Promise.all([
+        refreshSessions(),
+        refreshSessionDetails(sessionId)
+      ]);
+      alert('Voting session activated successfully.');
+    } catch (err) {
+      alert(err.message || 'Failed to activate voting session.');
+    }
+  };
   
+  const handleCloseVoting = async (session) => {
+    const sessionId = session.artwork_voting_session_id;
+    if (!window.confirm(`Close voting session ${sessionId}? Votes can no longer be cast after it is closed.`)) {
+      return;
+    }
+
+    try {
+      await closeVotingSession(sessionId);
+      await Promise.all([
+        refreshSessions(),
+        refreshSessionDetails(sessionId)
+      ]);
+      alert('Voting session closed successfully.');
+    } catch (err) {
+      alert(err.message || 'Failed to close voting session.');
+    }
+  };
+
   const handleFinalise = async (session) => {
     if (window.confirm(`Are you sure you want to finalise the voting session ${session.artwork_voting_session_id}? This will officially determine the results and cannot be undone.`)) {
       try {
         await finalizeVotingSession(session.artwork_voting_session_id);
-        
-        const updatedSessions = await fetchVotingSessions();
-        setSessions(updatedSessions);
-        const updatedDetails = await fetchVotingSessionDetails(session.artwork_voting_session_id);
-        setViewingSession(updatedDetails);
-        
-        
+
+        await Promise.all([
+          refreshSessions(),
+          refreshSessionDetails(session.artwork_voting_session_id)
+        ]);
+
         alert('Voting session has been successfully finalised.');
       } catch (err) {
         alert(err.message || 'Failed to finalise voting session.');
@@ -76,27 +151,44 @@ export default function VotingSessionsManager() {
       formData.voting_end_at,
       selectedSubsData
     );
-    setSessions(prev => [newSession, ...prev]);
+    await refreshSessions();
     setIsCreating(false);
     alert('Voting session created successfully.');
+
+    return newSession;
   };
 
   const [tieBreakContext, setTieBreakContext] = useState(null);
 
-  const handleResolveTie = (parentSessionId, categoryId, campaignTitle) => {
-    setTieBreakContext({ parentSessionId, categoryId, campaignTitle });
+  const handleResolveTie = (parentSessionId, campaignTitle) => {
+    setTieBreakContext({ parentSessionId, campaignTitle });
   };
 
   const handleCloseTieBreak = () => setTieBreakContext(null);
 
-  const handleSaveTieBreak = async (parentSessionId, categoryId, startAt, endAt) => {
-    // Temporary mock to avoid RPC schema cache error during UI development
-    // await createTieBreakSession(parentSessionId, categoryId, startAt, endAt);
-    // const updatedSessions = await fetchVotingSessions();
-    // setSessions(updatedSessions);
-    
-    alert('Tie-break session prepared successfully.');
+  const handleSaveTieBreak = async (parentSessionId, startAt, endAt) => {
+    await createTieBreakSession(parentSessionId, startAt, endAt);
+    await Promise.all([
+      refreshSessions(),
+      refreshSessionDetails(parentSessionId)
+    ]);
+    setTieBreakContext(null);
+    alert('Tie-break session created successfully.');
   };
+
+  const viewingSessionHasChild = viewingSession
+    ? sessions.some(
+        session => session.parent_voting_session_id === viewingSession.artwork_voting_session_id
+      )
+    : false;
+
+  const eligibleCampaigns = campaigns.filter(campaign => (
+    campaign.status === 'active'
+    && !sessions.some(session => (
+      session.artwork_campaign_id === campaign.artwork_campaign_id
+      && session.session_type === 'standard'
+    ))
+  ));
 
   if (isLoading) {
     return (
@@ -126,15 +218,18 @@ export default function VotingSessionsManager() {
         session={viewingSession}
         isOpen={!!viewingSession}
         onClose={handleCloseView}
+        onActivate={handleActivate}
+        onCloseVoting={handleCloseVoting}
         onFinalise={handleFinalise}
         onResolveTie={handleResolveTie}
+        hasTieBreakChild={viewingSessionHasChild}
       />
 
       <VotingSessionForm
         isOpen={isCreating}
         onClose={handleCloseCreate}
         onSave={handleSave}
-        campaigns={campaigns}
+        campaigns={eligibleCampaigns}
         submissions={submissions}
       />
 
@@ -143,7 +238,6 @@ export default function VotingSessionsManager() {
         onClose={handleCloseTieBreak}
         onSave={handleSaveTieBreak}
         parentSessionId={tieBreakContext?.parentSessionId}
-        categoryId={tieBreakContext?.categoryId}
         campaignTitle={tieBreakContext?.campaignTitle}
       />
     </div>

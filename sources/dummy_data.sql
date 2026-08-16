@@ -6,8 +6,8 @@
 -- readable hard-coded dummy records.
 --
 -- Important:
--- auth_user_id is NULL for dummy profiles. Real registered accounts are linked
--- automatically through the Supabase Auth trigger in the schema script.
+-- P0001-P0003 use fixed development Auth UUIDs. Any other preserved Auth users
+-- are linked to newly generated P1000+ profiles near the end of this script.
 -- ============================================================================
 begin;
 -- ============================================================================
@@ -19,7 +19,6 @@ public.artwork_votes,
 public.artwork_voting_entries,
 public.artwork_voting_sessions,
 public.artwork_submissions,
-public.artwork_campaign_categories,
 public.artwork_campaigns,
 public.community_comments,
 public.community_post_likes,
@@ -42,6 +41,18 @@ public.food_categories,
 public.states,
 public.profiles cascade;
 alter sequence public.profile_number_seq restart with 1000;
+alter sequence public.user_tiffin_collection_number_seq restart with 1000;
+alter sequence public.community_post_number_seq restart with 1000;
+alter sequence public.community_post_photo_number_seq restart with 1000;
+alter sequence public.community_post_like_number_seq restart with 1000;
+alter sequence public.community_comment_number_seq restart with 1000;
+alter sequence public.artwork_number_seq restart with 1000;
+alter sequence public.artwork_campaign_number_seq restart with 1000;
+alter sequence public.artwork_submission_number_seq restart with 1000;
+alter sequence public.artwork_voting_session_number_seq restart with 1000;
+alter sequence public.artwork_voting_entry_number_seq restart with 1000;
+alter sequence public.artwork_vote_number_seq restart with 1000;
+alter sequence public.artwork_campaign_winner_number_seq restart with 1000;
 -- ============================================================================
 -- 2. PROFILES
 -- Artist information is stored in profiles, not in a separate artists table.
@@ -835,6 +846,7 @@ values (
 -- ============================================================================
 insert into public.artwork_campaigns (
         artwork_campaign_id,
+        state_id,
         campaign_title,
         description,
         submission_start_at,
@@ -844,8 +856,9 @@ insert into public.artwork_campaigns (
     )
 values (
         'AC0001',
-        'Heritage Tiffin Design Campaign 2026',
-        'This campaign has ended. Tourists submitted state-themed heritage tiffin artwork inspired by Malaysian culture.',
+        'S0001',
+        'Penang Heritage Tiffin Design Campaign 2026',
+        'A completed campaign for a Penang-inspired heritage tiffin design.',
         '2026-01-01 00:00:00+08',
         '2026-03-31 23:59:59+08',
         'completed',
@@ -853,70 +866,77 @@ values (
     ),
     (
         'AC0002',
-        'Flavours of Malaysia Tiffin Design Campaign',
-        'An active campaign inviting tourists to submit new tiffin artwork inspired by food stories from across Malaysia.',
+        'S0002',
+        'Melaka Heritage Tiffin Design Campaign 2026',
+        'A completed campaign for a Melaka-inspired heritage tiffin design.',
+        '2026-01-01 00:00:00+08',
+        '2026-03-31 23:59:59+08',
+        'completed',
+        'P0001'
+    ),
+    (
+        'AC0003',
+        'S0003',
+        'Kelantan Heritage Tiffin Design Campaign 2026',
+        'A completed campaign for a Kelantan-inspired heritage tiffin design.',
+        '2026-01-01 00:00:00+08',
+        '2026-03-31 23:59:59+08',
+        'completed',
+        'P0001'
+    ),
+    (
+        'AC0004',
+        'S0004',
+        'Sarawak Heritage Tiffin Design Campaign 2026',
+        'A completed campaign for a Sarawak-inspired heritage tiffin design.',
+        '2026-01-01 00:00:00+08',
+        '2026-03-31 23:59:59+08',
+        'completed',
+        'P0001'
+    ),
+    (
+        'AC0005',
+        'S0001',
+        'Penang Food Stories Tiffin Design Campaign',
+        'An active campaign inviting Penang-inspired food-story artwork.',
+        now() - interval '30 days',
+        now() + interval '60 days',
+        'active',
+        'P0001'
+    ),
+    (
+        'AC0006',
+        'S0002',
+        'Melaka Food Stories Tiffin Design Campaign',
+        'An active campaign inviting Melaka-inspired food-story artwork.',
+        now() - interval '30 days',
+        now() + interval '60 days',
+        'active',
+        'P0001'
+    ),
+    (
+        'AC0007',
+        'S0003',
+        'Kelantan Food Stories Tiffin Design Campaign',
+        'An active campaign inviting Kelantan-inspired food-story artwork.',
+        now() - interval '30 days',
+        now() + interval '60 days',
+        'active',
+        'P0001'
+    ),
+    (
+        'AC0008',
+        'S0004',
+        'Sarawak Food Stories Tiffin Design Campaign',
+        'An active campaign inviting Sarawak-inspired food-story artwork.',
         now() - interval '30 days',
         now() + interval '60 days',
         'active',
         'P0001'
     );
-insert into public.artwork_campaign_categories (
-        artwork_campaign_category_id,
-        artwork_campaign_id,
-        state_id,
-        category_name
-    )
-values (
-        'ACC0001',
-        'AC0001',
-        'S0001',
-        'Penang Heritage Design'
-    ),
-    (
-        'ACC0002',
-        'AC0001',
-        'S0002',
-        'Melaka Heritage Design'
-    ),
-    (
-        'ACC0003',
-        'AC0001',
-        'S0003',
-        'Kelantan Heritage Design'
-    ),
-    (
-        'ACC0004',
-        'AC0001',
-        'S0004',
-        'Sarawak Heritage Design'
-    ),
-    (
-        'ACC0005',
-        'AC0002',
-        'S0001',
-        'Penang Food Stories'
-    ),
-    (
-        'ACC0006',
-        'AC0002',
-        'S0002',
-        'Melaka Food Stories'
-    ),
-    (
-        'ACC0007',
-        'AC0002',
-        'S0003',
-        'Kelantan Food Stories'
-    ),
-    (
-        'ACC0008',
-        'AC0002',
-        'S0004',
-        'Sarawak Food Stories'
-    );
 insert into public.artwork_submissions (
         artwork_submission_id,
-        artwork_campaign_category_id,
+        artwork_campaign_id,
         profile_id,
         artwork_title,
         design_description,
@@ -930,7 +950,7 @@ insert into public.artwork_submissions (
     )
 values (
         'AS0001',
-        'ACC0001',
+        'AC0001',
         'P0002',
         'Penang Spice Routes',
         'A design combining spice trails, shophouses, and hawker tools.',
@@ -944,7 +964,7 @@ values (
     ),
     (
         'AS0002',
-        'ACC0001',
+        'AC0001',
         'P0001',
         'Island Food Journey',
         'A design showing an island path connecting famous food dishes.',
@@ -958,7 +978,7 @@ values (
     ),
     (
         'AS0003',
-        'ACC0002',
+        'AC0002',
         'P0003',
         'Melaka Window Stories',
         'A design using heritage windows, tiles, and dining symbols.',
@@ -972,7 +992,7 @@ values (
     ),
     (
         'AS0004',
-        'ACC0002',
+        'AC0002',
         'P0002',
         'River of Spices',
         'Flowing spice motifs connect Melaka river scenes with traditional serving ware.',
@@ -986,7 +1006,7 @@ values (
     ),
     (
         'AS0005',
-        'ACC0003',
+        'AC0003',
         'P0001',
         'Moonlight Wau',
         'A bold tiffin pattern combining the wau bulan with rice grains and local flowers.',
@@ -1000,7 +1020,7 @@ values (
     ),
     (
         'AS0006',
-        'ACC0003',
+        'AC0003',
         'P0003',
         'Blue Rice Garden',
         'Butterfly-pea blossoms and herb leaves form a garden around each tiffin tier.',
@@ -1014,7 +1034,7 @@ values (
     ),
     (
         'AS0007',
-        'ACC0004',
+        'AC0004',
         'P0002',
         'Borneo Morning Mist',
         'A layered design of river lines, pepper vines, and the colours of a Kuching sunrise.',
@@ -1028,7 +1048,7 @@ values (
     ),
     (
         'AS0008',
-        'ACC0004',
+        'AC0004',
         'P0003',
         'Hornbill Supper',
         'A graphic hornbill watches over bowls, chopsticks, and native foliage.',
@@ -1042,7 +1062,7 @@ values (
     ),
     (
         'AS0009',
-        'ACC0005',
+        'AC0005',
         'P0002',
         'Hawker Lanterns',
         'Warm lanterns illuminate illustrated hawker tools and noodle bowls.',
@@ -1056,7 +1076,7 @@ values (
     ),
     (
         'AS0010',
-        'ACC0005',
+        'AC0005',
         'P0003',
         'Five-Foot Way Feast',
         'Shophouse arches frame a sequence of Penang dishes and tableware.',
@@ -1070,7 +1090,7 @@ values (
     ),
     (
         'AS0011',
-        'ACC0006',
+        'AC0006',
         'P0002',
         'Tile and Tiffin',
         'Peranakan tile geometry wraps around stacked tiffin tiers in vivid colour.',
@@ -1084,7 +1104,7 @@ values (
     ),
     (
         'AS0012',
-        'ACC0006',
+        'AC0006',
         'P0003',
         'Melaka Family Table',
         'A round table illustration surrounded by rice balls, ceramics, and family hands.',
@@ -1098,7 +1118,7 @@ values (
     ),
     (
         'AS0013',
-        'ACC0007',
+        'AC0007',
         'P0002',
         'Kelantan Bloom',
         'Blue blossoms, woven motifs, and grains of rice create a bright botanical design.',
@@ -1112,7 +1132,7 @@ values (
     ),
     (
         'AS0014',
-        'ACC0008',
+        'AC0008',
         'P0003',
         'Laksa Lines',
         'Steam and noodle lines weave through pepper leaves and river contours.',
@@ -1124,31 +1144,112 @@ values (
         'P0001',
         now() - interval '12 hours'
     );
+-- Link each published tiffin artwork to the submission that won its campaign.
+-- The artwork IDs are preserved because heritage_tiffins already reference them.
+update public.artworks as artwork
+set source_artwork_submission_id = submission.artwork_submission_id,
+    profile_id = submission.profile_id,
+    title = submission.artwork_title,
+    description = submission.design_description,
+    artwork_meaning = submission.artist_statement,
+    cultural_inspiration = submission.cultural_inspiration,
+    image_url = submission.artwork_file_url,
+    updated_at = now()
+from public.artwork_submissions as submission
+join (
+        values ('A0001', 'AS0001'),
+            ('A0002', 'AS0003'),
+            ('A0003', 'AS0005'),
+            ('A0004', 'AS0008')
+    ) as winning_artwork(artwork_id, artwork_submission_id)
+    on winning_artwork.artwork_submission_id = submission.artwork_submission_id
+where artwork.artwork_id = winning_artwork.artwork_id;
 insert into public.artwork_voting_sessions (
         artwork_voting_session_id,
         artwork_campaign_id,
         voting_start_at,
         voting_end_at,
-        status
+        status,
+        session_type,
+        parent_voting_session_id
     )
 values (
         'AVS0001',
         'AC0001',
         '2026-04-10 00:00:00+08',
         '2026-05-10 23:59:59+08',
-        'closed'
+        'scheduled',
+        'standard',
+        null
     ),
     (
         'AVS0002',
         'AC0002',
+        '2026-04-10 00:00:00+08',
+        '2026-05-10 23:59:59+08',
+        'scheduled',
+        'standard',
+        null
+    ),
+    (
+        'AVS0003',
+        'AC0003',
+        '2026-04-10 00:00:00+08',
+        '2026-05-10 23:59:59+08',
+        'scheduled',
+        'standard',
+        null
+    ),
+    (
+        'AVS0004',
+        'AC0004',
+        '2026-04-10 00:00:00+08',
+        '2026-05-10 23:59:59+08',
+        'scheduled',
+        'standard',
+        null
+    ),
+    (
+        'AVS0005',
+        'AC0005',
         now() - interval '30 days',
         now() + interval '60 days',
-        'active'
+        'scheduled',
+        'standard',
+        null
+    ),
+    (
+        'AVS0006',
+        'AC0006',
+        now() - interval '30 days',
+        now() + interval '60 days',
+        'scheduled',
+        'standard',
+        null
+    ),
+    (
+        'AVS0007',
+        'AC0007',
+        now() - interval '30 days',
+        now() + interval '60 days',
+        'scheduled',
+        'standard',
+        null
+    ),
+    (
+        'AVS0008',
+        'AC0008',
+        now() - interval '30 days',
+        now() + interval '60 days',
+        'scheduled',
+        'standard',
+        null
     );
+-- Start every cached total at zero. The database vote trigger derives the final
+-- totals from the vote rows inserted immediately after these entries.
 insert into public.artwork_voting_entries (
         artwork_voting_entry_id,
         artwork_voting_session_id,
-        artwork_campaign_category_id,
         artwork_submission_id,
         vote_count,
         published_at
@@ -1156,103 +1257,109 @@ insert into public.artwork_voting_entries (
 values (
         'AVE0001',
         'AVS0001',
-        'ACC0001',
         'AS0001',
-        2,
+        0,
         '2026-04-05 10:00:00+08'
     ),
     (
         'AVE0002',
         'AVS0001',
-        'ACC0001',
         'AS0002',
         0,
         '2026-04-05 10:05:00+08'
     ),
     (
         'AVE0003',
-        'AVS0001',
-        'ACC0002',
+        'AVS0002',
         'AS0003',
-        1,
+        0,
         '2026-04-05 10:10:00+08'
     ),
     (
         'AVE0004',
-        'AVS0001',
-        'ACC0002',
+        'AVS0002',
         'AS0004',
         0,
         '2026-04-05 10:15:00+08'
     ),
     (
         'AVE0005',
-        'AVS0001',
-        'ACC0003',
+        'AVS0003',
         'AS0005',
-        2,
+        0,
         '2026-04-05 10:20:00+08'
     ),
     (
         'AVE0006',
-        'AVS0001',
-        'ACC0003',
+        'AVS0003',
         'AS0006',
-        1,
+        0,
         '2026-04-05 10:25:00+08'
     ),
     (
         'AVE0007',
-        'AVS0001',
-        'ACC0004',
+        'AVS0004',
         'AS0007',
-        1,
+        0,
         '2026-04-05 10:30:00+08'
     ),
     (
         'AVE0008',
-        'AVS0001',
-        'ACC0004',
+        'AVS0004',
         'AS0008',
-        2,
+        0,
         '2026-04-05 10:35:00+08'
     ),
     (
         'AVE0009',
-        'AVS0002',
-        'ACC0005',
+        'AVS0005',
         'AS0010',
         0,
         now() - interval '9 days'
     ),
     (
         'AVE0010',
-        'AVS0002',
-        'ACC0006',
+        'AVS0006',
         'AS0012',
         0,
         now() - interval '3 days'
     ),
     (
         'AVE0011',
-        'AVS0002',
-        'ACC0007',
+        'AVS0007',
         'AS0013',
         0,
         now() - interval '1 day'
     ),
     (
         'AVE0012',
-        'AVS0002',
-        'ACC0008',
+        'AVS0008',
         'AS0014',
         0,
         now() - interval '12 hours'
     );
+-- Entries can only be published while a session is scheduled. Transition each
+-- session only after its complete entry list has been inserted.
+update public.artwork_voting_sessions
+set status = 'closed'
+where artwork_voting_session_id in (
+        'AVS0001',
+        'AVS0002',
+        'AVS0003',
+        'AVS0004'
+    );
+
+update public.artwork_voting_sessions
+set status = 'active'
+where artwork_voting_session_id in (
+        'AVS0005',
+        'AVS0006',
+        'AVS0007',
+        'AVS0008'
+    );
 insert into public.artwork_votes (
         artwork_vote_id,
         artwork_voting_session_id,
-        artwork_campaign_category_id,
         artwork_voting_entry_id,
         profile_id,
         voted_at
@@ -1260,7 +1367,6 @@ insert into public.artwork_votes (
 values (
         'AV0001',
         'AVS0001',
-        'ACC0001',
         'AVE0001',
         'P0001',
         '2026-04-15 12:00:00+08'
@@ -1268,63 +1374,55 @@ values (
     (
         'AV0002',
         'AVS0001',
-        'ACC0001',
         'AVE0001',
         'P0002',
         '2026-04-16 13:00:00+08'
     ),
     (
         'AV0003',
-        'AVS0001',
-        'ACC0002',
+        'AVS0002',
         'AVE0003',
         'P0001',
         '2026-04-17 14:00:00+08'
     ),
     (
         'AV0004',
-        'AVS0001',
-        'ACC0003',
+        'AVS0003',
         'AVE0005',
         'P0001',
         '2026-04-18 10:00:00+08'
     ),
     (
         'AV0005',
-        'AVS0001',
-        'ACC0003',
+        'AVS0003',
         'AVE0005',
         'P0002',
         '2026-04-18 10:05:00+08'
     ),
     (
         'AV0006',
-        'AVS0001',
-        'ACC0003',
+        'AVS0003',
         'AVE0006',
         'P0003',
         '2026-04-18 10:10:00+08'
     ),
     (
         'AV0007',
-        'AVS0001',
-        'ACC0004',
+        'AVS0004',
         'AVE0007',
         'P0001',
         '2026-04-19 11:00:00+08'
     ),
     (
         'AV0008',
-        'AVS0001',
-        'ACC0004',
+        'AVS0004',
         'AVE0008',
         'P0002',
         '2026-04-19 11:05:00+08'
     ),
     (
         'AV0009',
-        'AVS0001',
-        'ACC0004',
+        'AVS0004',
         'AVE0008',
         'P0003',
         '2026-04-19 11:10:00+08'
@@ -1332,8 +1430,9 @@ values (
 insert into public.artwork_campaign_winners (
         artwork_campaign_winner_id,
         artwork_campaign_id,
-        artwork_campaign_category_id,
+        artwork_voting_session_id,
         artwork_voting_entry_id,
+        artwork_id,
         final_vote_count,
         final_rank,
         announced_by_profile_id,
@@ -1342,8 +1441,9 @@ insert into public.artwork_campaign_winners (
 values (
         'ACW0001',
         'AC0001',
-        'ACC0001',
+        'AVS0001',
         'AVE0001',
+        'A0001',
         2,
         1,
         'P0001',
@@ -1351,9 +1451,10 @@ values (
     ),
     (
         'ACW0002',
-        'AC0001',
-        'ACC0002',
+        'AC0002',
+        'AVS0002',
         'AVE0003',
+        'A0002',
         1,
         1,
         'P0001',
@@ -1361,9 +1462,10 @@ values (
     ),
     (
         'ACW0003',
-        'AC0001',
-        'ACC0003',
+        'AC0003',
+        'AVS0003',
         'AVE0005',
+        'A0003',
         2,
         1,
         'P0001',
@@ -1371,9 +1473,10 @@ values (
     ),
     (
         'ACW0004',
-        'AC0001',
-        'ACC0004',
+        'AC0004',
+        'AVS0004',
         'AVE0008',
+        'A0004',
         2,
         1,
         'P0001',
@@ -1382,7 +1485,7 @@ values (
 -- ============================================================================
 -- 8. RESTORE PROFILES FOR PRESERVED SUPABASE AUTH USERS
 -- auth.users is not truncated by this seed. Recreate every missing link after
--- the dummy P0001-P0007 rows have been inserted; real accounts use P1000+.
+-- the dummy P0001-P0003 rows have been inserted; real accounts use P1000+.
 -- ============================================================================
 select setval(
         'public.profile_number_seq',
@@ -1464,6 +1567,86 @@ do $$ begin if exists (
     where profiles.profile_id is null
 ) then raise exception 'Profile backfill failed: one or more Auth users are orphaned';
 end if;
+end;
+$$;
+-- ============================================================================
+-- 9. VERIFY THE CATEGORY-FREE CAMPAIGN SEED
+-- Any failed assertion aborts and rolls back this entire seed transaction.
+-- ============================================================================
+do $$
+begin
+    if (select count(*) from public.artwork_campaigns) <> 8
+        or (select count(*) from public.artwork_submissions) <> 14
+        or (select count(*) from public.artwork_voting_sessions) <> 8
+        or (select count(*) from public.artwork_voting_entries) <> 12
+        or (select count(*) from public.artwork_votes) <> 9
+        or (select count(*) from public.artwork_campaign_winners) <> 4 then
+        raise exception 'Seed verification failed: unexpected campaign subsystem row counts';
+    end if;
+
+    if (select count(*) from public.artwork_voting_sessions where status = 'closed') <> 4
+        or (select count(*) from public.artwork_voting_sessions where status = 'active') <> 4
+        or (select count(*) from public.artwork_voting_sessions where status = 'scheduled') <> 0 then
+        raise exception 'Seed verification failed: unexpected final voting session statuses';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_voting_entries as entry
+        join public.artwork_voting_sessions as session
+            on session.artwork_voting_session_id = entry.artwork_voting_session_id
+        join public.artwork_submissions as submission
+            on submission.artwork_submission_id = entry.artwork_submission_id
+        where session.artwork_campaign_id <> submission.artwork_campaign_id
+    ) then
+        raise exception 'Seed verification failed: an entry crosses campaign boundaries';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_votes as vote
+        join public.artwork_voting_entries as entry
+            on entry.artwork_voting_entry_id = vote.artwork_voting_entry_id
+        where entry.artwork_voting_session_id <> vote.artwork_voting_session_id
+    ) then
+        raise exception 'Seed verification failed: a vote and its entry use different sessions';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_votes
+        group by artwork_voting_session_id, profile_id
+        having count(*) > 1
+    ) then
+        raise exception 'Seed verification failed: a profile voted more than once in one session';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_voting_entries as entry
+        left join public.artwork_votes as vote
+            on vote.artwork_voting_entry_id = entry.artwork_voting_entry_id
+        group by entry.artwork_voting_entry_id, entry.vote_count
+        having entry.vote_count <> count(vote.artwork_vote_id)
+    ) then
+        raise exception 'Seed verification failed: a cached vote count is incorrect';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_campaign_winners as winner
+        join public.artwork_voting_entries as entry
+            on entry.artwork_voting_entry_id = winner.artwork_voting_entry_id
+        join public.artwork_voting_sessions as session
+            on session.artwork_voting_session_id = winner.artwork_voting_session_id
+        join public.artworks as artwork
+            on artwork.artwork_id = winner.artwork_id
+        where session.artwork_campaign_id <> winner.artwork_campaign_id
+            or entry.artwork_voting_session_id <> winner.artwork_voting_session_id
+            or artwork.source_artwork_submission_id <> entry.artwork_submission_id
+    ) then
+        raise exception 'Seed verification failed: a winner relationship is inconsistent';
+    end if;
 end;
 $$;
 commit;
