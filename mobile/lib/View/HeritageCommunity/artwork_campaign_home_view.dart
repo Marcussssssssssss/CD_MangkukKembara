@@ -19,7 +19,6 @@ abstract final class _CampaignColors {
   static const Color background = Color(0xFFFFFFFF);
   static const Color border = Color(0xFFCCD6C8);
   static const Color darkGreen = Color(0xFF335C31);
-  static const Color mediumGreen = Color(0xFF61885B);
   static const Color yellow = Color(0xFFF9B10E);
   static const Color softYellow = Color(0xFFFEF5E4);
   static const Color text = Color(0xFF283427);
@@ -527,9 +526,6 @@ class _CampaignHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = campaign.isCompleted
-        ? _CampaignColors.yellow
-        : _CampaignColors.mediumGreen;
     final statusIcon = campaign.isCompleted
         ? Icons.event_busy_rounded
         : Icons.how_to_vote_rounded;
@@ -543,81 +539,101 @@ class _CampaignHeader extends StatelessWidget {
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-        height: 180,
         decoration: BoxDecoration(
-          color: _CampaignColors.background,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _CampaignColors.yellow),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x28335C31),
+              blurRadius: 16,
+              offset: Offset(0, 7),
+            ),
+          ],
         ),
-        // Keep the background artwork one pixel inside the outline. This
-        // prevents it from bleeding into or softening the rounded corners.
-        padding: const EdgeInsets.all(1),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(19),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Opacity(
-                  opacity: .72,
-                  child: Image.asset(
-                    'asset/image/campaign_background.png',
-                    fit: BoxFit.cover,
-                    alignment: Alignment.centerRight,
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'asset/image/tiffin_background_yellow.png',
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+              ),
+            ),
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xD9689863), Color(0xF02B522A)],
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(9),
-                          decoration: const BoxDecoration(
-                            color: _CampaignColors.softYellow,
-                            shape: BoxShape.circle,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          campaign.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFFFDF8EC),
+                            fontSize: 22,
+                            height: 1.15,
+                            fontWeight: FontWeight.w900,
                           ),
-                          child: Icon(statusIcon, size: 22, color: statusColor),
                         ),
-                        const SizedBox(width: 12),
+                      ),
+                      const SizedBox(width: 12),
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: Color(0xCCFFFFFF),
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0x26FFFFFF),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0x55FFFFFF)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          statusIcon,
+                          size: 14,
+                          color: const Color(0xFFFDF8EC),
+                        ),
+                        const SizedBox(width: 6),
                         Text(
                           statusTitle,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontSize: 16,
+                          style: const TextStyle(
+                            color: Color(0xFFFDF8EC),
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
                     ),
-                    const Spacer(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            campaign.title,
-                            style: const TextStyle(
-                              color: _CampaignColors.darkGreen,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.info_outline_rounded,
-                          color: _CampaignColors.yellow,
-                          size: 22,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
