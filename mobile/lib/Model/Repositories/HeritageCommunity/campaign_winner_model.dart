@@ -3,8 +3,6 @@ class CampaignWinnerModel {
   final String id;
   final String campaignId;
   final String campaignName;
-  final String categoryId;
-  final String categoryName;
   final String stateName;
   final String artworkTitle;
   final String winnerName;
@@ -19,8 +17,6 @@ class CampaignWinnerModel {
     required this.id,
     required this.campaignId,
     required this.campaignName,
-    required this.categoryId,
-    required this.categoryName,
     required this.stateName,
     required this.artworkTitle,
     required this.winnerName,

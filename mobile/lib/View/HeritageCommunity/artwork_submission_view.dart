@@ -9,12 +9,7 @@ import '../../ViewModel/AccountManagement/auth_view_model.dart';
 /// C8. Submit Artwork Form View.
 class ArtworkSubmissionView extends StatefulWidget {
   final String campaignId;
-  final String categoryId;
-  const ArtworkSubmissionView({
-    super.key,
-    required this.campaignId,
-    required this.categoryId,
-  });
+  const ArtworkSubmissionView({super.key, required this.campaignId});
 
   @override
   State<ArtworkSubmissionView> createState() => _ArtworkSubmissionViewState();
@@ -57,7 +52,6 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
                             auth.currentUser != null
                         ? () => _vm.submit(
                             campaignId: widget.campaignId,
-                            categoryId: widget.categoryId,
                             userId: auth.currentUser!.id,
                           )
                         : null,

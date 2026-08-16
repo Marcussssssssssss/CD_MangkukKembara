@@ -1,7 +1,7 @@
-/// Artwork submission by a user for a campaign category.
+/// Artwork submission by a user for a campaign.
 class ArtworkSubmissionModel {
   final String id;
-  final String categoryId;
+  final String campaignId;
   final String userId;
   final String artworkTitle;
   final String? artworkFileUrl;
@@ -9,11 +9,10 @@ class ArtworkSubmissionModel {
   final String? reviewStatus; // 'pending' | 'approved' | 'rejected'
   final DateTime submittedAt;
   final String campaignName;
-  final String categoryName;
 
   const ArtworkSubmissionModel({
     required this.id,
-    required this.categoryId,
+    required this.campaignId,
     required this.userId,
     required this.artworkTitle,
     this.artworkFileUrl,
@@ -21,7 +20,6 @@ class ArtworkSubmissionModel {
     this.reviewStatus = 'pending',
     required this.submittedAt,
     required this.campaignName,
-    required this.categoryName,
   });
 
   String get reviewStatusLabel {
@@ -40,10 +38,9 @@ class ArtworkSubmissionModel {
   factory ArtworkSubmissionModel.fromJson(
     Map<String, dynamic> json, {
     required String campaignName,
-    required String categoryName,
   }) => ArtworkSubmissionModel(
     id: json['artwork_submission_id'] as String,
-    categoryId: json['artwork_campaign_category_id'] as String,
+    campaignId: json['artwork_campaign_id'] as String,
     userId: json['profile_id'] as String,
     artworkTitle: json['artwork_title'] as String,
     artworkFileUrl: json['artwork_file_url'] as String?,
@@ -53,6 +50,5 @@ class ArtworkSubmissionModel {
     },
     submittedAt: DateTime.parse(json['submitted_at'] as String),
     campaignName: campaignName,
-    categoryName: categoryName,
   );
 }

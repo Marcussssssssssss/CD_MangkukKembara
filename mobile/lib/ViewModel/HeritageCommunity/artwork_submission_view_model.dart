@@ -65,7 +65,6 @@ class ArtworkSubmissionViewModel extends ChangeNotifier {
 
   Future<bool> submit({
     required String campaignId,
-    required String categoryId,
     required String userId,
   }) async {
     if (!canSubmit) return false;
@@ -75,7 +74,6 @@ class ArtworkSubmissionViewModel extends ChangeNotifier {
     try {
       _submission = await _repo.submitArtwork(
         campaignId: campaignId,
-        categoryId: categoryId,
         userId: userId,
         artworkTitle: _artworkTitle,
         designDescription: _designDescription,

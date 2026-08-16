@@ -55,28 +55,24 @@ class _MyArtworkSubmissionsViewState extends State<MyArtworkSubmissionsView> {
                 )
               : vm.submissions.isEmpty
               ? RefreshableStateView(
-                  onRefresh: () => vm.load(
-                    auth.currentUser!.id,
-                    showLoading: false,
-                  ),
+                  onRefresh: () =>
+                      vm.load(auth.currentUser!.id, showLoading: false),
                   child: const EmptyStateWidget(
                     icon: Icons.brush_outlined,
                     title: 'No artwork submissions yet',
-                    subtitle: 'Submit an artwork to a campaign to track it here.',
+                    subtitle:
+                        'Submit an artwork to a campaign to track it here.',
                   ),
                 )
               : RefreshIndicator(
-                  onRefresh: () => vm.load(
-                    auth.currentUser!.id,
-                    showLoading: false,
-                  ),
+                  onRefresh: () =>
+                      vm.load(auth.currentUser!.id, showLoading: false),
                   child: ListView.builder(
                     physics: const AlwaysScrollableScrollPhysics(),
                     padding: const EdgeInsets.all(16),
                     itemCount: vm.submissions.length,
-                    itemBuilder: (_, index) => _SubmissionCard(
-                      submission: vm.submissions[index],
-                    ),
+                    itemBuilder: (_, index) =>
+                        _SubmissionCard(submission: vm.submissions[index]),
                   ),
                 ),
         ),
@@ -114,73 +110,73 @@ class _SubmissionCard extends StatelessWidget {
         ],
       ),
       child: Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _ArtworkPreview(url: submission.artworkFileUrl),
-        const SizedBox(width: 12),
-        Expanded(
-          child: SizedBox(
-            height: 130,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-              Text(
-                submission.artworkTitle,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 15,
-                  height: 1.15,
-                ),
-              ),
-              const SizedBox(height: 4),
-              _StatusPill(status: submission.reviewStatus),
-              const SizedBox(height: 6),
-              Text(
-                submission.campaignName,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontSize: 13,
-                  height: 1.2,
-                ),
-              ),
-              const Spacer(),
-              Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ArtworkPreview(url: submission.artworkFileUrl),
+          const SizedBox(width: 12),
+          Expanded(
+            child: SizedBox(
+              height: 130,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Icon(
-                    Icons.calendar_month_outlined,
-                    color: AppColors.textSecondary,
-                    size: 22,
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'Submitted ${DateFormat('d MMM yyyy').format(submission.submittedAt)}',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: AppColors.textSecondary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
+                  Text(
+                    submission.artworkTitle,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      height: 1.15,
                     ),
                   ),
-                  const Icon(
-                    Icons.chevron_right_rounded,
-                    color: AppColors.textSecondary,
-                    size: 30,
+                  const SizedBox(height: 4),
+                  _StatusPill(status: submission.reviewStatus),
+                  const SizedBox(height: 6),
+                  Text(
+                    submission.campaignName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      height: 1.2,
+                    ),
+                  ),
+                  const Spacer(),
+                  Row(
+                    children: [
+                      const Icon(
+                        Icons.calendar_month_outlined,
+                        color: AppColors.textSecondary,
+                        size: 22,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Submitted ${DateFormat('d MMM yyyy').format(submission.submittedAt)}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        color: AppColors.textSecondary,
+                        size: 30,
+                      ),
+                    ],
                   ),
                 ],
               ),
-              ],
             ),
           ),
-        ),
-      ],
+        ],
       ),
     ),
   );
@@ -196,10 +192,7 @@ class _ArtworkSubmissionDetailPage extends StatelessWidget {
     backgroundColor: AppColors.background,
     appBar: AppBar(
       toolbarHeight: 64,
-      title: const Text(
-        'Artwork Submission',
-        style: TextStyle(fontSize: 24),
-      ),
+      title: const Text('Artwork Submission', style: TextStyle(fontSize: 24)),
     ),
     body: ListView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 20),
@@ -281,12 +274,6 @@ class _ArtworkSubmissionDetailPage extends StatelessWidget {
                 icon: Icons.palette_outlined,
                 label: 'Campaign',
                 value: submission.campaignName,
-              ),
-              const Divider(indent: 66),
-              _SubmissionDetailRow(
-                icon: Icons.account_balance_outlined,
-                label: 'Category',
-                value: submission.categoryName,
               ),
               const Divider(indent: 66),
               _SubmissionDetailRow(
