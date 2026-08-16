@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../core/app_colors.dart';
+
+import '../../ViewModel/AccountManagement/register_view_model.dart';
 import '../../core/app_routes.dart';
 import '../../core/constants.dart';
-import '../../ViewModel/AccountManagement/register_view_model.dart';
-import '../Widgets/auth_branding.dart';
 
-/// D4. Register View.
+/// Registration screen styled to match the heritage-travel login screen.
 class RegisterView extends StatefulWidget {
   const RegisterView({super.key});
 
@@ -45,317 +46,374 @@ class _RegisterViewState extends State<RegisterView> {
     super.dispose();
   }
 
+  void _back() {
+    if (Navigator.canPop(context)) {
+      Navigator.pop(context);
+    } else {
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.accountLanding,
+        (route) => route.isFirst,
+      );
+    }
+  }
+
+  Future<void> _register(RegisterViewModel vm) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final ok = await vm.register(
+      displayName: _nameCtrl.text.trim(),
+      email: _emailCtrl.text.trim(),
+      password: _passwordCtrl.text,
+      country: _countryCtrl.text.trim().isEmpty
+          ? null
+          : _countryCtrl.text.trim(),
+      city: _cityCtrl.text.trim().isEmpty ? null : _cityCtrl.text.trim(),
+      dateOfBirth: _dateOfBirth,
+      gender: _gender,
+    );
+    if (ok && mounted) await _showVerificationDialog(context, vm);
+  }
+
   @override
-  Widget build(BuildContext context) {
-    return ChangeNotifierProvider.value(
+  Widget build(BuildContext context) => AnnotatedRegion<SystemUiOverlayStyle>(
+    value: SystemUiOverlayStyle.light.copyWith(
+      statusBarColor: Colors.transparent,
+      systemNavigationBarColor: Colors.transparent,
+    ),
+    child: ChangeNotifierProvider.value(
       value: _vm,
       child: Consumer<RegisterViewModel>(
-        builder: (ctx, vm, _) {
-          return Scaffold(
-            backgroundColor: AppColors.background,
-            body: AuthPageLayout(
-              child: Form(
-                key: _formKey,
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Center(
-                        child: AuthBranding(subtitle: 'Create your account'),
+        builder: (context, vm, _) => Scaffold(
+          backgroundColor: const Color(0xFF007D7D),
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              const Image(
+                image: AssetImage('asset/image/welcome_base_background.png'),
+                fit: BoxFit.cover,
+                alignment: Alignment.topCenter,
+              ),
+              const DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Color(0xA6004648),
+                      Color(0x8F004B4D),
+                      Color(0xBD003E41),
+                    ],
+                    stops: [0, .46, 1],
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: Stack(
+                  children: [
+                    LayoutBuilder(
+                      builder: (context, constraints) => SingleChildScrollView(
+                    keyboardDismissBehavior:
+                        ScrollViewKeyboardDismissBehavior.onDrag,
+                    padding: EdgeInsets.fromLTRB(
+                      36,
+                      4,
+                      36,
+                      24 + MediaQuery.viewInsetsOf(context).bottom,
+                    ),
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        minHeight: constraints.maxHeight - 28,
                       ),
-                      const SizedBox(height: 28),
-                      _label('Display Name *'),
-                      TextFormField(
-                        controller: _nameCtrl,
-                        decoration: const InputDecoration(
-                          hintText: 'How should we call you?',
-                          prefixIcon: Icon(Icons.person_outline_rounded),
-                        ),
-                        validator: (v) => v == null || v.trim().isEmpty
-                            ? 'Display name is required'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      _label('Email *'),
-                      TextFormField(
-                        controller: _emailCtrl,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          hintText: 'Your email address',
-                          prefixIcon: Icon(Icons.email_outlined),
-                        ),
-                        validator: (v) {
-                          if (v == null || v.trim().isEmpty) {
-                            return 'Email is required';
-                          }
-                          if (!RegExp(
-                            r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$',
-                          ).hasMatch(v)) {
-                            return 'Enter a valid email';
-                          }
-                          return null;
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      _label('Password *'),
-                      TextFormField(
-                        controller: _passwordCtrl,
-                        obscureText: _obscurePassword,
-                        decoration: InputDecoration(
-                          hintText: 'Create a strong password',
-                          prefixIcon: const Icon(Icons.lock_outline_rounded),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscurePassword
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                            ),
-                            onPressed: () => setState(
-                              () => _obscurePassword = !_obscurePassword,
-                            ),
-                          ),
-                        ),
-                        onChanged: _vm.updatePassword,
-                        validator: (v) => !vm.isPasswordValid
-                            ? 'Password does not meet requirements'
-                            : null,
-                      ),
-                      const SizedBox(height: 8),
-
-                      // Password policy checklist
-                      _PasswordPolicyChecklist(vm: vm),
-                      const SizedBox(height: 16),
-
-                      _label('Confirm Password *'),
-                      TextFormField(
-                        controller: _confirmCtrl,
-                        obscureText: _obscureConfirm,
-                        decoration: InputDecoration(
-                          hintText: 'Repeat your password',
-                          prefixIcon: const Icon(Icons.lock_outline_rounded),
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              _obscureConfirm
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                            ),
-                            onPressed: () => setState(
-                              () => _obscureConfirm = !_obscureConfirm,
-                            ),
-                          ),
-                        ),
-                        validator: (v) => v != _passwordCtrl.text
-                            ? 'Passwords do not match'
-                            : null,
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Optional fields
-                      _label('Country Code (optional)'),
-                      TextFormField(
-                        controller: _countryCtrl,
-                        maxLength: 2,
-                        textCapitalization: TextCapitalization.characters,
-                        decoration: const InputDecoration(
-                          hintText: 'e.g. MY',
-                          prefixIcon: Icon(Icons.flag_outlined),
-                        ),
-                        validator: (value) =>
-                            value != null &&
-                                value.isNotEmpty &&
-                                value.trim().length != 2
-                            ? 'Use a two-letter country code'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-
-                      _label('City (optional)'),
-                      TextFormField(
-                        controller: _cityCtrl,
-                        decoration: const InputDecoration(
-                          hintText: 'e.g. Kuala Lumpur',
-                          prefixIcon: Icon(Icons.location_city_rounded),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      _label('Date of Birth (optional)'),
-                      ListTile(
-                        tileColor: AppColors.surface,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        leading: const Icon(Icons.cake_outlined),
-                        title: Text(
-                          _dateOfBirth == null
-                              ? 'Select date of birth'
-                              : '${_dateOfBirth!.day}/${_dateOfBirth!.month}/${_dateOfBirth!.year}',
-                        ),
-                        onTap: () async {
-                          final now = DateTime.now();
-                          final selected = await showDatePicker(
-                            context: ctx,
-                            firstDate: DateTime(now.year - 120),
-                            lastDate: DateTime(
-                              now.year - 13,
-                              now.month,
-                              now.day,
-                            ),
-                            initialDate:
-                                _dateOfBirth ?? DateTime(now.year - 18),
-                          );
-                          if (selected != null) {
-                            setState(() => _dateOfBirth = selected);
-                          }
-                        },
-                      ),
-                      const SizedBox(height: 16),
-
-                      _label('Gender (optional)'),
-                      DropdownButtonFormField<String>(
-                        initialValue: _gender,
-                        items: const [
-                          DropdownMenuItem(value: 'male', child: Text('Male')),
-                          DropdownMenuItem(
-                            value: 'female',
-                            child: Text('Female'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'non_binary',
-                            child: Text('Non-binary'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'prefer_not_to_say',
-                            child: Text('Prefer not to say'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'other',
-                            child: Text('Other'),
-                          ),
-                        ],
-                        onChanged: (value) => setState(() => _gender = value),
-                      ),
-                      const SizedBox(height: 24),
-
-                      if (vm.errorMessage != null) ...[
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.errorLight,
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Row(
+                      child: Center(
+                        child: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 520),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const Icon(
-                                Icons.error_outline_rounded,
-                                color: AppColors.error,
-                                size: 16,
+                              const SizedBox(height: 46),
+                              Center(
+                                child: Image.asset(
+                                  'asset/image/mangkuk_kembara_logo_white.png',
+                                  width: 250,
+                                ),
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  vm.errorMessage!,
-                                  style: const TextStyle(
-                                    color: AppColors.error,
-                                    fontSize: 13,
+                              const SizedBox(height: 4),
+                              Text(
+                                'Create Account',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.playfairDisplay(
+                                  color: const Color(0xFFFFF8EC),
+                                  fontSize: 30,
+                                  height: 1,
+                                  fontWeight: FontWeight.w600,
+                                  shadows: const [
+                                    Shadow(
+                                      color: Color(0x80003638),
+                                      offset: Offset(0, 2),
+                                      blurRadius: 5,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Begin your heritage food journey.',
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.dmSans(
+                                  color: const Color(0xFFFFF8EC),
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Form(
+                                key: _formKey,
+                                child: Center(
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 256,
+                                    ),
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.stretch,
+                                      children: [
+                                        _HeritageField(
+                                          controller: _nameCtrl,
+                                          hint: 'Display name',
+                                          icon: Icons.person_outline_rounded,
+                                          action: TextInputAction.next,
+                                          autofillHints: const [
+                                            AutofillHints.name,
+                                          ],
+                                          validator: (value) =>
+                                              value == null ||
+                                                  value.trim().isEmpty
+                                              ? 'Display name is required'
+                                              : null,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _HeritageField(
+                                          controller: _emailCtrl,
+                                          hint: 'Email address',
+                                          icon: Icons.mail_outline_rounded,
+                                          keyboardType:
+                                              TextInputType.emailAddress,
+                                          action: TextInputAction.next,
+                                          autofillHints: const [
+                                            AutofillHints.email,
+                                          ],
+                                          validator: (value) {
+                                            if (value == null ||
+                                                value.trim().isEmpty) {
+                                              return 'Email is required';
+                                            }
+                                            if (!RegExp(
+                                              r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$',
+                                            ).hasMatch(value)) {
+                                              return 'Enter a valid email';
+                                            }
+                                            return null;
+                                          },
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _HeritageField(
+                                          controller: _passwordCtrl,
+                                          hint: 'Create password',
+                                          icon: Icons.lock_outline_rounded,
+                                          obscure: _obscurePassword,
+                                          action: TextInputAction.next,
+                                          autofillHints: const [
+                                            AutofillHints.newPassword,
+                                          ],
+                                          suffix: _VisibilityButton(
+                                            obscure: _obscurePassword,
+                                            onPressed: () => setState(
+                                              () => _obscurePassword =
+                                                  !_obscurePassword,
+                                            ),
+                                          ),
+                                          onChanged: vm.updatePassword,
+                                          validator: (value) =>
+                                              !vm.isPasswordValid
+                                              ? 'Password does not meet requirements'
+                                              : null,
+                                        ),
+                                        const SizedBox(height: 8),
+                                        _PasswordPolicyChecklist(vm: vm),
+                                        const SizedBox(height: 12),
+                                        _HeritageField(
+                                          controller: _confirmCtrl,
+                                          hint: 'Confirm password',
+                                          icon: Icons.lock_outline_rounded,
+                                          obscure: _obscureConfirm,
+                                          action: TextInputAction.next,
+                                          autofillHints: const [
+                                            AutofillHints.newPassword,
+                                          ],
+                                          suffix: _VisibilityButton(
+                                            obscure: _obscureConfirm,
+                                            onPressed: () => setState(
+                                              () => _obscureConfirm =
+                                                  !_obscureConfirm,
+                                            ),
+                                          ),
+                                          validator: (value) =>
+                                              value != _passwordCtrl.text
+                                              ? 'Passwords do not match'
+                                              : null,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _HeritageField(
+                                          controller: _countryCtrl,
+                                          hint: 'Country code (optional)',
+                                          icon: Icons.flag_outlined,
+                                          action: TextInputAction.next,
+                                          maxLength: 2,
+                                          textCapitalization:
+                                              TextCapitalization.characters,
+                                          validator: (value) =>
+                                              value != null &&
+                                                  value.isNotEmpty &&
+                                                  value.trim().length != 2
+                                              ? 'Use a two-letter country code'
+                                              : null,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _HeritageField(
+                                          controller: _cityCtrl,
+                                          hint: 'City (optional)',
+                                          icon: Icons.location_city_rounded,
+                                          action: TextInputAction.next,
+                                          validator: (_) => null,
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _DateOfBirthField(
+                                          value: _dateOfBirth,
+                                          onTap: () async {
+                                            final now = DateTime.now();
+                                            final selected =
+                                                await showDatePicker(
+                                                  context: context,
+                                                  firstDate: DateTime(
+                                                    now.year - 120,
+                                                  ),
+                                                  lastDate: DateTime(
+                                                    now.year - 13,
+                                                    now.month,
+                                                    now.day,
+                                                  ),
+                                                  initialDate:
+                                                      _dateOfBirth ??
+                                                      DateTime(now.year - 18),
+                                                );
+                                            if (selected != null && mounted) {
+                                              setState(
+                                                () => _dateOfBirth = selected,
+                                              );
+                                            }
+                                          },
+                                        ),
+                                        const SizedBox(height: 12),
+                                        _GenderField(
+                                          value: _gender,
+                                          onChanged: (value) =>
+                                              setState(() => _gender = value),
+                                        ),
+                                        if (vm.errorMessage
+                                            case final message?) ...[
+                                          const SizedBox(height: 12),
+                                          _RegisterError(message: message),
+                                        ],
+                                        const SizedBox(height: 16),
+                                        SizedBox(
+                                          height: 40,
+                                          child: FilledButton(
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor: const Color(
+                                                0xFFFFF8EC,
+                                              ),
+                                              foregroundColor: const Color(
+                                                0xFF075A5A,
+                                              ),
+                                              elevation: 0,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
+                                              ),
+                                            ),
+                                            onPressed: vm.isLoading
+                                                ? null
+                                                : () => _register(vm),
+                                            child: vm.isLoading
+                                                ? const SizedBox(
+                                                    height: 24,
+                                                    width: 24,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2.5,
+                                                          color: Color(
+                                                            0xFF075A5A,
+                                                          ),
+                                                        ),
+                                                  )
+                                                : Text(
+                                                    'Create Account',
+                                                    style:
+                                                        GoogleFonts.playfairDisplay(
+                                                          fontSize: 15,
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
+                                                  ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
+                              ),
+                              const SizedBox(height: 16),
+                              TextButton(
+                                onPressed: () => Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.login,
+                                ),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: const Color(0xFFFFF8EC),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 8,
+                                  ),
+                                  textStyle: GoogleFonts.dmSans(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    decoration: TextDecoration.underline,
+                                    decorationColor: const Color(0xFFFFD47B),
+                                  ),
+                                ),
+                                child: const Text('Already have an account?'),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(height: 16),
-                      ],
-
-                      SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton(
-                          onPressed: vm.isLoading
-                              ? null
-                              : () async {
-                                  if (!_formKey.currentState!.validate()) {
-                                    return;
-                                  }
-                                  final ok = await _vm.register(
-                                    displayName: _nameCtrl.text.trim(),
-                                    email: _emailCtrl.text.trim(),
-                                    password: _passwordCtrl.text,
-                                    country: _countryCtrl.text.trim().isEmpty
-                                        ? null
-                                        : _countryCtrl.text.trim(),
-                                    city: _cityCtrl.text.trim().isEmpty
-                                        ? null
-                                        : _cityCtrl.text.trim(),
-                                    dateOfBirth: _dateOfBirth,
-                                    gender: _gender,
-                                  );
-                                  if (ok && ctx.mounted) {
-                                    await _showVerificationDialog(ctx, vm);
-                                  }
-                                },
-                          child: vm.isLoading
-                              ? const SizedBox(
-                                  height: 20,
-                                  width: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                    color: Colors.white,
-                                  ),
-                                )
-                              : const Text(
-                                  'Create Account',
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                        ),
                       ),
-                      const SizedBox(height: 20),
-
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Text(
-                            'Already have an account? ',
-                            style: TextStyle(color: AppColors.textSecondary),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pushReplacementNamed(
-                              ctx,
-                              AppRoutes.login,
-                            ),
-                            child: const Text(
-                              'Login',
-                              style: TextStyle(fontWeight: FontWeight.w800),
-                            ),
-                          ),
-                        ],
-                      ),
-                      Center(
-                        child: TextButton(
-                          onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                            ctx,
-                            AppRoutes.treasureMap,
-                            (_) => false,
-                          ),
-                          child: const Text('Continue as Guest'),
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                    ),
+                    ),
+                    Positioned(
+                      left: 36,
+                      top: 12,
+                      child: _RoundBackButton(onPressed: _back),
+                    ),
+                  ],
                 ),
               ),
-            ),
-          );
-        },
+            ],
+          ),
+        ),
       ),
-    );
-  }
+    ),
+  );
 
   Future<void> _showVerificationDialog(
     BuildContext context,
@@ -371,7 +429,7 @@ class _RegisterViewState extends State<RegisterView> {
             icon: const Icon(
               Icons.mark_email_unread_rounded,
               size: 48,
-              color: AppColors.primary,
+              color: Color(0xFF075A5A),
             ),
             title: const Text('Check your inbox'),
             content: Column(
@@ -397,7 +455,7 @@ class _RegisterViewState extends State<RegisterView> {
                   Text(
                     vm.resendMessage!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.success),
+                    style: const TextStyle(color: Color(0xFF13875C)),
                   ),
                 ],
                 if (vm.errorMessage != null) ...[
@@ -405,7 +463,7 @@ class _RegisterViewState extends State<RegisterView> {
                   Text(
                     vm.errorMessage!,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(color: AppColors.error),
+                    style: const TextStyle(color: Color(0xFFC93E3A)),
                   ),
                 ],
               ],
@@ -444,74 +502,340 @@ class _RegisterViewState extends State<RegisterView> {
       ),
     );
   }
+}
 
-  Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 8),
-    child: Text(
-      text,
-      style: const TextStyle(
-        fontWeight: FontWeight.w700,
-        fontSize: 13,
-        color: AppColors.textPrimary,
+class _RoundBackButton extends StatelessWidget {
+  const _RoundBackButton({required this.onPressed});
+
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: const Color(0x26003F42),
+    shape: const CircleBorder(
+      side: BorderSide(color: Color(0x73FFF8EC), width: 1),
+    ),
+    child: IconButton(
+      constraints: const BoxConstraints.tightFor(width: 42, height: 42),
+      tooltip: 'Back',
+      onPressed: onPressed,
+      color: const Color(0xFFFFF8EC),
+      icon: const Icon(Icons.arrow_back_rounded),
+    ),
+  );
+}
+
+class _HeritageField extends StatelessWidget {
+  const _HeritageField({
+    required this.controller,
+    required this.hint,
+    required this.icon,
+    required this.validator,
+    this.keyboardType,
+    this.action,
+    this.autofillHints,
+    this.obscure = false,
+    this.suffix,
+    this.onChanged,
+    this.maxLength,
+    this.textCapitalization = TextCapitalization.none,
+  });
+
+  final TextEditingController controller;
+  final String hint;
+  final IconData icon;
+  final String? Function(String?) validator;
+  final TextInputType? keyboardType;
+  final TextInputAction? action;
+  final Iterable<String>? autofillHints;
+  final bool obscure;
+  final Widget? suffix;
+  final ValueChanged<String>? onChanged;
+  final int? maxLength;
+  final TextCapitalization textCapitalization;
+
+  OutlineInputBorder _border(Color color, [double width = 1.4]) =>
+      OutlineInputBorder(
+        borderSide: BorderSide(color: color, width: width),
+        borderRadius: BorderRadius.circular(17),
+      );
+
+  @override
+  Widget build(BuildContext context) => TextFormField(
+    controller: controller,
+    keyboardType: keyboardType,
+    textInputAction: action,
+    autofillHints: autofillHints,
+    obscureText: obscure,
+    onChanged: onChanged,
+    maxLength: maxLength,
+    textCapitalization: textCapitalization,
+    cursorColor: const Color(0xFFFFD47B),
+    validator: validator,
+    style: GoogleFonts.dmSans(
+      color: const Color(0xFFFFF8EC),
+      fontSize: 15,
+      fontWeight: FontWeight.w600,
+    ),
+    decoration: InputDecoration(
+      hintText: hint,
+      hintStyle: GoogleFonts.dmSans(
+        color: const Color(0xBFF5F2E5),
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+      ),
+      prefixIcon: Icon(icon, color: const Color(0xFFFFD47B)),
+      suffixIcon: suffix,
+      counterText: '',
+      isDense: true,
+      filled: true,
+      fillColor: const Color(0xBD004B4D),
+      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+      enabledBorder: _border(const Color(0xD9FFC95C)),
+      focusedBorder: _border(const Color(0xFFFFE292), 2),
+      errorBorder: _border(const Color(0xFFFFA09A)),
+      focusedErrorBorder: _border(const Color(0xFFFFA09A), 2),
+      errorStyle: GoogleFonts.dmSans(
+        color: const Color(0xFFFFD3CD),
+        fontWeight: FontWeight.w600,
+      ),
+    ),
+  );
+}
+
+class _VisibilityButton extends StatelessWidget {
+  const _VisibilityButton({required this.obscure, required this.onPressed});
+
+  final bool obscure;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => IconButton(
+    tooltip: obscure ? 'Show password' : 'Hide password',
+    color: const Color(0xFFFFD47B),
+    onPressed: onPressed,
+    icon: Icon(
+      obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+    ),
+  );
+}
+
+class _DateOfBirthField extends StatelessWidget {
+  const _DateOfBirthField({required this.value, required this.onTap});
+
+  final DateTime? value;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => _HeritageSelectField(
+    icon: Icons.cake_outlined,
+    label: value == null
+        ? 'Date of birth (optional)'
+        : '${value!.day}/${value!.month}/${value!.year}',
+    onTap: onTap,
+  );
+}
+
+class _GenderField extends StatelessWidget {
+  const _GenderField({required this.value, required this.onChanged});
+
+  final String? value;
+  final ValueChanged<String?> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 46,
+    padding: const EdgeInsets.only(left: 12, right: 8),
+    decoration: BoxDecoration(
+      color: const Color(0xBD004B4D),
+      border: Border.all(color: const Color(0xD9FFC95C), width: 1.4),
+      borderRadius: BorderRadius.circular(17),
+    ),
+    child: DropdownButtonHideUnderline(
+      child: DropdownButton<String>(
+        value: value,
+        isExpanded: true,
+        iconEnabledColor: const Color(0xFFFFD47B),
+        dropdownColor: const Color(0xFF075A5A),
+        style: GoogleFonts.dmSans(
+          color: const Color(0xFFFFF8EC),
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+        hint: Row(
+          children: [
+            const Icon(Icons.person_outline_rounded, color: Color(0xFFFFD47B)),
+            const SizedBox(width: 12),
+            Text(
+              'Gender (optional)',
+              style: GoogleFonts.dmSans(
+                color: const Color(0xBFF5F2E5),
+                fontSize: 15,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
+        items: const [
+          DropdownMenuItem(value: 'male', child: Text('Male')),
+          DropdownMenuItem(value: 'female', child: Text('Female')),
+          DropdownMenuItem(value: 'non_binary', child: Text('Non-binary')),
+          DropdownMenuItem(
+            value: 'prefer_not_to_say',
+            child: Text('Prefer not to say'),
+          ),
+          DropdownMenuItem(value: 'other', child: Text('Other')),
+        ],
+        onChanged: onChanged,
+      ),
+    ),
+  );
+}
+
+class _HeritageSelectField extends StatelessWidget {
+  const _HeritageSelectField({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.transparent,
+    borderRadius: BorderRadius.circular(17),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(17),
+      child: Container(
+        height: 46,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xBD004B4D),
+          border: Border.all(color: const Color(0xD9FFC95C), width: 1.4),
+          borderRadius: BorderRadius.circular(17),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: const Color(0xFFFFD47B)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                label,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.dmSans(
+                  color: const Color(0xBFF5F2E5),
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+            const Icon(
+              Icons.calendar_today_outlined,
+              color: Color(0xFFFFD47B),
+              size: 19,
+            ),
+          ],
+        ),
       ),
     ),
   );
 }
 
 class _PasswordPolicyChecklist extends StatelessWidget {
-  final RegisterViewModel vm;
   const _PasswordPolicyChecklist({required this.vm});
 
+  final RegisterViewModel vm;
+
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Column(
-        children: [
-          _Check(
-            'At least ${AppConstants.minPasswordLength} characters',
-            vm.hasMinLength,
-          ),
-          _Check('Contains uppercase letter', vm.hasUppercase),
-          _Check('Contains lowercase letter', vm.hasLowercase),
-          _Check('Contains number', vm.hasNumber),
-          _Check('Contains special character (!@#\$...)', vm.hasSpecial),
-        ],
-      ),
-    );
-  }
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(10),
+    decoration: BoxDecoration(
+      color: const Color(0x80003F42),
+      border: Border.all(color: const Color(0x70FFF8EC)),
+      borderRadius: BorderRadius.circular(12),
+    ),
+    child: Column(
+      children: [
+        _Check(
+          'At least ${AppConstants.minPasswordLength} characters',
+          vm.hasMinLength,
+        ),
+        _Check('Contains uppercase letter', vm.hasUppercase),
+        _Check('Contains lowercase letter', vm.hasLowercase),
+        _Check('Contains number', vm.hasNumber),
+        _Check('Contains special character (!@#\$...)', vm.hasSpecial),
+      ],
+    ),
+  );
 }
 
 class _Check extends StatelessWidget {
-  final String label;
-  final bool met;
   const _Check(this.label, this.met);
 
+  final String label;
+  final bool met;
+
   @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Icon(
-            met ? Icons.check_circle_rounded : Icons.circle_outlined,
-            size: 14,
-            color: met ? AppColors.success : AppColors.textHint,
-          ),
-          const SizedBox(width: 8),
-          Text(
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 2),
+    child: Row(
+      children: [
+        Icon(
+          met ? Icons.check_circle_rounded : Icons.circle_outlined,
+          size: 14,
+          color: met ? const Color(0xFF8FE1B8) : const Color(0xBFF5F2E5),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
             label,
-            style: TextStyle(
-              fontSize: 12,
-              color: met ? AppColors.success : AppColors.textHint,
+            style: GoogleFonts.dmSans(
+              fontSize: 11,
+              color: met ? const Color(0xFFB8F1D4) : const Color(0xBFF5F2E5),
             ),
           ),
-        ],
-      ),
-    );
-  }
+        ),
+      ],
+    ),
+  );
+}
+
+class _RegisterError extends StatelessWidget {
+  const _RegisterError({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(12),
+    decoration: BoxDecoration(
+      color: const Color(0xCC722C2B),
+      border: Border.all(color: const Color(0xFFFFB0A8)),
+      borderRadius: BorderRadius.circular(14),
+    ),
+    child: Row(
+      children: [
+        const Icon(
+          Icons.error_outline_rounded,
+          color: Color(0xFFFFD3CD),
+          size: 19,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            message,
+            style: GoogleFonts.dmSans(
+              color: const Color(0xFFFFF8EC),
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 }

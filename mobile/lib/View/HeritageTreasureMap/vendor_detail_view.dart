@@ -3,8 +3,8 @@ import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
 import '../../ViewModel/HeritageTreasureMap/vendor_detail_view_model.dart';
-import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../Model/Repositories/HeritageTreasureMap/operating_hour_model.dart';
+import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
 import '../Widgets/rating_bar.dart';
@@ -53,8 +53,6 @@ class _VendorDetailViewState extends State<VendorDetailView> {
 
   Widget _buildContent(BuildContext ctx, VendorDetailViewModel vm) {
     final v = vm.vendor!;
-    const coverColor = AppColors.primary;
-    final authVm = ctx.read<AuthViewModel>();
 
     return CustomScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
@@ -64,26 +62,24 @@ class _VendorDetailViewState extends State<VendorDetailView> {
           pinned: true,
           backgroundColor: AppColors.primary,
           flexibleSpace: FlexibleSpaceBar(
-            background: Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [coverColor, coverColor.withAlpha(180)],
-                ),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 40),
-                  Icon(
-                    Icons.restaurant_rounded,
-                    size: 64,
-                    color: Colors.white.withAlpha(200),
-                  ),
-                ],
-              ),
-            ),
+            background: v.coverImageUrl != null && v.coverImageUrl!.isNotEmpty
+                ? GestureDetector(
+                    onTap: () => Navigator.of(ctx).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => _FullscreenVendorImageView(
+                          imageUrl: v.coverImageUrl!,
+                          vendorName: v.name,
+                        ),
+                      ),
+                    ),
+                    child: AppNetworkImage(
+                      imageUrl: v.coverImageUrl,
+                      fit: BoxFit.cover,
+                      targetOptimizationWidth: 1200,
+                      errorWidget: const _VendorCoverPlaceholder(),
+                    ),
+                  )
+                : const _VendorCoverPlaceholder(),
           ),
           actions: [
             IconButton(
@@ -209,52 +205,36 @@ class _VendorDetailViewState extends State<VendorDetailView> {
                   children: [...vm.operatingHours.map((h) => _HoursRow(h))],
                 ),
 
-              // Tiffin availability
-              if (vm.tiffinAvailability.isNotEmpty)
+              // Tiffin designs carried by this vendor
+              if (vm.tiffins.isNotEmpty)
                 _InfoCard(
-                  title: 'Heritage Tiffin Availability',
+                  title: 'Heritage Tiffin Designs',
                   children: [
-                    ...vm.tiffinAvailability.map(
+                    ...vm.tiffins.map(
                       (t) => ListTile(
                         dense: true,
                         contentPadding: EdgeInsets.zero,
-                        leading: Icon(
-                          Icons.kitchen_rounded,
-                          color: t.isAvailable
-                              ? AppColors.success
-                              : AppColors.textHint,
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: SizedBox(
+                            width: 56,
+                            height: 56,
+                            child: t.coverImageUrl != null
+                                ? AppNetworkImage(
+                                    imageUrl: t.coverImageUrl,
+                                    fit: BoxFit.cover,
+                                    targetOptimizationWidth: 200,
+                                    errorWidget:
+                                        const _TiffinImagePlaceholder(),
+                                  )
+                                : const _TiffinImagePlaceholder(),
+                          ),
                         ),
                         title: Text(
                           t.tiffinEditionName,
                           style: Theme.of(ctx).textTheme.bodyMedium,
                         ),
-                        subtitle: t.notes != null
-                            ? Text(
-                                t.notes!,
-                                style: Theme.of(ctx).textTheme.bodySmall,
-                              )
-                            : null,
-                        trailing: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: t.isAvailable
-                                ? AppColors.successLight
-                                : AppColors.errorLight,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            t.isAvailable ? 'Available' : 'Unavailable',
-                            style: TextStyle(
-                              color: t.isAvailable
-                                  ? AppColors.success
-                                  : AppColors.error,
-                              fontSize: 11,
-                            ),
-                          ),
-                        ),
+                        trailing: const Icon(Icons.chevron_right_rounded),
                         onTap: () => Navigator.pushNamed(
                           ctx,
                           AppRoutes.tiffinExperience,
@@ -268,46 +248,17 @@ class _VendorDetailViewState extends State<VendorDetailView> {
               // Action buttons
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.rate_review_rounded),
-                        label: const Text('Write a Review'),
-                        onPressed: () async {
-                          if (!authVm.isLoggedIn) {
-                            await Navigator.pushNamed(ctx, AppRoutes.login);
-                            return;
-                          }
-                          Navigator.pushNamed(ctx, AppRoutes.createPost);
-                        },
-                      ),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.directions_rounded),
+                    label: const Text('Get Directions'),
+                    onPressed: () => Navigator.pushNamed(
+                      ctx,
+                      AppRoutes.routeNavigation,
+                      arguments: v.id,
                     ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.forum_rounded),
-                        label: const Text('View Community Reviews'),
-                        onPressed: () =>
-                            Navigator.pushNamed(ctx, AppRoutes.community),
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    SizedBox(
-                      width: double.infinity,
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.directions_rounded),
-                        label: const Text('Get Directions'),
-                        onPressed: () => Navigator.pushNamed(
-                          ctx,
-                          AppRoutes.routeNavigation,
-                          arguments: v.id,
-                        ),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
@@ -317,6 +268,73 @@ class _VendorDetailViewState extends State<VendorDetailView> {
       ],
     );
   }
+}
+
+class _FullscreenVendorImageView extends StatelessWidget {
+  final String imageUrl;
+  final String vendorName;
+
+  const _FullscreenVendorImageView({
+    required this.imageUrl,
+    required this.vendorName,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.black,
+      appBar: AppBar(
+        backgroundColor: Colors.black,
+        foregroundColor: Colors.white,
+        title: Text(vendorName, maxLines: 1, overflow: TextOverflow.ellipsis),
+      ),
+      body: SafeArea(
+        child: Center(
+          child: InteractiveViewer(
+            minScale: 0.8,
+            maxScale: 5,
+            child: AppNetworkImage(
+              imageUrl: imageUrl,
+              fit: BoxFit.contain,
+              targetOptimizationWidth: 1800,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _VendorCoverPlaceholder extends StatelessWidget {
+  const _VendorCoverPlaceholder();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    decoration: BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [AppColors.primary, AppColors.primary.withAlpha(180)],
+      ),
+    ),
+    child: Center(
+      child: Icon(
+        Icons.restaurant_rounded,
+        size: 64,
+        color: Colors.white.withAlpha(200),
+      ),
+    ),
+  );
+}
+
+class _TiffinImagePlaceholder extends StatelessWidget {
+  const _TiffinImagePlaceholder();
+
+  @override
+  Widget build(BuildContext context) => ColoredBox(
+    color: AppColors.surfaceVariant,
+    child: const Icon(Icons.kitchen_rounded, color: AppColors.textHint),
+  );
 }
 
 class _InfoCard extends StatelessWidget {

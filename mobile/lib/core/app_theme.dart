@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'app_colors.dart';
 
 /// App-wide MaterialTheme for MangkukKembara.
-/// Heritage palette: warm terracotta primary, gold accent, cream surface.
+/// Shared green, sage, white, and gold visual system.
 abstract final class AppTheme {
   static ThemeData get light {
     final base = ThemeData(
@@ -125,17 +126,23 @@ abstract final class AppTheme {
 
       // ── AppBar ────────────────────────────────────────────────────────────────
       appBarTheme: AppBarTheme(
-        backgroundColor: AppColors.primary,
-        foregroundColor: AppColors.textOnPrimary,
+        backgroundColor: AppColors.background,
+        foregroundColor: AppColors.primary,
+        surfaceTintColor: Colors.transparent,
+        systemOverlayStyle: SystemUiOverlayStyle.dark.copyWith(
+          statusBarColor: AppColors.background,
+          statusBarIconBrightness: Brightness.dark,
+          statusBarBrightness: Brightness.light,
+        ),
         elevation: 0,
         centerTitle: false,
         titleTextStyle: GoogleFonts.playfairDisplay(
           fontSize: 20,
           fontWeight: FontWeight.w700,
-          color: AppColors.textOnPrimary,
+          color: AppColors.primary,
         ),
-        iconTheme: const IconThemeData(color: AppColors.textOnPrimary),
-        actionsIconTheme: const IconThemeData(color: AppColors.textOnPrimary),
+        iconTheme: const IconThemeData(color: AppColors.primary),
+        actionsIconTheme: const IconThemeData(color: AppColors.primary),
       ),
 
       // ── Bottom Navigation ────────────────────────────────────────────────────

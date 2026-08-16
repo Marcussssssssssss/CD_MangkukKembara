@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
 import '../../ViewModel/HeritageExperience/tiffin_content_view_model.dart';
+import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
 
@@ -52,7 +53,6 @@ class _ArtworkMeaningViewState extends State<ArtworkMeaningView> {
 
   Widget _buildContent(BuildContext ctx, TiffinContentViewModel vm) {
     final a = vm.artwork!;
-    const artColor = AppColors.primary;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
       child: Column(
@@ -60,36 +60,49 @@ class _ArtworkMeaningViewState extends State<ArtworkMeaningView> {
         children: [
           // Artwork hero
           Container(
-            height: 200,
+            height: 360,
             width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [artColor, artColor.withAlpha(150)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
-            child: a.imageUrl.isNotEmpty
-                ? Image.network(a.imageUrl, fit: BoxFit.cover)
-                : Column(
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                Image.asset(
+                  'asset/image/tiffin_background_green.png',
+                  fit: BoxFit.cover,
+                ),
+                if (a.imageUrl.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 28,
+                      vertical: 12,
+                    ),
+                    child: AppNetworkImage(
+                      imageUrl: a.imageUrl,
+                      fit: BoxFit.contain,
+                      targetOptimizationWidth: 1000,
+                    ),
+                  )
+                else
+                  Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
                         Icons.palette_rounded,
                         size: 64,
-                        color: Colors.white.withAlpha(200),
+                        color: AppColors.primary.withAlpha(180),
                       ),
                       const SizedBox(height: 8),
                       Text(
                         a.title,
                         style: const TextStyle(
-                          color: Colors.white,
+                          color: AppColors.primary,
                           fontWeight: FontWeight.w800,
                           fontSize: 18,
                         ),
                       ),
                     ],
                   ),
+              ],
+            ),
           ),
           Padding(
             padding: const EdgeInsets.all(16),

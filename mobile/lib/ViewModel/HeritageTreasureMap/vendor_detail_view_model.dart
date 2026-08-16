@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../Model/Repositories/HeritageTreasureMap/treasure_map_repository.dart';
 import '../../Model/Repositories/HeritageTreasureMap/vendor_model.dart';
 import '../../Model/Repositories/HeritageTreasureMap/operating_hour_model.dart';
-import '../../Model/Repositories/HeritageTreasureMap/tiffin_availability_model.dart';
+import '../../Model/Repositories/HeritageTreasureMap/vendor_tiffin_model.dart';
 
 /// View model for the vendor detail view.
 class VendorDetailViewModel extends ChangeNotifier {
@@ -12,13 +12,13 @@ class VendorDetailViewModel extends ChangeNotifier {
 
   VendorModel? _vendor;
   List<OperatingHourModel> _operatingHours = [];
-  List<TiffinAvailabilityModel> _tiffinAvailability = [];
+  List<VendorTiffinModel> _tiffins = [];
   bool _isLoading = false;
   bool _hasError = false;
 
   VendorModel? get vendor => _vendor;
   List<OperatingHourModel> get operatingHours => _operatingHours;
-  List<TiffinAvailabilityModel> get tiffinAvailability => _tiffinAvailability;
+  List<VendorTiffinModel> get tiffins => _tiffins;
   bool get isLoading => _isLoading;
   bool get hasError => _hasError;
 
@@ -31,7 +31,7 @@ class VendorDetailViewModel extends ChangeNotifier {
       _vendor = await _repo.fetchVendorById(vendorId);
       if (_vendor != null) {
         _operatingHours = await _repo.fetchOperatingHours(vendorId);
-        _tiffinAvailability = await _repo.fetchTiffinAvailability(vendorId);
+        _tiffins = await _repo.fetchVendorTiffins(vendorId);
       }
     } catch (_) {
       _hasError = true;

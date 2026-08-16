@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
 import '../../core/constants.dart';
 import '../../ViewModel/HeritageExperience/heritage_experience_view_model.dart';
@@ -11,6 +10,19 @@ import '../Widgets/tiffin_card.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/empty_state_widget.dart';
 import '../Widgets/error_state_widget.dart';
+
+/// Shared green-and-yellow visual language for the Experience landing page.
+abstract final class _ExperiencePageColors {
+  static const Color background = Color(0xFFFFFFFF);
+  static const Color softBackground = Color(0xFFF5F7F3);
+  static const Color searchField = Color(0xFFEEF3EC);
+  static const Color border = Color(0xFFCCD6C8);
+  static const Color darkGreen = Color(0xFF335C31);
+  static const Color mediumGreen = Color(0xFF61885B);
+  static const Color yellow = Color(0xFFF9B10E);
+  static const Color selectedTab = Color(0xFFFEF5E4);
+  static const Color text = Color(0xFF283427);
+}
 
 /// B1. Heritage Experience Home View.
 class HeritageExperienceHomeView extends StatefulWidget {
@@ -42,10 +54,20 @@ class _HeritageExperienceHomeViewState
       child: Consumer2<HeritageExperienceViewModel, AuthViewModel>(
         builder: (ctx, vm, auth, _) => MapBackScope(
           child: Scaffold(
-            backgroundColor: AppColors.background,
+            backgroundColor: _ExperiencePageColors.background,
             appBar: AppBar(
-              title: const Text('Heritage Experience'),
-              leading: const MapHomeButton(),
+              backgroundColor: _ExperiencePageColors.background,
+              foregroundColor: _ExperiencePageColors.darkGreen,
+              surfaceTintColor: Colors.transparent,
+              elevation: 0,
+              title: const Text(
+                'Heritage Experience',
+                style: TextStyle(
+                  color: _ExperiencePageColors.darkGreen,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              leading: const MapHomeButton(color: _ExperiencePageColors.darkGreen),
               actions: [
                 if (auth.isLoggedIn)
                   IconButton(
@@ -85,14 +107,20 @@ class _HeritageExperienceHomeViewState
                       child: _buildBody(ctx, vm, auth),
                     ),
             ),
-            bottomNavigationBar: const AppBottomNav(selectedIndex: 0),
+            bottomNavigationBar: const AppBottomNav(
+              selectedIndex: 0,
+              backgroundColor: _ExperiencePageColors.background,
+              selectedColor: _ExperiencePageColors.yellow,
+              unselectedColor: _ExperiencePageColors.mediumGreen,
+              selectedBackgroundColor: _ExperiencePageColors.selectedTab,
+            ),
             floatingActionButton: auth.isLoggedIn
                 ? FloatingActionButton.extended(
                     onPressed: () =>
                         Navigator.pushNamed(ctx, AppRoutes.qrScanner),
                     icon: const Icon(Icons.qr_code_scanner_rounded),
                     label: const Text('Scan QR'),
-                    backgroundColor: AppColors.primary,
+                    backgroundColor: _ExperiencePageColors.darkGreen,
                     foregroundColor: Colors.white,
                   )
                 : null,
@@ -126,12 +154,16 @@ class _HeritageExperienceHomeViewState
                   children: [
                     Text(
                       'Heritage Tiffins',
-                      style: Theme.of(ctx).textTheme.titleMedium,
+                      style: Theme.of(ctx).textTheme.titleMedium?.copyWith(
+                        color: _ExperiencePageColors.darkGreen,
+                      ),
                     ),
                     const Spacer(),
                     Text(
                       '${vm.tiffins.length} editions',
-                      style: Theme.of(ctx).textTheme.bodySmall,
+                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
+                        color: _ExperiencePageColors.darkGreen,
+                      ),
                     ),
                   ],
                 ),
@@ -173,6 +205,12 @@ class _HeritageExperienceHomeViewState
                     final t = vm.tiffins[i];
                     return TiffinCard(
                       tiffin: t,
+                      primaryColor: _ExperiencePageColors.darkGreen,
+                      mutedColor: _ExperiencePageColors.mediumGreen,
+                      borderColor: _ExperiencePageColors.border,
+                      backgroundAsset: i % 3 == 1 || i % 3 == 2
+                          ? 'asset/image/tiffin_background_yellow.png'
+                          : 'asset/image/tiffin_background_green.png',
                       onTap: () => Navigator.pushNamed(
                         ctx,
                         AppRoutes.tiffinExperience,
@@ -184,7 +222,7 @@ class _HeritageExperienceHomeViewState
                     crossAxisCount: 2,
                     crossAxisSpacing: 12,
                     mainAxisSpacing: 12,
-                    childAspectRatio: 0.75,
+                    mainAxisExtent: 268,
                   ),
                 ),
               ),
@@ -209,15 +247,12 @@ class _HeritageExperienceHomeViewState
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.primary, AppColors.primaryLight],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: _ExperiencePageColors.background,
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: _ExperiencePageColors.border),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primary.withAlpha(100),
+            color: Colors.black.withAlpha(24),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -227,38 +262,32 @@ class _HeritageExperienceHomeViewState
         children: [
           // Progress ring
           SizedBox(
-            width: 80,
-            height: 80,
+            width: 124,
+            height: 124,
             child: Stack(
               alignment: Alignment.center,
               children: [
                 CircularProgressIndicator(
                   value: progress,
-                  strokeWidth: 8,
-                  backgroundColor: Colors.white.withAlpha(60),
+                  strokeWidth: 7,
+                  backgroundColor: _ExperiencePageColors.softBackground,
                   valueColor: const AlwaysStoppedAnimation<Color>(
-                    AppColors.accent,
+                    _ExperiencePageColors.yellow,
                   ),
                 ),
-                Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '${vm.collectedCount}',
+                SizedBox(
+                  width: 104,
+                  child: FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      '${vm.collectedCount} / ${vm.totalCount}',
                       style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 20,
+                        color: _ExperiencePageColors.darkGreen,
+                        fontSize: 16,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    Text(
-                      '/ ${vm.totalCount}',
-                      style: TextStyle(
-                        color: Colors.white.withAlpha(200),
-                        fontSize: 10,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
@@ -271,7 +300,7 @@ class _HeritageExperienceHomeViewState
                 Text(
                   'My Collection',
                   style: const TextStyle(
-                    color: Colors.white,
+                    color: _ExperiencePageColors.darkGreen,
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                   ),
@@ -280,16 +309,16 @@ class _HeritageExperienceHomeViewState
                 Text(
                   'You\'ve collected ${vm.collectedCount} of ${vm.totalCount} tiffins.',
                   style: TextStyle(
-                    color: Colors.white.withAlpha(220),
+                    color: _ExperiencePageColors.darkGreen,
                     fontSize: 13,
                   ),
                 ),
                 const SizedBox(height: 8),
                 LinearProgressIndicator(
                   value: progress,
-                  backgroundColor: Colors.white.withAlpha(40),
+                  backgroundColor: _ExperiencePageColors.searchField,
                   valueColor: const AlwaysStoppedAnimation<Color>(
-                    AppColors.accent,
+                    _ExperiencePageColors.yellow,
                   ),
                   minHeight: 6,
                   borderRadius: BorderRadius.circular(3),
@@ -316,11 +345,17 @@ class _HeritageExperienceHomeViewState
                   label: Text(state, style: const TextStyle(fontSize: 12)),
                   selected: vm.selectedState == state,
                   onSelected: (_) => _vm.setStateFilter(state),
-                  selectedColor: AppColors.primary,
+                  backgroundColor: _ExperiencePageColors.background,
+                  selectedColor: _ExperiencePageColors.selectedTab,
+                  side: BorderSide(
+                    color: vm.selectedState == state
+                        ? _ExperiencePageColors.yellow
+                        : _ExperiencePageColors.mediumGreen,
+                  ),
                   labelStyle: TextStyle(
                     color: vm.selectedState == state
-                        ? Colors.white
-                        : AppColors.textSecondary,
+                        ? _ExperiencePageColors.yellow
+                        : _ExperiencePageColors.mediumGreen,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
@@ -342,15 +377,15 @@ class _GuestPromptBanner extends StatelessWidget {
       margin: const EdgeInsets.all(16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.accentContainer,
+        color: _ExperiencePageColors.softBackground,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.accent),
+        border: Border.all(color: _ExperiencePageColors.border),
       ),
       child: Row(
         children: [
           const Icon(
             Icons.lock_outline_rounded,
-            color: AppColors.accentDark,
+            color: _ExperiencePageColors.yellow,
             size: 28,
           ),
           const SizedBox(width: 12),
@@ -363,7 +398,7 @@ class _GuestPromptBanner extends StatelessWidget {
                   style: TextStyle(
                     fontWeight: FontWeight.w800,
                     fontSize: 14,
-                    color: AppColors.textPrimary,
+                    color: _ExperiencePageColors.text,
                   ),
                 ),
                 const SizedBox(height: 2),

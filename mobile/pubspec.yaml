@@ -33,6 +33,7 @@ dependencies:
   url_launcher: ^6.3.2
   geolocator: ^14.0.2
   google_maps_flutter: ^2.13.1
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
@@ -45,6 +46,17 @@ flutter:
   assets:
     - asset/image/logo.png
     - asset/image/logo_light.png
+    - asset/image/welcome_base_background.png
+    - asset/image/mangkuk_kembara_logo_white.png
+    - asset/image/mangkuk_kembara_logo_green.png
+    - asset/image/penang_marker_photo.png
+    - asset/image/kelantan_marker_photo.png
+    - asset/image/melaka_marker_photo.png
+    - asset/image/sarawak_marker_photo.png
+    - asset/image/tiffin_background_green.png
+    - asset/image/tiffin_background_yellow.png
+    - asset/image/profile_background_green.png
+    - asset/image/campaign_background.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:

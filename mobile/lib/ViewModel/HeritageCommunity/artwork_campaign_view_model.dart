@@ -14,16 +14,32 @@ class ArtworkCampaignViewModel extends ChangeNotifier {
   String? _errorMessage;
 
   List<ArtworkCampaignModel> get campaigns => _campaigns;
-  List<ArtworkCampaignModel> get openSubmissionCampaigns =>
-      _campaigns.where((c) => c.isOpenSubmission).toList();
-  List<ArtworkCampaignModel> get votingCampaigns =>
-      _campaigns.where((c) => c.isVoting).toList();
-  List<ArtworkCampaignModel> get completedCampaigns =>
-      _campaigns.where((c) => c.isCompleted).toList();
+  ArtworkCampaignModel? get featuredCampaign => selectFeatured(_campaigns);
   bool get isLoading => _isLoading;
   bool get hasError => _hasError;
   String? get errorMessage => _errorMessage;
-  bool get isEmpty => !_isLoading && !_hasError && _campaigns.isEmpty;
+  bool get isEmpty => !_isLoading && !_hasError && featuredCampaign == null;
+
+  ArtworkCampaignModel? campaignById(String id) {
+    for (final campaign in _campaigns) {
+      if (campaign.id == id) return campaign;
+    }
+    return null;
+  }
+
+  /// Campaigns arrive newest-first. An active campaign always takes precedence;
+  /// otherwise the newest completed campaign is the public fallback.
+  static ArtworkCampaignModel? selectFeatured(
+    List<ArtworkCampaignModel> campaigns,
+  ) {
+    for (final campaign in campaigns) {
+      if (campaign.isActive) return campaign;
+    }
+    for (final campaign in campaigns) {
+      if (campaign.isCompleted) return campaign;
+    }
+    return null;
+  }
 
   Future<void> loadCampaigns({bool showLoading = true}) async {
     if (_isLoading) return;

@@ -46,7 +46,10 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Center(
-                      child: AuthBranding(subtitle: 'Recover your password'),
+                      child: AuthBranding(
+                        subtitle: 'Recover your password',
+                        imageAsset: 'asset/image/mangkuk_kembara_logo_green.png',
+                      ),
                     ),
                     const SizedBox(height: 24),
                     const Icon(
@@ -231,7 +234,10 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                const AuthBranding(subtitle: 'Set a new password'),
+                const AuthBranding(
+                  subtitle: 'Set a new password',
+                  imageAsset: 'asset/image/mangkuk_kembara_logo_green.png',
+                ),
                 const SizedBox(height: 24),
                 const Icon(
                   Icons.password_rounded,

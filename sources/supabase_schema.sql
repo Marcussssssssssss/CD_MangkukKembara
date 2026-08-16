@@ -31,6 +31,7 @@ drop table if exists public.community_post_likes cascade;
 drop table if exists public.community_post_photos cascade;
 drop table if exists public.community_posts cascade;
 
+drop table if exists public.vendor_tiffins cascade;
 drop table if exists public.vendor_tiffin_availability cascade;
 drop table if exists public.vendor_foods cascade;
 drop table if exists public.vendor_operating_hours cascade;
@@ -194,7 +195,6 @@ create table public.heritage_foods (
 create table public.artworks (
     artwork_id          varchar(5) primary key,
     profile_id          varchar(5) not null references public.profiles(profile_id),
-    source_artwork_submission_id varchar(6) unique,
     title               varchar(150) not null,
     description         text,
     artwork_meaning     text,
@@ -367,18 +367,14 @@ create table public.vendor_foods (
         check (vendor_food_id ~ '^VF[0-9]{4}$')
 );
 
-create table public.vendor_tiffin_availability (
-    vendor_tiffin_availability_id varchar(7) primary key,
+create table public.vendor_tiffins (
+    vendor_tiffin_id    varchar(6) primary key,
     vendor_id           varchar(5) not null references public.vendors(vendor_id) on delete cascade,
     heritage_tiffin_id  varchar(6) not null references public.heritage_tiffins(heritage_tiffin_id),
-    quantity_available  integer not null default 0 check (quantity_available >= 0),
-    availability_status varchar(20) not null default 'available'
-                        check (availability_status in ('available', 'low_stock', 'unavailable')),
-    updated_at          timestamptz not null default now(),
 
     constraint uq_vendor_tiffin unique (vendor_id, heritage_tiffin_id),
-    constraint chk_vendor_tiffin_availability_id_format
-        check (vendor_tiffin_availability_id ~ '^VTA[0-9]{4}$')
+    constraint chk_vendor_tiffin_id_format
+        check (vendor_tiffin_id ~ '^VT[0-9]{4}$')
 );
 
 -- ============================================================================
@@ -448,8 +444,8 @@ create table public.artwork_campaigns (
     description         text,
     submission_start_at timestamptz not null,
     submission_end_at   timestamptz not null,
-    status              varchar(30) not null
-                        check (status in ('draft', 'open_submission', 'voting', 'completed', 'cancelled')),
+    status              varchar(30) not null default 'active'
+                        check (status in ('active', 'completed')),
     created_by_profile_id varchar(5) not null references public.profiles(profile_id),
     created_at          timestamptz not null default now(),
 
@@ -457,6 +453,12 @@ create table public.artwork_campaigns (
     constraint chk_artwork_campaign_id_format
         check (artwork_campaign_id ~ '^AC[0-9]{4}$')
 );
+
+-- Submission and voting run together for the full active campaign period.
+-- Only one campaign can accept submissions and votes at a time.
+create unique index uq_single_live_artwork_campaign
+on public.artwork_campaigns ((true))
+where status = 'active';
 
 create table public.artwork_campaign_categories (
     artwork_campaign_category_id varchar(7) primary key,
@@ -491,21 +493,12 @@ create table public.artwork_submissions (
 create table public.artwork_voting_sessions (
     artwork_voting_session_id varchar(7) primary key,
     artwork_campaign_id varchar(6) not null references public.artwork_campaigns(artwork_campaign_id) on delete cascade,
-    session_type       varchar(20) not null default 'standard'
-                       check (session_type in ('standard', 'tie_break')),
-    parent_voting_session_id varchar(7)
-                       references public.artwork_voting_sessions(artwork_voting_session_id),
     voting_start_at    timestamptz not null,
     voting_end_at      timestamptz not null,
     status             varchar(20) not null
                        check (status in ('scheduled', 'active', 'closed')),
 
     constraint chk_voting_dates check (voting_end_at > voting_start_at),
-    constraint chk_tie_break_parent check (
-        (session_type = 'standard' and parent_voting_session_id is null)
-        or
-        (session_type = 'tie_break' and parent_voting_session_id is not null)
-    ),
     constraint chk_artwork_voting_session_id_format
         check (artwork_voting_session_id ~ '^AVS[0-9]{4}$')
 );
@@ -542,7 +535,6 @@ create table public.artwork_campaign_winners (
     artwork_campaign_id varchar(6) not null references public.artwork_campaigns(artwork_campaign_id),
     artwork_campaign_category_id varchar(7) not null references public.artwork_campaign_categories(artwork_campaign_category_id),
     artwork_voting_entry_id varchar(7) not null references public.artwork_voting_entries(artwork_voting_entry_id),
-    artwork_id          varchar(5) unique references public.artworks(artwork_id),
     final_vote_count    integer not null default 0,
     final_rank          integer not null default 1,
     announced_by_profile_id varchar(5) not null references public.profiles(profile_id),
@@ -552,11 +544,6 @@ create table public.artwork_campaign_winners (
     constraint chk_artwork_campaign_winner_id_format
         check (artwork_campaign_winner_id ~ '^ACW[0-9]{4}$')
 );
-
-alter table public.artworks
-    add constraint fk_artwork_source_submission
-    foreign key (source_artwork_submission_id)
-    references public.artwork_submissions(artwork_submission_id);
 
 -- Server-generated IDs for user-created records. P0001-style seed IDs remain
 -- deterministic, while live records begin at 1000 and never require clients to
@@ -619,44 +606,6 @@ $$;
 
 revoke all on function public.current_profile_id() from public;
 grant execute on function public.current_profile_id() to authenticated;
-
-create or replace function public.is_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-    select exists (
-        select 1
-        from public.profiles
-        where auth_user_id = auth.uid()
-          and role = 'admin'
-          and is_active = true
-    )
-$$;
-
-revoke all on function public.is_admin() from public;
-grant execute on function public.is_admin() to authenticated;
-
-create or replace function public.is_registered_user()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public, pg_temp
-as $$
-    select exists (
-        select 1
-        from public.profiles
-        where auth_user_id = auth.uid()
-          and role = 'tourist'
-          and is_active = true
-    )
-$$;
-
-revoke all on function public.is_registered_user() from public;
-grant execute on function public.is_registered_user() to authenticated;
 
 create or replace function public.is_valid_reply_parent(
     requested_parent_id varchar(6),
@@ -836,7 +785,7 @@ alter table public.pasar_malam_operating_hours enable row level security;
 alter table public.vendors enable row level security;
 alter table public.vendor_operating_hours enable row level security;
 alter table public.vendor_foods enable row level security;
-alter table public.vendor_tiffin_availability enable row level security;
+alter table public.vendor_tiffins enable row level security;
 alter table public.community_posts enable row level security;
 alter table public.community_post_photos enable row level security;
 alter table public.community_post_likes enable row level security;
@@ -858,10 +807,6 @@ create policy profiles_own_update on public.profiles
 for update to authenticated
 using (auth_user_id = auth.uid())
 with check (auth_user_id = auth.uid());
-
-create policy profiles_admin_read on public.profiles
-for select to authenticated
-using (public.is_admin());
 
 -- Public/reference heritage content.
 create policy states_public_read on public.states
@@ -964,12 +909,12 @@ using (
     )
 );
 
-create policy vendor_tiffin_public_read on public.vendor_tiffin_availability
+create policy vendor_tiffin_public_read on public.vendor_tiffins
 for select to anon, authenticated
 using (
     exists (
         select 1 from public.vendors parent_vendor
-        where parent_vendor.vendor_id = vendor_tiffin_availability.vendor_id
+        where parent_vendor.vendor_id = vendor_tiffins.vendor_id
           and parent_vendor.participation_status = 'active'
     )
 );
@@ -1072,7 +1017,7 @@ with check (
 -- Artwork campaign reads and user-owned participation.
 create policy campaigns_public_read on public.artwork_campaigns
 for select to anon, authenticated
-using (status in ('open_submission', 'voting', 'completed'));
+using (status in ('active', 'completed'));
 
 create policy campaign_categories_public_read
 on public.artwork_campaign_categories
@@ -1081,7 +1026,7 @@ using (
     exists (
         select 1 from public.artwork_campaigns campaigns
         where campaigns.artwork_campaign_id = artwork_campaign_categories.artwork_campaign_id
-          and campaigns.status in ('open_submission', 'voting', 'completed')
+          and campaigns.status in ('active', 'completed')
     )
 );
 
@@ -1097,7 +1042,6 @@ create policy submissions_own_insert on public.artwork_submissions
 for insert to authenticated
 with check (
     profile_id = public.current_profile_id()
-    and public.is_registered_user()
     and review_status = 'pending'
     and exists (
         select 1
@@ -1105,7 +1049,7 @@ with check (
         join public.artwork_campaigns campaigns
           on campaigns.artwork_campaign_id = categories.artwork_campaign_id
         where categories.artwork_campaign_category_id = artwork_submissions.artwork_campaign_category_id
-          and campaigns.status = 'open_submission'
+          and campaigns.status = 'active'
           and now() between campaigns.submission_start_at
                         and campaigns.submission_end_at
     )
@@ -1117,7 +1061,7 @@ using (
     exists (
         select 1 from public.artwork_campaigns campaigns
         where campaigns.artwork_campaign_id = artwork_voting_sessions.artwork_campaign_id
-          and campaigns.status in ('voting', 'completed')
+          and campaigns.status in ('active', 'completed')
     )
 );
 
@@ -1139,16 +1083,20 @@ create policy artwork_votes_own_insert on public.artwork_votes
 for insert to authenticated
 with check (
     profile_id = public.current_profile_id()
-    and public.is_registered_user()
     and exists (
         select 1 from public.artwork_voting_entries entries
         join public.artwork_voting_sessions sessions
           on sessions.artwork_voting_session_id = entries.artwork_voting_session_id
+        join public.artwork_campaigns campaigns
+          on campaigns.artwork_campaign_id = sessions.artwork_campaign_id
         where entries.artwork_voting_entry_id = artwork_votes.artwork_voting_entry_id
           and entries.artwork_voting_session_id = artwork_votes.artwork_voting_session_id
           and entries.artwork_campaign_category_id = artwork_votes.artwork_campaign_category_id
           and sessions.status = 'active'
           and now() between sessions.voting_start_at and sessions.voting_end_at
+          and campaigns.status = 'active'
+          and now() between campaigns.submission_start_at
+                        and campaigns.submission_end_at
     )
 );
 
@@ -1162,57 +1110,6 @@ using (
           and campaigns.status = 'completed'
     )
 );
-
--- An authenticated administrator has access to every management function in
--- the admin portal. Registered users retain only their public and own-record
--- policies above; there is no separate per-feature permission model.
-create policy admin_artworks_manage on public.artworks
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_tiffins_manage on public.heritage_tiffins
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_tiffin_stories_manage on public.heritage_stories
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_tiffin_media_manage on public.heritage_media
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_tiffin_qr_codes_manage on public.tiffin_qr_codes
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_vendors_manage on public.vendors
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_vendor_hours_manage on public.vendor_operating_hours
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_vendor_foods_manage on public.vendor_foods
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_vendor_tiffins_manage on public.vendor_tiffin_availability
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_campaigns_manage on public.artwork_campaigns
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_campaign_categories_manage on public.artwork_campaign_categories
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_submissions_manage on public.artwork_submissions
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_voting_sessions_manage on public.artwork_voting_sessions
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_voting_entries_manage on public.artwork_voting_entries
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
-
-create policy admin_votes_read on public.artwork_votes
-for select to authenticated using (public.is_admin());
-
-create policy admin_campaign_winners_manage on public.artwork_campaign_winners
-for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
 -- ============================================================================
 -- 9. SIMPLE VIEWS
@@ -1278,7 +1175,7 @@ grant select on public.states, public.food_categories, public.heritage_foods,
     public.heritage_media, public.pasar_malam,
     public.pasar_malam_operating_hours, public.vendors,
     public.vendor_operating_hours, public.vendor_foods,
-    public.vendor_tiffin_availability, public.community_posts,
+    public.vendor_tiffins, public.community_posts,
     public.community_post_photos, public.community_comments,
     public.artwork_campaigns, public.artwork_campaign_categories,
     public.artwork_submissions, public.artwork_voting_sessions,
@@ -1300,15 +1197,6 @@ to authenticated;
 
 grant update (rating, written_review, post_comment, status, updated_at)
 on public.community_posts to authenticated;
-
-grant insert, update, delete on public.artworks, public.heritage_tiffins,
-    public.heritage_stories, public.heritage_media, public.tiffin_qr_codes,
-    public.vendors, public.vendor_operating_hours, public.vendor_foods,
-    public.vendor_tiffin_availability, public.artwork_campaigns,
-    public.artwork_campaign_categories, public.artwork_submissions,
-    public.artwork_voting_sessions, public.artwork_voting_entries,
-    public.artwork_campaign_winners
-to authenticated;
 
 revoke all on public.public_profiles, public.v_collection_progress,
     public.v_artwork_rankings from public;

@@ -1,17 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
+import '../../Model/Repositories/HeritageCommunity/community_comment_model.dart';
+import '../../ViewModel/AccountManagement/auth_view_model.dart';
+import '../../ViewModel/HeritageCommunity/post_detail_view_model.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
-import '../../ViewModel/HeritageCommunity/post_detail_view_model.dart';
-import '../../ViewModel/AccountManagement/auth_view_model.dart';
-import '../../Model/Repositories/HeritageCommunity/community_comment_model.dart';
-import '../Widgets/loading_widget.dart';
+import '../Widgets/app_network_image.dart';
 import '../Widgets/error_state_widget.dart';
+import '../Widgets/loading_widget.dart';
 import '../Widgets/rating_bar.dart';
 
 /// C3. Community Post Details View.
 class PostDetailView extends StatefulWidget {
   final String postId;
+
   const PostDetailView({super.key, required this.postId});
 
   @override
@@ -20,7 +23,9 @@ class PostDetailView extends StatefulWidget {
 
 class _PostDetailViewState extends State<PostDetailView> {
   late final PostDetailViewModel _vm;
-  final _commentCtrl = TextEditingController();
+  final _scrollController = ScrollController();
+  final _commentsKey = GlobalKey();
+  int _photoIndex = 0;
 
   @override
   void initState() {
@@ -33,7 +38,8 @@ class _PostDetailViewState extends State<PostDetailView> {
 
   @override
   void dispose() {
-    _commentCtrl.dispose();
+    _scrollController.dispose();
+    _vm.dispose();
     super.dispose();
   }
 
@@ -42,56 +48,49 @@ class _PostDetailViewState extends State<PostDetailView> {
     return ChangeNotifierProvider.value(
       value: _vm,
       child: Consumer2<PostDetailViewModel, AuthViewModel>(
-        builder: (ctx, vm, auth, _) => Scaffold(
-          backgroundColor: AppColors.background,
+        builder: (context, vm, auth, _) => Scaffold(
+          backgroundColor: AppColors.surface,
           appBar: AppBar(title: const Text('Post')),
           body: vm.isLoading
               ? const LoadingSpinner()
               : vm.hasError || vm.post == null
-              ? ErrorStateWidget(onRetry: () => _vm.retry(widget.postId))
+              ? ErrorStateWidget(onRetry: () => vm.retry(widget.postId))
               : RefreshIndicator(
                   onRefresh: () =>
                       vm.loadPost(widget.postId, showLoading: false),
-                  child: _buildContent(ctx, vm, auth),
+                  child: _buildContent(context, vm, auth),
                 ),
+          bottomNavigationBar: vm.post == null || vm.isLoading
+              ? null
+              : _buildBottomBar(context, vm, auth),
         ),
       ),
     );
   }
 
   Widget _buildContent(
-    BuildContext ctx,
+    BuildContext context,
     PostDetailViewModel vm,
     AuthViewModel auth,
   ) {
-    final p = vm.post!;
-    return Column(
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: const EdgeInsets.all(16),
+    final post = vm.post!;
+    return SingleChildScrollView(
+      controller: _scrollController,
+      physics: const AlwaysScrollableScrollPhysics(),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 14),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Author + date
                 Row(
                   children: [
-                    CircleAvatar(
+                    _Avatar(
+                      name: post.authorName,
+                      imageUrl: post.authorAvatarUrl,
                       radius: 22,
-                      backgroundColor: AppColors.primary,
-                      backgroundImage: p.authorAvatarUrl == null
-                          ? null
-                          : NetworkImage(p.authorAvatarUrl!),
-                      child: p.authorAvatarUrl == null
-                          ? Text(
-                              p.authorName[0],
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            )
-                          : null,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
@@ -99,26 +98,25 @@ class _PostDetailViewState extends State<PostDetailView> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            p.authorName,
-                            style: Theme.of(ctx).textTheme.titleSmall,
+                            post.authorName,
+                            style: Theme.of(context).textTheme.titleSmall,
                           ),
+                          const SizedBox(height: 2),
                           Text(
-                            p.timeAgo,
-                            style: Theme.of(ctx).textTheme.labelSmall,
+                            post.timeAgo,
+                            style: Theme.of(context).textTheme.labelSmall,
                           ),
                         ],
                       ),
                     ),
-                    RatingBar(rating: p.vendorRating, size: 16),
+                    RatingBar(rating: post.vendorRating, size: 17),
                   ],
                 ),
                 const SizedBox(height: 12),
-
-                // Vendor badge
                 Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
-                    vertical: 6,
+                    vertical: 7,
                   ),
                   decoration: BoxDecoration(
                     color: AppColors.primaryContainer,
@@ -129,428 +127,608 @@ class _PostDetailViewState extends State<PostDetailView> {
                     children: [
                       const Icon(
                         Icons.storefront_rounded,
-                        size: 14,
+                        size: 15,
                         color: AppColors.primary,
                       ),
                       const SizedBox(width: 6),
                       Text(
-                        '${p.vendorName} · ${p.vendorState}',
+                        [
+                          post.vendorName,
+                          post.vendorState,
+                        ].where((value) => value.isNotEmpty).join(' · '),
                         style: const TextStyle(
                           color: AppColors.primary,
                           fontSize: 12,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 14),
-
-                // Review
+              ],
+            ),
+          ),
+          if (post.photoUrls.isNotEmpty) _buildPhotoCarousel(post.photoUrls),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 20),
+            child: Text(
+              post.reviewText,
+              style: Theme.of(
+                context,
+              ).textTheme.bodyLarge?.copyWith(height: 1.55),
+            ),
+          ),
+          const Divider(thickness: 8, color: AppColors.surfaceVariant),
+          Padding(
+            key: _commentsKey,
+            padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+            child: Row(
+              children: [
                 Text(
-                  p.reviewText,
+                  'Comments',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  '${vm.totalCommentCount}',
                   style: Theme.of(
-                    ctx,
-                  ).textTheme.bodyLarge?.copyWith(height: 1.6),
-                ),
-                if (p.postComment != null) ...[
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      p.postComment!,
-                      style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ),
-                ],
-
-                // Photos
-                if (p.photoUrls.isNotEmpty) ...[
-                  const SizedBox(height: 14),
-                  SizedBox(
-                    height: 120,
-                    child: ListView.builder(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: p.photoUrls.length,
-                      itemBuilder: (_, i) => Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(12),
-                          child: Image.network(
-                            p.photoUrls[i],
-                            width: 120,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => const SizedBox(
-                              width: 120,
-                              child: ColoredBox(
-                                color: AppColors.surfaceVariant,
-                                child: Icon(Icons.broken_image_outlined),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-
-                // Comment count
-                const SizedBox(height: 14),
-                Row(
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.chat_bubble_outline_rounded,
-                          size: 20,
-                          color: AppColors.textHint,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${vm.totalCommentCount}',
-                          style: const TextStyle(
-                            color: AppColors.textHint,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-
-                const Divider(height: 28),
-
-                // Comments
-                Text('Comments', style: Theme.of(ctx).textTheme.titleMedium),
-                const SizedBox(height: 12),
-                if (vm.comments.isEmpty)
-                  const Text(
-                    'No comments yet. Be the first!',
-                    style: TextStyle(color: AppColors.textHint, fontSize: 13),
-                  ),
-                ...vm.comments.map(
-                  (c) => _CommentTile(
-                    comment: c,
-                    onReply: () async {
-                      if (!auth.isLoggedIn) {
-                        await Navigator.pushNamed(ctx, AppRoutes.login);
-                        return;
-                      }
-                      await _showReplyDialog(ctx, vm, c);
-                    },
-                  ),
+                    context,
+                  ).textTheme.labelMedium?.copyWith(color: AppColors.textHint),
                 ),
               ],
             ),
           ),
-        ),
-
-        // Comment input
-        Container(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          decoration: const BoxDecoration(
-            color: AppColors.surface,
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black12,
-                blurRadius: 8,
-                offset: Offset(0, -2),
+          if (vm.comments.isEmpty)
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 32),
+              child: Text(
+                'No comments yet. Be the first!',
+                style: TextStyle(color: AppColors.textHint, fontSize: 13),
               ),
-            ],
+            )
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                children: vm.comments
+                    .map(
+                      (comment) => _CommentTile(
+                        comment: comment,
+                        onReply: () => _startReply(context, vm, auth, comment),
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          const SizedBox(height: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPhotoCarousel(List<String> photoUrls) {
+    return Column(
+      children: [
+        AspectRatio(
+          aspectRatio: 1,
+          child: PageView.builder(
+            itemCount: photoUrls.length,
+            onPageChanged: (index) => setState(() => _photoIndex = index),
+            itemBuilder: (context, index) => ColoredBox(
+              color: AppColors.surfaceVariant,
+              child: AppNetworkImage(
+                imageUrl: photoUrls[index],
+                width: double.infinity,
+                height: double.infinity,
+                fit: BoxFit.cover,
+                targetOptimizationWidth: 1200,
+              ),
+            ),
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Align(
-                alignment: Alignment.centerRight,
-                child: FilledButton.tonalIcon(
-                  onPressed: vm.isTogglingLike
-                      ? null
-                      : () async {
-                          if (!auth.isLoggedIn) {
-                            await Navigator.pushNamed(ctx, AppRoutes.login);
-                            return;
-                          }
-                          await _vm.toggleLike(auth.currentUser!.id);
-                          if (ctx.mounted && vm.errorMessage != null) {
-                            ScaffoldMessenger.of(ctx).showSnackBar(
-                              SnackBar(content: Text(vm.errorMessage!)),
-                            );
-                          }
-                        },
-                  icon: vm.isTogglingLike
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          p.isLikedByCurrentUser
-                              ? Icons.favorite_rounded
-                              : Icons.favorite_outline_rounded,
-                          color: p.isLikedByCurrentUser
-                              ? AppColors.error
-                              : null,
-                        ),
-                  label: Text(
-                    '${p.isLikedByCurrentUser ? 'Unlike' : 'Like'} · ${p.likeCount}',
+        ),
+        if (photoUrls.length > 1)
+          Padding(
+            padding: const EdgeInsets.only(top: 10),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(
+                photoUrls.length,
+                (index) => AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: index == _photoIndex ? 18 : 6,
+                  height: 6,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    color: index == _photoIndex
+                        ? AppColors.primary
+                        : AppColors.divider,
+                    borderRadius: BorderRadius.circular(99),
                   ),
                 ),
               ),
-              const SizedBox(height: 8),
-              !auth.isLoggedIn
-                  ? GestureDetector(
-                      onTap: () => Navigator.pushNamed(ctx, AppRoutes.login),
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.surfaceVariant,
-                          borderRadius: BorderRadius.circular(24),
-                        ),
-                        child: const Row(
-                          children: [
-                            Icon(
-                              Icons.lock_outline_rounded,
-                              size: 16,
-                              color: AppColors.textHint,
-                            ),
-                            SizedBox(width: 8),
-                            Text(
-                              'Login to comment',
-                              style: TextStyle(
-                                color: AppColors.textHint,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    )
-                  : Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _commentCtrl,
-                            decoration: const InputDecoration(
-                              hintText: 'Write a comment...',
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: vm.isSubmittingComment
-                              ? const SizedBox(
-                                  width: 20,
-                                  height: 20,
-                                  child: CircularProgressIndicator(
-                                    strokeWidth: 2,
-                                  ),
-                                )
-                              : const Icon(
-                                  Icons.send_rounded,
-                                  color: AppColors.primary,
-                                ),
-                          onPressed: vm.isSubmittingComment
-                              ? null
-                              : () async {
-                                  final text = _commentCtrl.text.trim();
-                                  if (text.isEmpty) {
-                                    ScaffoldMessenger.of(ctx).showSnackBar(
-                                      const SnackBar(
-                                        content: Text(
-                                          'Comment cannot be empty.',
-                                        ),
-                                      ),
-                                    );
-                                    return;
-                                  }
-                                  final ok = await _vm.submitComment(
-                                    widget.postId,
-                                    text,
-                                    null,
-                                  );
-                                  if (ok) {
-                                    _commentCtrl.clear();
-                                  } else if (ctx.mounted) {
-                                    ScaffoldMessenger.of(ctx).showSnackBar(
-                                      SnackBar(
-                                        content: Text(
-                                          vm.errorMessage ??
-                                              'Comment could not be posted.',
-                                        ),
-                                        backgroundColor: AppColors.error,
-                                      ),
-                                    );
-                                  }
-                                },
-                        ),
-                      ],
-                    ),
-            ],
+            ),
           ),
-        ),
       ],
     );
   }
 
-  Future<void> _showReplyDialog(
+  Widget _buildBottomBar(
     BuildContext context,
     PostDetailViewModel vm,
-    CommunityCommentModel parent,
-  ) async {
-    final controller = TextEditingController();
-    await showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text('Reply to ${parent.authorName}'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          maxLines: 3,
-          decoration: const InputDecoration(hintText: 'Write a reply...'),
+    AuthViewModel auth,
+  ) {
+    final post = vm.post!;
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      curve: Curves.easeOut,
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SafeArea(
+        top: false,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 9, 8, 9),
+          decoration: const BoxDecoration(
+            color: AppColors.surface,
+            border: Border(top: BorderSide(color: AppColors.divider)),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  readOnly: true,
+                  enableInteractiveSelection: false,
+                  onTap: () => _startComment(context, vm, auth),
+                  decoration: InputDecoration(
+                    hintText: auth.isLoggedIn
+                        ? 'Say something...'
+                        : 'Login to comment',
+                    filled: true,
+                    fillColor: AppColors.surfaceVariant,
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 11,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: BorderSide.none,
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(24),
+                      borderSide: const BorderSide(color: AppColors.primary),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 4),
+              _BottomAction(
+                tooltip: post.isLikedByCurrentUser ? 'Unlike' : 'Like',
+                icon: post.isLikedByCurrentUser
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+                color: post.isLikedByCurrentUser
+                    ? AppColors.error
+                    : AppColors.textPrimary,
+                count: post.likeCount,
+                busy: vm.isTogglingLike,
+                onPressed: () => _toggleLike(context, vm, auth),
+              ),
+              _BottomAction(
+                tooltip: 'Go to comments',
+                icon: Icons.chat_bubble_outline_rounded,
+                count: vm.totalCommentCount,
+                onPressed: _scrollToComments,
+              ),
+            ],
+          ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              final text = controller.text.trim();
-              if (text.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Reply cannot be empty.')),
-                );
-                return;
-              }
-              final ok = await vm.submitComment(widget.postId, text, parent.id);
-              if (!dialogContext.mounted) return;
-              if (ok) {
-                Navigator.pop(dialogContext);
-              } else {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(vm.errorMessage ?? 'Reply failed.')),
-                );
-              }
-            },
-            child: const Text('Reply'),
-          ),
-        ],
       ),
     );
-    controller.dispose();
+  }
+
+  Future<void> _toggleLike(
+    BuildContext context,
+    PostDetailViewModel vm,
+    AuthViewModel auth,
+  ) async {
+    if (!auth.isLoggedIn) {
+      await Navigator.pushNamed(context, AppRoutes.login);
+      return;
+    }
+    await vm.toggleLike(auth.currentUser!.id);
+    if (mounted && vm.errorMessage != null) {
+      _showError(vm.errorMessage!);
+    }
+  }
+
+  Future<void> _startComment(
+    BuildContext context,
+    PostDetailViewModel vm,
+    AuthViewModel auth,
+  ) async {
+    if (!auth.isLoggedIn) {
+      await Navigator.pushNamed(context, AppRoutes.login);
+      return;
+    }
+    final commented = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black54,
+      builder: (_) => _TextComposerSheet(
+        label: 'Add a comment',
+        hintText: 'Say something...',
+        sendTooltip: 'Send comment',
+        onSubmit: (text) => vm.submitComment(widget.postId, text, null),
+        errorMessage: () => vm.errorMessage,
+      ),
+    );
+    if (commented == true && mounted) _scrollToComments();
+  }
+
+  Future<void> _startReply(
+    BuildContext context,
+    PostDetailViewModel vm,
+    AuthViewModel auth,
+    CommunityCommentModel parent,
+  ) async {
+    if (!auth.isLoggedIn) {
+      await Navigator.pushNamed(context, AppRoutes.login);
+      return;
+    }
+    final replied = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black54,
+      builder: (_) => _TextComposerSheet(
+        label: 'Reply to ${parent.authorName}',
+        hintText: 'Reply to ${parent.authorName}',
+        sendTooltip: 'Send reply',
+        onSubmit: (text) => vm.submitComment(widget.postId, text, parent.id),
+        errorMessage: () => vm.errorMessage,
+      ),
+    );
+    if (replied == true && mounted) _scrollToComments();
+  }
+
+  void _scrollToComments() {
+    final commentsContext = _commentsKey.currentContext;
+    if (commentsContext == null) return;
+    Scrollable.ensureVisible(
+      commentsContext,
+      duration: const Duration(milliseconds: 350),
+      curve: Curves.easeOutCubic,
+      alignment: 0.05,
+    );
+  }
+
+  void _showError(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: AppColors.error),
+    );
+  }
+}
+
+class _BottomAction extends StatelessWidget {
+  final String tooltip;
+  final IconData icon;
+  final int count;
+  final VoidCallback onPressed;
+  final Color color;
+  final bool busy;
+
+  const _BottomAction({
+    required this.tooltip,
+    required this.icon,
+    required this.count,
+    required this.onPressed,
+    this.color = AppColors.textPrimary,
+    this.busy = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: busy ? null : onPressed,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (busy)
+              const SizedBox.square(
+                dimension: 22,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              Icon(icon, size: 24, color: color),
+            Text(
+              '$count',
+              style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                color: color,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
 class _CommentTile extends StatelessWidget {
   final CommunityCommentModel comment;
   final VoidCallback? onReply;
+
   const _CommentTile({required this.comment, this.onReply});
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.only(bottom: 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: AppColors.primary,
-                backgroundImage: comment.authorAvatarUrl == null
-                    ? null
-                    : NetworkImage(comment.authorAvatarUrl!),
-                child: comment.authorAvatarUrl == null
-                    ? Text(
-                        comment.authorName[0],
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      )
-                    : null,
+              _Avatar(
+                name: comment.authorName,
+                imageUrl: comment.authorAvatarUrl,
+                radius: 17,
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Text(
-                            comment.authorName,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.w700,
-                              fontSize: 12,
-                            ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      comment.authorName,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      comment.body,
+                      style: const TextStyle(
+                        color: AppColors.textPrimary,
+                        fontSize: 14,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Row(
+                      children: [
+                        Text(
+                          comment.timeAgo,
+                          style: const TextStyle(
+                            color: AppColors.textHint,
+                            fontSize: 11,
                           ),
-                          const SizedBox(width: 6),
-                          Text(
-                            comment.timeAgo,
-                            style: const TextStyle(
-                              fontSize: 10,
-                              color: AppColors.textHint,
+                        ),
+                        if (onReply != null) ...[
+                          const SizedBox(width: 14),
+                          GestureDetector(
+                            onTap: onReply,
+                            child: const Text(
+                              'Reply',
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                              ),
                             ),
                           ),
                         ],
-                      ),
-                      const SizedBox(height: 3),
-                      Text(
-                        comment.body,
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textPrimary,
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (comment.replies.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(left: 44, top: 14),
+              child: Column(
+                children: comment.replies
+                    .map((reply) => _CommentTile(comment: reply))
+                    .toList(),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _Avatar extends StatelessWidget {
+  final String name;
+  final String? imageUrl;
+  final double radius;
+
+  const _Avatar({
+    required this.name,
+    required this.imageUrl,
+    required this.radius,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final initial = name.trim().isEmpty ? '?' : name.trim()[0].toUpperCase();
+    return CircleAvatar(
+      radius: radius,
+      backgroundColor: AppColors.primary,
+      backgroundImage: imageUrl == null ? null : NetworkImage(imageUrl!),
+      child: imageUrl == null
+          ? Text(
+              initial,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: radius * .72,
+                fontWeight: FontWeight.w700,
+              ),
+            )
+          : null,
+    );
+  }
+}
+
+class _TextComposerSheet extends StatefulWidget {
+  final String label;
+  final String hintText;
+  final String sendTooltip;
+  final Future<bool> Function(String text) onSubmit;
+  final String? Function() errorMessage;
+
+  const _TextComposerSheet({
+    required this.label,
+    required this.hintText,
+    required this.sendTooltip,
+    required this.onSubmit,
+    required this.errorMessage,
+  });
+
+  @override
+  State<_TextComposerSheet> createState() => _TextComposerSheetState();
+}
+
+class _TextComposerSheetState extends State<_TextComposerSheet> {
+  final _controller = TextEditingController();
+  bool _isSending = false;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _send() async {
+    final text = _controller.text.trim();
+    if (text.isEmpty || _isSending) return;
+    setState(() => _isSending = true);
+    final succeeded = await widget.onSubmit(text);
+    if (!mounted) return;
+    if (succeeded) {
+      Navigator.pop(context, true);
+      return;
+    }
+    setState(() => _isSending = false);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(widget.errorMessage() ?? 'Message could not be posted.'),
+        backgroundColor: AppColors.error,
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedPadding(
+      duration: const Duration(milliseconds: 180),
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: Material(
+        color: AppColors.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        clipBehavior: Clip.antiAlias,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 14),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 38,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: AppColors.divider,
+                    borderRadius: BorderRadius.circular(99),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                widget.label,
+                style: Theme.of(
+                  context,
+                ).textTheme.labelMedium?.copyWith(color: AppColors.textHint),
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _controller,
+                autofocus: true,
+                maxLines: 1,
+                textInputAction: TextInputAction.send,
+                onSubmitted: (_) => _send(),
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: widget.hintText,
+                  filled: true,
+                  fillColor: AppColors.surfaceVariant,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 11,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: BorderSide.none,
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(color: AppColors.primary),
+                  ),
+                  suffixIconConstraints: const BoxConstraints(minWidth: 48),
+                  suffixIcon: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_controller.text.isNotEmpty)
+                        IconButton(
+                          tooltip: 'Clear text',
+                          onPressed: _isSending
+                              ? null
+                              : () {
+                                  _controller.clear();
+                                  setState(() {});
+                                },
+                          icon: const Icon(Icons.close_rounded, size: 20),
                         ),
+                      IconButton(
+                        tooltip: widget.sendTooltip,
+                        onPressed: _controller.text.trim().isEmpty || _isSending
+                            ? null
+                            : _send,
+                        icon: _isSending
+                            ? const SizedBox.square(
+                                dimension: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Icon(Icons.send_rounded, size: 20),
                       ),
-                      if (comment.parentCommentId == null && onReply != null)
-                        Align(
-                          alignment: Alignment.centerLeft,
-                          child: TextButton(
-                            onPressed: onReply,
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(48, 30),
-                            ),
-                            child: const Text('Reply'),
-                          ),
-                        ),
                     ],
                   ),
                 ),
               ),
             ],
           ),
-          // Replies
-          ...comment.replies.map(
-            (r) => Padding(
-              padding: const EdgeInsets.only(left: 42, top: 6),
-              child: _CommentTile(comment: r),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

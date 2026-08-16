@@ -72,6 +72,8 @@ class HeritageCommunityRepository {
   }
 
   Future<CommunityPostModel?> fetchPostById(String id) async {
+    // RLS limits anonymous users to published posts and lets an author open
+    // their own draft/hidden review from the profile history.
     final row = await _api.guard(
       () => _api.client
           .from('community_posts')
@@ -81,12 +83,31 @@ class HeritageCommunityRepository {
         community_post_photos(photo_url, sort_order)
       ''')
           .eq('community_post_id', id)
-          .eq('status', 'published')
           .maybeSingle(),
     );
     if (row == null) return null;
     final mapped = await _mapPosts([row]);
     return mapped.single;
+  }
+
+  /// Returns every review created by the signed-in user, including drafts or
+  /// hidden posts that are not available in the public community feed.
+  Future<List<CommunityPostModel>> fetchMyPosts(String userId) async {
+    final user = _api.requireUser();
+    if (user.id != userId) throw const AppException('Review access denied.');
+    final profileId = await _currentProfileId();
+    final rows = await _api.guard(
+      () => _api.client
+          .from('community_posts')
+          .select('''
+        *,
+        vendors(vendor_name, states(state_name)),
+        community_post_photos(photo_url, sort_order)
+      ''')
+          .eq('profile_id', profileId)
+          .order('created_at', ascending: false),
+    );
+    return _mapPosts(rows);
   }
 
   Future<List<CommunityPostModel>> _mapPosts(
@@ -329,7 +350,7 @@ class HeritageCommunityRepository {
       () => _api.client
           .from('artwork_campaigns')
           .select()
-          .inFilter('status', const ['open_submission', 'voting', 'completed'])
+          .inFilter('status', const ['active', 'completed'])
           .order('created_at', ascending: false),
     );
     if (rows.isEmpty) return [];
@@ -337,33 +358,17 @@ class HeritageCommunityRepository {
     final campaignIds = rows
         .map((row) => row['artwork_campaign_id'] as String)
         .toList();
-    final related = await Future.wait<List<Map<String, dynamic>>>([
-      _api.guard(
-        () => _api.client
-            .from('artwork_campaign_categories')
-            .select('artwork_campaign_category_id, artwork_campaign_id')
-            .inFilter('artwork_campaign_id', campaignIds),
-      ),
-      _api.guard(
-        () => _api.client
-            .from('artwork_voting_sessions')
-            .select(
-              'artwork_campaign_id, voting_start_at, voting_end_at, status',
-            )
-            .inFilter('artwork_campaign_id', campaignIds)
-            .order('voting_start_at', ascending: false),
-      ),
-    ]);
-    final categories = related[0];
-    final sessions = related[1];
+    final categories = await _api.guard(
+      () => _api.client
+          .from('artwork_campaign_categories')
+          .select('artwork_campaign_category_id, artwork_campaign_id')
+          .inFilter('artwork_campaign_id', campaignIds),
+    );
     return rows.map((raw) {
       final row = Map<String, dynamic>.from(raw);
       final campaignId = row['artwork_campaign_id'];
       row['artwork_campaign_categories'] = categories
           .where((category) => category['artwork_campaign_id'] == campaignId)
-          .toList();
-      row['artwork_voting_sessions'] = sessions
-          .where((session) => session['artwork_campaign_id'] == campaignId)
           .toList();
       return ArtworkCampaignModel.fromJson(row);
     }).toList();
@@ -412,7 +417,7 @@ class HeritageCommunityRepository {
       *, artwork_submissions(
         profile_id, artwork_title, design_description, cultural_inspiration,
         artist_statement, artwork_file_url, submitted_at
-      )
+      ), artwork_voting_sessions(status, voting_start_at, voting_end_at)
     ''')
         .eq('artwork_campaign_category_id', categoryId);
     final rows = await _api.guard(
@@ -522,10 +527,26 @@ class HeritageCommunityRepository {
     final campaign = await _api.guard(
       () => _api.client
           .from('artwork_campaigns')
-          .select('campaign_title')
+          .select(
+            'campaign_title, status, submission_start_at, submission_end_at',
+          )
           .eq('artwork_campaign_id', campaignId)
           .single(),
     );
+    final campaignStart = DateTime.tryParse(
+      campaign['submission_start_at'] as String? ?? '',
+    );
+    final campaignEnd = DateTime.tryParse(
+      campaign['submission_end_at'] as String? ?? '',
+    );
+    final now = DateTime.now();
+    if (campaign['status'] != 'active' ||
+        campaignStart == null ||
+        campaignEnd == null ||
+        now.isBefore(campaignStart) ||
+        now.isAfter(campaignEnd)) {
+      throw const AppException('This campaign is no longer accepting artwork.');
+    }
     final category = await _api.guard(
       () => _api.client
           .from('artwork_campaign_categories')
@@ -561,6 +582,41 @@ class HeritageCommunityRepository {
       campaignName: campaign['campaign_title'] as String,
       categoryName: category['category_name'] as String,
     );
+  }
+
+  /// Returns every artwork submission owned by the currently signed-in user.
+  /// The submission policy deliberately permits owners to see pending and
+  /// rejected entries, while the public listing only exposes approved work.
+  Future<List<ArtworkSubmissionModel>> fetchMyArtworkSubmissions(
+    String userId,
+  ) async {
+    final user = _api.requireUser();
+    if (user.id != userId) {
+      throw const AppException('Artwork submission access denied.');
+    }
+    final profileId = await _currentProfileId();
+    final rows = await _api.guard(
+      () => _api.client
+          .from('artwork_submissions')
+          .select('''
+        *, artwork_campaign_categories(
+          category_name, artwork_campaigns(campaign_title)
+        )
+      ''')
+          .eq('profile_id', profileId)
+          .order('submitted_at', ascending: false),
+    );
+    return rows.map((row) {
+      final category =
+          row['artwork_campaign_categories'] as Map<String, dynamic>?;
+      final campaign = category?['artwork_campaigns'] as Map<String, dynamic>?;
+      return ArtworkSubmissionModel.fromJson(
+        row,
+        categoryName: category?['category_name'] as String? ?? 'Category',
+        campaignName:
+            campaign?['campaign_title'] as String? ?? 'Artwork campaign',
+      );
+    }).toList();
   }
 
   Future<List<VotingEntryModel>> fetchRankings(String campaignId) async {

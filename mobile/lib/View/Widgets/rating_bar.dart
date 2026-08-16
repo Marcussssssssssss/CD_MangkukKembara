@@ -6,12 +6,16 @@ class RatingBar extends StatelessWidget {
   final double rating;
   final double size;
   final bool showLabel;
+  final Color? filledColor;
+  final Color? labelColor;
 
   const RatingBar({
     super.key,
     required this.rating,
     this.size = 16,
     this.showLabel = true,
+    this.filledColor,
+    this.labelColor,
   });
 
   @override
@@ -19,19 +23,21 @@ class RatingBar extends StatelessWidget {
     final full = rating.floor();
     final half = (rating - full) >= 0.5;
     final empty = 5 - full - (half ? 1 : 0);
+    final filled = filledColor ?? AppColors.starFilled;
+    final label = labelColor ?? AppColors.textSecondary;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         ...List.generate(
           full,
           (_) =>
-              Icon(Icons.star_rounded, size: size, color: AppColors.starFilled),
+              Icon(Icons.star_rounded, size: size, color: filled),
         ),
         if (half)
           Icon(
             Icons.star_half_rounded,
             size: size,
-            color: AppColors.starFilled,
+            color: filled,
           ),
         ...List.generate(
           empty,
@@ -48,7 +54,7 @@ class RatingBar extends StatelessWidget {
             style: TextStyle(
               fontSize: size * 0.8,
               fontWeight: FontWeight.w700,
-              color: AppColors.textSecondary,
+              color: label,
             ),
           ),
         ],

@@ -28,16 +28,17 @@ import '../View/HeritageCommunity/artwork_category_list_view.dart';
 import '../View/HeritageCommunity/artwork_voting_detail_view.dart';
 import '../View/HeritageCommunity/artwork_submission_view.dart';
 import '../View/HeritageCommunity/artwork_submission_success_view.dart';
-import '../View/HeritageCommunity/campaign_rankings_view.dart';
 
 // Module D — Account Management
-import '../View/AccountManagement/guest_account_view.dart';
+import '../View/AccountManagement/account_landing_view.dart';
 import '../View/AccountManagement/login_view.dart';
 import '../View/AccountManagement/register_view.dart';
 import '../View/AccountManagement/forgot_password_view.dart'; // also contains ChangePasswordView
 import '../View/AccountManagement/profile_view.dart';
 import '../View/AccountManagement/edit_profile_view.dart';
 import '../View/AccountManagement/email_verification_view.dart';
+import '../View/AccountManagement/my_artwork_submissions_view.dart';
+import '../View/AccountManagement/my_reviews_view.dart';
 
 /// All named route strings in the application.
 abstract final class AppRoutes {
@@ -69,10 +70,9 @@ abstract final class AppRoutes {
   static const String artworkVotingDetail = '/artwork-voting-detail';
   static const String artworkSubmission = '/artwork-submission';
   static const String artworkSubmissionSuccess = '/artwork-submission-success';
-  static const String campaignRankings = '/campaign-rankings';
 
   // ── Module D ─────────────────────────────────────────────────────────────────
-  static const String guestAccount = '/guest-account';
+  static const String accountLanding = '/account-landing';
   static const String login = '/login';
   static const String register = '/register';
   static const String forgotPassword = '/forgot-password';
@@ -81,6 +81,8 @@ abstract final class AppRoutes {
   static const String changePassword = '/change-password';
   static const String resetPassword = '/reset-password';
   static const String emailVerification = '/email-verification';
+  static const String myReviews = '/my-reviews';
+  static const String myArtworkSubmissions = '/my-artwork-submissions';
 
   /// Route generator — maps named routes to their view widgets.
   static Route<dynamic> generateRoute(RouteSettings settings) {
@@ -187,15 +189,9 @@ abstract final class AppRoutes {
         );
       case artworkSubmissionSuccess:
         return _build(const ArtworkSubmissionSuccessView(), settings);
-      case campaignRankings:
-        return _build(
-          CampaignRankingsView(campaignId: settings.arguments as String? ?? ''),
-          settings,
-        );
-
       // Module D
-      case guestAccount:
-        return _build(const GuestAccountView(), settings);
+      case accountLanding:
+        return _build(const AccountLandingView(), settings);
       case login:
         return _build(const LoginView(), settings);
       case register:
@@ -215,6 +211,10 @@ abstract final class AppRoutes {
           EmailVerificationView(email: settings.arguments as String? ?? ''),
           settings,
         );
+      case myReviews:
+        return _build(const MyReviewsView(), settings);
+      case myArtworkSubmissions:
+        return _build(const MyArtworkSubmissionsView(), settings);
 
       default:
         return _build(const TreasureMapView(), settings);
