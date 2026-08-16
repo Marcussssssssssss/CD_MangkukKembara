@@ -1,5 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from '../../../components/Modal';
+
+const emptyFormData = () => ({
+  campaign_id: '',
+  voting_start_at: '',
+  voting_end_at: ''
+});
 
 export default function VotingSessionForm({
   isOpen,
@@ -8,11 +14,7 @@ export default function VotingSessionForm({
   campaigns,
   submissions
 }) {
-  const [formData, setFormData] = useState({
-    campaign_id: '',
-    voting_start_at: '',
-    voting_end_at: ''
-  });
+  const [formData, setFormData] = useState(emptyFormData);
   
   const [selectedSubmissionIds, setSelectedSubmissionIds] = useState([]);
   const [errors, setErrors] = useState({});
@@ -20,21 +22,20 @@ export default function VotingSessionForm({
 
   // Filter out non-approved submissions and only keep ones for the selected campaign
   const availableSubmissions = submissions.filter(
-    s => s.review_status === 'approved' && 
-    s.artwork_campaign_categories?.artwork_campaigns?.artwork_campaign_id === formData.campaign_id
+    s => s.review_status === 'approved' &&
+    s.artwork_campaign_id === formData.campaign_id
   );
 
-  useEffect(() => {
-    if (isOpen) {
-      setFormData({
-        campaign_id: '',
-        voting_start_at: '',
-        voting_end_at: ''
-      });
-      setSelectedSubmissionIds([]);
-      setErrors({});
-    }
-  }, [isOpen]);
+  const resetForm = () => {
+    setFormData(emptyFormData());
+    setSelectedSubmissionIds([]);
+    setErrors({});
+  };
+
+  const handleClose = () => {
+    resetForm();
+    onClose();
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -99,6 +100,7 @@ export default function VotingSessionForm({
     setIsSubmitting(true);
     try {
       await onSave(formData, selectedSubsData);
+      resetForm();
     } catch (err) {
       setErrors({ form: err.message || 'Failed to create voting session.' });
     } finally {
@@ -107,7 +109,7 @@ export default function VotingSessionForm({
   };
 
   return (
-    <Modal open={isOpen} onClose={onClose} title="Create Standard Voting Session" size="3xl">
+    <Modal open={isOpen} onClose={handleClose} title="Create Standard Voting Session" size="3xl">
       <form onSubmit={handleSubmit} className="flex flex-col h-full max-h-[85vh]">
         <div className="flex-1 overflow-y-auto p-6">
           {errors.form && (
@@ -249,7 +251,7 @@ export default function VotingSessionForm({
         <div className="shrink-0 flex items-center justify-end gap-3 border-t border-surface-200 p-6 bg-surface-50">
           <button
             type="button"
-            onClick={onClose}
+            onClick={handleClose}
             disabled={isSubmitting}
             className="rounded-lg px-4 py-2.5 text-sm font-medium text-surface-700 hover:bg-surface-200 disabled:opacity-50"
           >

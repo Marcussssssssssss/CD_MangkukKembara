@@ -19,7 +19,7 @@ export default function CampaignDeactivateDialog({ campaign, isOpen, onClose, on
           <div className="mt-2">
             <p className="text-sm text-surface-500">
               Are you sure you want to deactivate <span className="font-medium text-surface-900">{campaign.campaign_title}</span>? 
-              This will prevent the campaign from continuing as an active campaign.
+              Its status will change to Inactive, preventing new submissions and further campaign activity.
             </p>
           </div>
         </div>

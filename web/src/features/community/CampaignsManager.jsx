@@ -4,7 +4,7 @@ import CampaignForm from './components/CampaignForm';
 import CampaignDetails from './components/CampaignDetails';
 import WinnerDetails from './components/WinnerDetails';
 import CampaignDeactivateDialog from './components/CampaignDeactivateDialog';
-import { fetchCampaigns, fetchReferenceData, createCampaign, updateCampaign, completeCampaign, promoteWinnerToArtwork, deactivateCampaign } from './services/communityService';
+import { fetchCampaigns, fetchReferenceData, createCampaign, updateCampaign, deactivateCampaign } from './services/communityService';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function CampaignsManager() {
@@ -61,7 +61,8 @@ export default function CampaignsManager() {
     return campaigns.filter(
       (c) =>
         c.campaign_title.toLowerCase().includes(lowerQuery) ||
-        (c.description && c.description.toLowerCase().includes(lowerQuery))
+        (c.description && c.description.toLowerCase().includes(lowerQuery)) ||
+        (c.states?.state_name && c.states.state_name.toLowerCase().includes(lowerQuery))
     );
   }, [campaigns, searchQuery]);
 
@@ -88,44 +89,22 @@ export default function CampaignsManager() {
     setDeactivatingCampaign(null);
   };
 
-  const handleSaveCampaign = async (campaignData, categories) => {
-    try {
-      if (editingCampaign) {
-        const updated = await updateCampaign(editingCampaign.artwork_campaign_id, campaignData, categories);
-        setCampaigns((prev) =>
-          prev.map((c) => (c.artwork_campaign_id === updated.artwork_campaign_id ? updated : c))
-        );
-        showFeedback('Campaign updated successfully.');
-      } else {
-        if (!profile || !profile.profile_id) {
-          throw new Error("Unable to determine your profile ID for campaign creation.");
-        }
-        const created = await createCampaign(campaignData, categories, profile.profile_id);
-        setCampaigns((prev) => [created, ...prev]);
-        showFeedback('New campaign created successfully.');
+  const handleSaveCampaign = async (campaignData) => {
+    if (editingCampaign) {
+      const updated = await updateCampaign(editingCampaign.artwork_campaign_id, campaignData);
+      setCampaigns((prev) =>
+        prev.map((c) => (c.artwork_campaign_id === updated.artwork_campaign_id ? updated : c))
+      );
+      showFeedback('Campaign updated successfully.');
+    } else {
+      if (!profile || !profile.profile_id) {
+        throw new Error("Unable to determine your profile ID for campaign creation.");
       }
-      handleCloseModals();
-    } catch (err) {
-      throw err;
+      const created = await createCampaign(campaignData, profile.profile_id);
+      setCampaigns((prev) => [created, ...prev]);
+      showFeedback('New campaign created successfully.');
     }
-  };
-
-  const handleComplete = async (campaign) => {
-    if (window.confirm(`Are you sure you want to mark "${campaign.campaign_title}" as completed? This action will finalize the campaign status.`)) {
-      try {
-        const completed = await completeCampaign(campaign.artwork_campaign_id);
-        setCampaigns((prev) =>
-          prev.map((c) => (c.artwork_campaign_id === completed.artwork_campaign_id ? completed : c))
-        );
-        // If the admin is currently viewing this campaign, update the viewing state so the modal updates too
-        if (viewingCampaign && viewingCampaign.artwork_campaign_id === completed.artwork_campaign_id) {
-          setViewingCampaign(completed);
-        }
-        showFeedback('Campaign has been successfully marked as completed.');
-      } catch (err) {
-        showFeedback(err.message || 'Failed to complete campaign.', 'error');
-      }
-    }
+    handleCloseModals();
   };
 
   const handleDeactivate = (campaign) => {
@@ -146,22 +125,6 @@ export default function CampaignsManager() {
       handleCloseModals();
     } catch (err) {
       showFeedback(err.message || 'Failed to deactivate campaign.', 'error');
-    }
-  };
-
-  const handlePromote = async (winner, submission) => {
-    if (window.confirm(`Are you sure you want to promote "${submission.artwork_title}" to the official Artwork catalogue? This action cannot be undone.`)) {
-      try {
-        await promoteWinnerToArtwork(winner.artwork_campaign_winner_id, submission);
-        const updatedCampaigns = await fetchCampaigns();
-        setCampaigns(updatedCampaigns);
-        showFeedback('Artwork promoted successfully!', 'success');
-        
-        // Refresh viewingCampaign to trigger the useEffect in CampaignDetails to reload winners
-        setViewingCampaign({ ...viewingCampaign });
-      } catch (err) {
-        showFeedback(err.message || 'Failed to promote artwork.', 'error');
-      }
     }
   };
 
@@ -200,12 +163,11 @@ export default function CampaignsManager() {
       />
 
       <CampaignDetails
+        key={viewingCampaign?.artwork_campaign_id || 'campaign-details'}
         campaign={viewingCampaign}
         isOpen={!!viewingCampaign}
         onClose={handleCloseModals}
         onEdit={handleEdit}
-        onComplete={handleComplete}
-        onPromote={handlePromote}
         onViewWinner={handleViewWinner}
       />
 
@@ -213,7 +175,6 @@ export default function CampaignsManager() {
         winner={viewingWinner}
         isOpen={!!viewingWinner}
         onClose={handleCloseModals}
-        onPromote={handlePromote}
       />
 
       <CampaignForm

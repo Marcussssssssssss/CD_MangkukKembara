@@ -1,6 +1,6 @@
 import Modal from '../../../components/Modal';
 
-export default function SubmissionDetails({ submission, isOpen, onClose, onReject }) {
+export default function SubmissionDetails({ submission, isOpen, onClose, onApprove, onReject }) {
   if (!submission) return null;
 
   const statusColors = {
@@ -12,7 +12,8 @@ export default function SubmissionDetails({ submission, isOpen, onClose, onRejec
   const getStatusDisplay = (status) => status.charAt(0).toUpperCase() + status.slice(1);
 
   const submitter = submission.profiles?.display_name || submission.profile_id;
-  const campaignTitle = submission.artwork_campaign_categories?.artwork_campaigns?.campaign_title || 'Unknown Campaign';
+  const campaign = submission.artwork_campaigns;
+  const campaignTitle = campaign?.campaign_title || 'Unknown Campaign';
   const dateSubmitted = new Date(submission.submitted_at).toLocaleString();
 
   return (
@@ -35,6 +36,11 @@ export default function SubmissionDetails({ submission, isOpen, onClose, onRejec
           <div>
             <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">Campaign</h4>
             <p className="mt-1 text-sm font-medium text-surface-900">{campaignTitle}</p>
+            {(campaign?.states?.state_name || campaign?.state_id) && (
+              <p className="mt-1 text-xs text-surface-500">
+                State: {campaign.states?.state_name || campaign.state_id}
+              </p>
+            )}
           </div>
         </div>
 
@@ -113,7 +119,7 @@ export default function SubmissionDetails({ submission, isOpen, onClose, onRejec
                 Reject
               </button>
               <button
-                onClick={() => alert('Approve action coming soon.')}
+                onClick={() => onApprove(submission)}
                 className="rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
               >
                 Approve

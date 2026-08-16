@@ -23,7 +23,8 @@ const loadImageBase64 = (url) => {
 };
 
 export async function generateHandoverPDF(winnerDetails) {
-  const { campaign, category, submission, session, winner } = winnerDetails;
+  const { campaign, state, submission, session, winner } = winnerDetails;
+  const campaignState = state || campaign?.states;
   
   const doc = new jsPDF();
   
@@ -98,7 +99,7 @@ export async function generateHandoverPDF(winnerDetails) {
 
   addField('Title', submission?.artwork_title);
   addField('Artist', submission?.profiles?.display_name);
-  addField('Description', submission?.artwork_description);
+  addField('Description', submission?.design_description);
   addField('Cultural Inspiration', submission?.cultural_inspiration);
   
   y += 5;
@@ -112,6 +113,12 @@ export async function generateHandoverPDF(winnerDetails) {
   
   doc.setFontSize(11);
   addField('Campaign', campaign?.campaign_title);
+  addField(
+    'State',
+    campaignState?.state_name
+      ? `${campaignState.state_name}${campaignState.state_code ? ` (${campaignState.state_code})` : ''}`
+      : campaign?.state_id
+  );
   addField('Design Brief', campaign?.description);
   
   y += 5;

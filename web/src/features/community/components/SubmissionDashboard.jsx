@@ -57,7 +57,8 @@ export default function SubmissionDashboard({
               {submissions.length > 0 ? (
                 submissions.map((sub) => {
                   const submitter = sub.profiles?.display_name || sub.profile_id;
-                  const campaignTitle = sub.artwork_campaign_categories?.artwork_campaigns?.campaign_title || 'Unknown Campaign';
+                  const campaign = sub.artwork_campaigns;
+                  const campaignTitle = campaign?.campaign_title || 'Unknown Campaign';
 
                   const date = new Date(sub.submitted_at).toLocaleDateString();
 
@@ -78,6 +79,11 @@ export default function SubmissionDashboard({
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-surface-900">{campaignTitle}</div>
+                        {(campaign?.states?.state_name || campaign?.state_id) && (
+                          <div className="mt-1 text-xs text-surface-500">
+                            {campaign.states?.state_name || campaign.state_id}
+                          </div>
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {date}

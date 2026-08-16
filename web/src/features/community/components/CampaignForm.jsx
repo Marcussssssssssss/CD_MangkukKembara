@@ -1,44 +1,34 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from '../../../components/Modal';
 
-export default function CampaignForm({ campaign, isOpen, onClose, onSave, referenceData }) {
-  const [formData, setFormData] = useState({});
+const formatDateTimeLocal = (dateStr) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (number) => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+};
+
+const initialFormData = (campaign) => ({
+  campaign_title: campaign?.campaign_title || '',
+  state_id: campaign?.state_id || '',
+  description: campaign?.description || '',
+  submission_start_at: formatDateTimeLocal(campaign?.submission_start_at),
+  submission_end_at: formatDateTimeLocal(campaign?.submission_end_at),
+  status: campaign?.status || 'active',
+});
+
+export default function CampaignForm(props) {
+  if (!props.isOpen) return null;
+
+  const formKey = props.campaign?.artwork_campaign_id || 'new-campaign';
+  return <CampaignFormContent key={formKey} {...props} />;
+}
+
+function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData }) {
+  const [formData, setFormData] = useState(() => initialFormData(campaign));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
-
-
-
-  const formatDateTimeLocal = (dateStr) => {
-    if (!dateStr) return '';
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return '';
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-  };
-
-  useEffect(() => {
-    if (campaign) {
-      setFormData({
-        campaign_title: campaign.campaign_title || '',
-        description: campaign.description || '',
-        submission_start_at: formatDateTimeLocal(campaign.submission_start_at),
-        submission_end_at: formatDateTimeLocal(campaign.submission_end_at),
-        status: campaign.status || 'draft',
-      });
-      
-
-    } else {
-      setFormData({
-        campaign_title: '',
-        description: '',
-        submission_start_at: '',
-        submission_end_at: '',
-        status: 'draft',
-      });
-
-    }
-    setErrors({});
-  }, [campaign, isOpen]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -53,6 +43,7 @@ export default function CampaignForm({ campaign, isOpen, onClose, onSave, refere
   const validate = () => {
     const newErrors = {};
     if (!formData.campaign_title?.trim()) newErrors.campaign_title = 'Campaign Title is required.';
+    if (!formData.state_id) newErrors.state_id = 'State is required.';
     if (!formData.description?.trim()) newErrors.description = 'Description is required.';
     if (!formData.submission_start_at) newErrors.submission_start_at = 'Submission Start is required.';
     if (!formData.submission_end_at) newErrors.submission_end_at = 'Submission End is required.';
@@ -67,6 +58,12 @@ export default function CampaignForm({ campaign, isOpen, onClose, onSave, refere
 
     return newErrors;
   };
+
+  const availableStates = referenceData?.states || [];
+  const campaignState = campaign?.states;
+  const stateOptions = campaignState && !availableStates.some((state) => state.state_id === campaignState.state_id)
+    ? [...availableStates, campaignState]
+    : availableStates;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -123,6 +120,33 @@ export default function CampaignForm({ campaign, isOpen, onClose, onSave, refere
                 </div>
 
                 <div className="sm:col-span-2">
+                  <label htmlFor="state_id" className="block text-sm font-medium text-surface-900">
+                    State <span className="text-red-500">*</span>
+                  </label>
+                  <select
+                    id="state_id"
+                    name="state_id"
+                    value={formData.state_id || ''}
+                    onChange={handleChange}
+                    disabled={!!campaign}
+                    className={`mt-2 block w-full rounded-lg border ${errors.state_id ? 'border-red-500' : 'border-surface-300'} px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-surface-100 disabled:text-surface-600`}
+                  >
+                    <option value="">Select a state</option>
+                    {stateOptions.map((state) => (
+                      <option key={state.state_id} value={state.state_id}>
+                        {state.state_name}{state.state_code ? ` (${state.state_code})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.state_id && <p className="mt-1 text-xs text-red-500">{errors.state_id}</p>}
+                  {campaign && (
+                    <p className="mt-1 text-xs text-surface-500">
+                      A campaign's state cannot be changed after creation.
+                    </p>
+                  )}
+                </div>
+
+                <div className="sm:col-span-2">
                   <label htmlFor="description" className="block text-sm font-medium text-surface-900">Description</label>
                   <textarea
                     id="description"
@@ -161,24 +185,6 @@ export default function CampaignForm({ campaign, isOpen, onClose, onSave, refere
                   {errors.submission_end_at && <p className="mt-1 text-xs text-red-500">{errors.submission_end_at}</p>}
                 </div>
 
-                {!campaign && (
-                  <div>
-                    <label htmlFor="status" className="block text-sm font-medium text-surface-900">Initial Status</label>
-                    <select
-                      id="status"
-                      name="status"
-                      value={formData.status || 'draft'}
-                      onChange={handleChange}
-                      className="mt-2 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                    >
-                      <option value="draft">Draft</option>
-                      <option value="open_submission">Open Submission</option>
-                      <option value="voting">Voting</option>
-                      <option value="completed">Completed</option>
-                      <option value="cancelled">Cancelled</option>
-                    </select>
-                  </div>
-                )}
               </div>
             </div>
 

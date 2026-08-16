@@ -2,14 +2,14 @@ import { useState } from 'react';
 import Modal from '../../../components/Modal';
 import { generateHandoverPDF } from '../utils/pdfGenerator';
 
-export default function WinnerDetails({ winner, isOpen, onClose, onPromote }) {
+export default function WinnerDetails({ winner, isOpen, onClose }) {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfError, setPdfError] = useState(null);
 
   if (!winner) return null;
 
   const campaign = winner.artwork_campaigns;
-  const category = winner.artwork_campaign_categories;
+  const state = campaign?.states;
   const entry = winner.artwork_voting_entries;
   const submission = entry?.artwork_submissions;
   const session = entry?.artwork_voting_sessions;
@@ -21,7 +21,7 @@ export default function WinnerDetails({ winner, isOpen, onClose, onPromote }) {
     try {
       setIsGeneratingPDF(true);
       setPdfError(null);
-      await generateHandoverPDF({ campaign, category, submission, session, winner });
+      await generateHandoverPDF({ campaign, state, submission, session, winner });
     } catch (err) {
       setPdfError(err.message || 'Failed to generate PDF.');
     } finally {
@@ -46,11 +46,11 @@ export default function WinnerDetails({ winner, isOpen, onClose, onPromote }) {
               </span>
               {artwork ? (
                 <span className="shrink-0 inline-flex items-center rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800 uppercase tracking-wide">
-                  Promoted Artwork
+                  Official Artwork
                 </span>
               ) : (
-                <span className="shrink-0 inline-flex items-center rounded-full bg-surface-100 px-3 py-1 text-xs font-bold text-surface-600 uppercase tracking-wide">
-                  Not Promoted
+                <span className="shrink-0 inline-flex items-center rounded-full bg-red-100 px-3 py-1 text-xs font-bold text-red-700 uppercase tracking-wide">
+                  Artwork Record Unavailable
                 </span>
               )}
             </div>
@@ -81,7 +81,7 @@ export default function WinnerDetails({ winner, isOpen, onClose, onPromote }) {
                   </div>
                   <div>
                     <p className="text-sm text-surface-500">Description</p>
-                    <p className="text-sm text-surface-700 mt-1">{submission?.artwork_description || 'No description provided.'}</p>
+                    <p className="text-sm text-surface-700 mt-1">{submission?.design_description || 'No description provided.'}</p>
                   </div>
                   <div>
                     <p className="text-sm text-surface-500">Cultural Inspiration</p>
@@ -102,6 +102,13 @@ export default function WinnerDetails({ winner, isOpen, onClose, onPromote }) {
                     <p className="text-sm text-surface-500">Campaign</p>
                     <p className="font-medium text-surface-900">{campaign?.campaign_title}</p>
                     <p className="text-xs text-surface-500 mt-1 line-clamp-2">{campaign?.description}</p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-surface-500">State</p>
+                    <p className="font-medium text-surface-900">
+                      {state?.state_name || campaign?.state_id || 'Unknown State'}
+                      {state?.state_code ? ` (${state.state_code})` : ''}
+                    </p>
                   </div>
 
                 </div>
@@ -129,9 +136,9 @@ export default function WinnerDetails({ winner, isOpen, onClose, onPromote }) {
                 </div>
               </div>
 
-              {/* Artwork Promotion Status */}
+              {/* Official Artwork Record */}
               <div>
-                <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400 mb-3">Artwork Catalogue Status</h4>
+                <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400 mb-3">Official Artwork Record</h4>
                 {artwork ? (
                   <div className="rounded-lg border border-green-200 bg-green-50 p-4">
                     <div className="flex items-center gap-3">
@@ -139,24 +146,18 @@ export default function WinnerDetails({ winner, isOpen, onClose, onPromote }) {
                         <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/></svg>
                       </div>
                       <div>
-                        <p className="text-sm font-bold text-green-900">Successfully Promoted</p>
+                        <p className="text-sm font-bold text-green-900">Created During Finalisation</p>
                         <p className="text-xs font-medium text-green-700 mt-0.5">Artwork ID: <span className="font-mono">{artwork.artwork_id}</span></p>
                         <p className="text-xs text-green-600 mt-0.5">Status: {artwork.status}</p>
                       </div>
                     </div>
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-surface-200 bg-white p-4 shadow-sm flex items-center justify-between">
+                  <div className="rounded-lg border border-red-200 bg-red-50 p-4">
                     <div>
-                      <p className="text-sm font-medium text-surface-900">Pending Promotion</p>
-                      <p className="text-xs text-surface-500 mt-0.5">This winner has not yet been added to the catalogue.</p>
+                      <p className="text-sm font-medium text-red-900">Artwork record unavailable</p>
+                      <p className="text-xs text-red-700 mt-0.5">Finalisation should create and link the official artwork automatically. Review this winner's database record.</p>
                     </div>
-                    <button
-                      onClick={() => onPromote(winner, submission)}
-                      className="shrink-0 rounded-lg bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
-                    >
-                      Promote to Artwork
-                    </button>
                   </div>
                 )}
               </div>
