@@ -194,6 +194,7 @@ create table public.heritage_foods (
 create table public.artworks (
     artwork_id          varchar(5) primary key,
     profile_id          varchar(5) not null references public.profiles(profile_id),
+    source_artwork_submission_id varchar(6) unique,
     title               varchar(150) not null,
     description         text,
     artwork_meaning     text,
@@ -490,12 +491,21 @@ create table public.artwork_submissions (
 create table public.artwork_voting_sessions (
     artwork_voting_session_id varchar(7) primary key,
     artwork_campaign_id varchar(6) not null references public.artwork_campaigns(artwork_campaign_id) on delete cascade,
+    session_type       varchar(20) not null default 'standard'
+                       check (session_type in ('standard', 'tie_break')),
+    parent_voting_session_id varchar(7)
+                       references public.artwork_voting_sessions(artwork_voting_session_id),
     voting_start_at    timestamptz not null,
     voting_end_at      timestamptz not null,
     status             varchar(20) not null
                        check (status in ('scheduled', 'active', 'closed')),
 
     constraint chk_voting_dates check (voting_end_at > voting_start_at),
+    constraint chk_tie_break_parent check (
+        (session_type = 'standard' and parent_voting_session_id is null)
+        or
+        (session_type = 'tie_break' and parent_voting_session_id is not null)
+    ),
     constraint chk_artwork_voting_session_id_format
         check (artwork_voting_session_id ~ '^AVS[0-9]{4}$')
 );
@@ -532,6 +542,7 @@ create table public.artwork_campaign_winners (
     artwork_campaign_id varchar(6) not null references public.artwork_campaigns(artwork_campaign_id),
     artwork_campaign_category_id varchar(7) not null references public.artwork_campaign_categories(artwork_campaign_category_id),
     artwork_voting_entry_id varchar(7) not null references public.artwork_voting_entries(artwork_voting_entry_id),
+    artwork_id          varchar(5) unique references public.artworks(artwork_id),
     final_vote_count    integer not null default 0,
     final_rank          integer not null default 1,
     announced_by_profile_id varchar(5) not null references public.profiles(profile_id),
@@ -541,6 +552,11 @@ create table public.artwork_campaign_winners (
     constraint chk_artwork_campaign_winner_id_format
         check (artwork_campaign_winner_id ~ '^ACW[0-9]{4}$')
 );
+
+alter table public.artworks
+    add constraint fk_artwork_source_submission
+    foreign key (source_artwork_submission_id)
+    references public.artwork_submissions(artwork_submission_id);
 
 -- Server-generated IDs for user-created records. P0001-style seed IDs remain
 -- deterministic, while live records begin at 1000 and never require clients to
@@ -603,6 +619,44 @@ $$;
 
 revoke all on function public.current_profile_id() from public;
 grant execute on function public.current_profile_id() to authenticated;
+
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+    select exists (
+        select 1
+        from public.profiles
+        where auth_user_id = auth.uid()
+          and role = 'admin'
+          and is_active = true
+    )
+$$;
+
+revoke all on function public.is_admin() from public;
+grant execute on function public.is_admin() to authenticated;
+
+create or replace function public.is_registered_user()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+    select exists (
+        select 1
+        from public.profiles
+        where auth_user_id = auth.uid()
+          and role = 'tourist'
+          and is_active = true
+    )
+$$;
+
+revoke all on function public.is_registered_user() from public;
+grant execute on function public.is_registered_user() to authenticated;
 
 create or replace function public.is_valid_reply_parent(
     requested_parent_id varchar(6),
@@ -804,6 +858,10 @@ create policy profiles_own_update on public.profiles
 for update to authenticated
 using (auth_user_id = auth.uid())
 with check (auth_user_id = auth.uid());
+
+create policy profiles_admin_read on public.profiles
+for select to authenticated
+using (public.is_admin());
 
 -- Public/reference heritage content.
 create policy states_public_read on public.states
@@ -1039,6 +1097,7 @@ create policy submissions_own_insert on public.artwork_submissions
 for insert to authenticated
 with check (
     profile_id = public.current_profile_id()
+    and public.is_registered_user()
     and review_status = 'pending'
     and exists (
         select 1
@@ -1080,6 +1139,7 @@ create policy artwork_votes_own_insert on public.artwork_votes
 for insert to authenticated
 with check (
     profile_id = public.current_profile_id()
+    and public.is_registered_user()
     and exists (
         select 1 from public.artwork_voting_entries entries
         join public.artwork_voting_sessions sessions
@@ -1102,6 +1162,57 @@ using (
           and campaigns.status = 'completed'
     )
 );
+
+-- An authenticated administrator has access to every management function in
+-- the admin portal. Registered users retain only their public and own-record
+-- policies above; there is no separate per-feature permission model.
+create policy admin_artworks_manage on public.artworks
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_tiffins_manage on public.heritage_tiffins
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_tiffin_stories_manage on public.heritage_stories
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_tiffin_media_manage on public.heritage_media
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_tiffin_qr_codes_manage on public.tiffin_qr_codes
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_vendors_manage on public.vendors
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_vendor_hours_manage on public.vendor_operating_hours
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_vendor_foods_manage on public.vendor_foods
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_vendor_tiffins_manage on public.vendor_tiffin_availability
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_campaigns_manage on public.artwork_campaigns
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_campaign_categories_manage on public.artwork_campaign_categories
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_submissions_manage on public.artwork_submissions
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_voting_sessions_manage on public.artwork_voting_sessions
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_voting_entries_manage on public.artwork_voting_entries
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
+
+create policy admin_votes_read on public.artwork_votes
+for select to authenticated using (public.is_admin());
+
+create policy admin_campaign_winners_manage on public.artwork_campaign_winners
+for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
 -- ============================================================================
 -- 9. SIMPLE VIEWS
@@ -1189,6 +1300,15 @@ to authenticated;
 
 grant update (rating, written_review, post_comment, status, updated_at)
 on public.community_posts to authenticated;
+
+grant insert, update, delete on public.artworks, public.heritage_tiffins,
+    public.heritage_stories, public.heritage_media, public.tiffin_qr_codes,
+    public.vendors, public.vendor_operating_hours, public.vendor_foods,
+    public.vendor_tiffin_availability, public.artwork_campaigns,
+    public.artwork_campaign_categories, public.artwork_submissions,
+    public.artwork_voting_sessions, public.artwork_voting_entries,
+    public.artwork_campaign_winners
+to authenticated;
 
 revoke all on public.public_profiles, public.v_collection_progress,
     public.v_artwork_rankings from public;

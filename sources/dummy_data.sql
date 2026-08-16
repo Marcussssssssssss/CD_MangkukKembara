@@ -473,10 +473,12 @@ values
 
 insert into public.artwork_voting_sessions (
     artwork_voting_session_id, artwork_campaign_id,
+    session_type, parent_voting_session_id,
     voting_start_at, voting_end_at, status
 )
 values
     ('AVS0001', 'AC0001',
+     'standard', null,
      '2026-04-10 00:00:00+08', '2026-05-10 23:59:59+08', 'closed');
 
 insert into public.artwork_voting_entries (
