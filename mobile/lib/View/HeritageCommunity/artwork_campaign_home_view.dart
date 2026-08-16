@@ -312,9 +312,17 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
   void initState() {
     super.initState();
     _vm = ArtworkVotingViewModel();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => _vm.loadCampaign(widget.campaign.id),
-    );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _vm.loadCampaign(widget.campaign.id);
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant ArtworkCampaignContent oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.campaign.id != widget.campaign.id) {
+      _vm.loadCampaign(widget.campaign.id);
+    }
   }
 
   @override
