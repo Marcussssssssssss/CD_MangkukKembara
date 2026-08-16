@@ -349,45 +349,11 @@ class HeritageCommunityRepository {
     final rows = await _api.guard(
       () => _api.client
           .from('artwork_campaigns')
-          .select()
+          .select('*, states(state_name)')
           .inFilter('status', const ['active', 'completed'])
           .order('created_at', ascending: false),
     );
-    if (rows.isEmpty) return [];
-
-    final campaignIds = rows
-        .map((row) => row['artwork_campaign_id'] as String)
-        .toList();
-    final categories = await _api.guard(
-      () => _api.client
-          .from('artwork_campaign_categories')
-          .select('artwork_campaign_category_id, artwork_campaign_id')
-          .inFilter('artwork_campaign_id', campaignIds),
-    );
-    return rows.map((raw) {
-      final row = Map<String, dynamic>.from(raw);
-      final campaignId = row['artwork_campaign_id'];
-      row['artwork_campaign_categories'] = categories
-          .where((category) => category['artwork_campaign_id'] == campaignId)
-          .toList();
-      return ArtworkCampaignModel.fromJson(row);
-    }).toList();
-  }
-
-  Future<List<ArtworkCampaignCategoryModel>> fetchCategoriesByCampaign(
-    String campaignId,
-  ) async {
-    final rows = await _api.guard(
-      () => _api.client
-          .from('artwork_campaign_categories')
-          .select('''
-        *, states(state_name), artwork_submissions(artwork_submission_id),
-        artwork_voting_entries(vote_count)
-      ''')
-          .eq('artwork_campaign_id', campaignId)
-          .order('category_name'),
-    );
-    return rows.map(ArtworkCampaignCategoryModel.fromJson).toList();
+    return rows.map(ArtworkCampaignModel.fromJson).toList();
   }
 
   Future<String> _currentProfileId() async {
@@ -408,7 +374,32 @@ class HeritageCommunityRepository {
   }
 
   Future<List<ArtworkVotingEntryModel>> fetchVotingEntries(
-    String categoryId, {
+    String campaignId, {
+    String? sort,
+  }) async {
+    final sessions = await _api.guard(
+      () => _api.client
+          .from('artwork_voting_sessions')
+          .select(
+            'artwork_voting_session_id, status, session_type, voting_start_at',
+          )
+          .eq('artwork_campaign_id', campaignId)
+          .order('voting_start_at', ascending: false),
+    );
+    if (sessions.isEmpty) return [];
+
+    final session = sessions.firstWhere(
+      (row) => row['status'] == 'active',
+      orElse: () => sessions.first,
+    );
+    return _fetchVotingEntriesForSession(
+      session['artwork_voting_session_id'] as String,
+      sort: sort,
+    );
+  }
+
+  Future<List<ArtworkVotingEntryModel>> _fetchVotingEntriesForSession(
+    String sessionId, {
     String? sort,
   }) async {
     var request = _api.client
@@ -416,10 +407,13 @@ class HeritageCommunityRepository {
         .select('''
       *, artwork_submissions(
         profile_id, artwork_title, design_description, cultural_inspiration,
-        artist_statement, artwork_file_url, submitted_at
-      ), artwork_voting_sessions(status, voting_start_at, voting_end_at)
+        layer_1_meaning, layer_2_meaning, layer_3_meaning,
+        artwork_file_url, submitted_at
+      ), artwork_voting_sessions(
+        artwork_campaign_id, status, voting_start_at, voting_end_at
+      )
     ''')
-        .eq('artwork_campaign_category_id', categoryId);
+        .eq('artwork_voting_session_id', sessionId);
     final rows = await _api.guard(
       () => switch (sort) {
         'New' => request.order('published_at', ascending: false),
@@ -478,13 +472,13 @@ class HeritageCommunityRepository {
     final row = await _api.guard(
       () => _api.client
           .from('artwork_voting_entries')
-          .select('artwork_campaign_category_id')
+          .select('artwork_voting_session_id')
           .eq('artwork_voting_entry_id', id)
           .maybeSingle(),
     );
     if (row == null) return null;
-    final entries = await fetchVotingEntries(
-      row['artwork_campaign_category_id'] as String,
+    final entries = await _fetchVotingEntriesForSession(
+      row['artwork_voting_session_id'] as String,
     );
     return entries.where((entry) => entry.id == id).firstOrNull;
   }
@@ -492,33 +486,32 @@ class HeritageCommunityRepository {
   Future<void> submitVote(String entryId, String userId) async {
     final user = _api.requireUser();
     if (user.id != userId) throw const AppException('Vote access denied.');
-    final profileId = await _currentProfileId();
-    final entry = await _api.guard(
-      () => _api.client
-          .from('artwork_voting_entries')
-          .select('artwork_voting_session_id, artwork_campaign_category_id')
-          .eq('artwork_voting_entry_id', entryId)
-          .single(),
-    );
+
+    // The database function derives the profile and voting session from the
+    // authenticated user and entry. It also checks the campaign/session dates
+    // and atomically enforces one vote per profile per active session.
     await _api.guard(
-      () => _api.client.from('artwork_votes').insert({
-        'artwork_voting_session_id': entry['artwork_voting_session_id'],
-        'artwork_campaign_category_id': entry['artwork_campaign_category_id'],
-        'artwork_voting_entry_id': entryId,
-        'profile_id': profileId,
-      }),
+      () => _api.client.rpc(
+        'cast_artwork_vote',
+        params: {'p_artwork_voting_entry_id': entryId},
+      ),
     );
   }
 
   Future<ArtworkSubmissionModel> submitArtwork({
     required String campaignId,
-    required String categoryId,
     required String userId,
     required String artworkTitle,
     required String designDescription,
     required String culturalInspiration,
-    required String artistStatement,
-    required XFile artworkFile,
+    required String layer1Meaning,
+    required String layer2Meaning,
+    required String layer3Meaning,
+    required XFile frontHeroFile,
+    required XFile layer1Flat360File,
+    required XFile layer2Flat360File,
+    required XFile layer3Flat360File,
+    required XFile topArtworkFile,
   }) async {
     final user = _api.requireUser();
     if (user.id != userId) {
@@ -547,40 +540,65 @@ class HeritageCommunityRepository {
         now.isAfter(campaignEnd)) {
       throw const AppException('This campaign is no longer accepting artwork.');
     }
-    final category = await _api.guard(
-      () => _api.client
-          .from('artwork_campaign_categories')
-          .select('category_name')
-          .eq('artwork_campaign_category_id', categoryId)
-          .eq('artwork_campaign_id', campaignId)
-          .single(),
+    final uploadFolder =
+        'mangkukkembara/artwork-submissions/${user.id}/$campaignId';
+    final uploads = await Future.wait([
+      _cloudinary.uploadImage(
+        frontHeroFile,
+        folder: '$uploadFolder/front-hero',
+        maxBytes: 10 * 1024 * 1024,
+      ),
+      _cloudinary.uploadImage(
+        layer1Flat360File,
+        folder: '$uploadFolder/layer-1-flat-360',
+        maxBytes: 10 * 1024 * 1024,
+      ),
+      _cloudinary.uploadImage(
+        layer2Flat360File,
+        folder: '$uploadFolder/layer-2-flat-360',
+        maxBytes: 10 * 1024 * 1024,
+      ),
+      _cloudinary.uploadImage(
+        layer3Flat360File,
+        folder: '$uploadFolder/layer-3-flat-360',
+        maxBytes: 10 * 1024 * 1024,
+      ),
+      _cloudinary.uploadImage(
+        topArtworkFile,
+        folder: '$uploadFolder/top',
+        maxBytes: 10 * 1024 * 1024,
+      ),
+    ]);
+    final response = await _api.guard(
+      () => _api.client.rpc(
+        'create_artwork_submission',
+        params: {
+          'p_artwork_campaign_id': campaignId,
+          'p_artwork_title': artworkTitle.trim(),
+          'p_design_description': designDescription.trim(),
+          'p_cultural_inspiration': culturalInspiration.trim(),
+          'p_layer_1_meaning': layer1Meaning.trim(),
+          'p_layer_2_meaning': layer2Meaning.trim(),
+          'p_layer_3_meaning': layer3Meaning.trim(),
+          'p_front_hero_photo_url': uploads[0].secureUrl,
+          'p_layer_1_flat_360_url': uploads[1].secureUrl,
+          'p_layer_2_flat_360_url': uploads[2].secureUrl,
+          'p_layer_3_flat_360_url': uploads[3].secureUrl,
+          'p_top_photo_url': uploads[4].secureUrl,
+        },
+      ),
     );
-    final upload = await _cloudinary.uploadImage(
-      artworkFile,
-      folder: 'mangkukkembara/artwork-submissions/${user.id}',
-      maxBytes: 10 * 1024 * 1024,
-    );
-    final profileId = await _currentProfileId();
-    final json = await _api.guard(
-      () => _api.client
-          .from('artwork_submissions')
-          .insert({
-            'artwork_campaign_category_id': categoryId,
-            'profile_id': profileId,
-            'artwork_title': artworkTitle.trim(),
-            'design_description': designDescription.trim(),
-            'cultural_inspiration': culturalInspiration.trim(),
-            'artist_statement': artistStatement.trim(),
-            'artwork_file_url': upload.secureUrl,
-            'review_status': 'pending',
-          })
-          .select()
-          .single(),
-    );
+    final json = switch (response) {
+      final Map<String, dynamic> row => row,
+      final List<dynamic> rows when rows.length == 1 =>
+        rows.single as Map<String, dynamic>,
+      _ => throw const AppException(
+        'The submitted artwork could not be confirmed.',
+      ),
+    };
     return ArtworkSubmissionModel.fromJson(
       json,
       campaignName: campaign['campaign_title'] as String,
-      categoryName: category['category_name'] as String,
     );
   }
 
@@ -599,20 +617,16 @@ class HeritageCommunityRepository {
       () => _api.client
           .from('artwork_submissions')
           .select('''
-        *, artwork_campaign_categories(
-          category_name, artwork_campaigns(campaign_title)
-        )
+        *, artwork_campaigns(campaign_title),
+        artwork_submission_photos(view_type, photo_url, sort_order)
       ''')
           .eq('profile_id', profileId)
           .order('submitted_at', ascending: false),
     );
     return rows.map((row) {
-      final category =
-          row['artwork_campaign_categories'] as Map<String, dynamic>?;
-      final campaign = category?['artwork_campaigns'] as Map<String, dynamic>?;
+      final campaign = row['artwork_campaigns'] as Map<String, dynamic>?;
       return ArtworkSubmissionModel.fromJson(
         row,
-        categoryName: category?['category_name'] as String? ?? 'Category',
         campaignName:
             campaign?['campaign_title'] as String? ?? 'Artwork campaign',
       );
@@ -680,19 +694,19 @@ class HeritageCommunityRepository {
           .from('artwork_campaign_winners')
           .select('''
         *,
-        artwork_campaign_categories!inner(
-          artwork_campaign_category_id, artwork_campaign_id, category_name,
-          states(state_name), artwork_campaigns(campaign_title)
+        artwork_campaigns!inner(
+          artwork_campaign_id, campaign_title, states(state_name)
         ),
         artwork_voting_entries(
           vote_count,
           artwork_submissions(
             artwork_title, design_description, cultural_inspiration,
-            artist_statement, profile_id, artwork_file_url
+            layer_1_meaning, layer_2_meaning, layer_3_meaning,
+            profile_id, artwork_file_url
           )
         )
       ''')
-          .eq('artwork_campaign_categories.artwork_campaign_id', campaignId),
+          .eq('artwork_campaign_id', campaignId),
     );
     if (rows.isEmpty) return [];
     final submitterIds = rows
@@ -704,25 +718,23 @@ class HeritageCommunityRepository {
         .toSet();
     final profiles = await _fetchPublicProfiles(submitterIds);
     return rows.map((row) {
-      final category =
-          row['artwork_campaign_categories'] as Map<String, dynamic>;
+      final campaign = row['artwork_campaigns'] as Map<String, dynamic>;
       final entry = row['artwork_voting_entries'] as Map<String, dynamic>;
       final submission = entry['artwork_submissions'] as Map<String, dynamic>;
-      final state = category['states'] as Map<String, dynamic>?;
-      final campaign = category['artwork_campaigns'] as Map<String, dynamic>?;
+      final state = campaign['states'] as Map<String, dynamic>?;
       final profile = profiles[submission['profile_id']];
       return CampaignWinnerModel(
         id: row['artwork_campaign_winner_id'] as String,
-        campaignId: category['artwork_campaign_id'] as String,
-        campaignName: campaign?['campaign_title'] as String? ?? '',
-        categoryId: category['artwork_campaign_category_id'] as String,
-        categoryName: category['category_name'] as String,
+        campaignId: row['artwork_campaign_id'] as String,
+        campaignName: campaign['campaign_title'] as String? ?? '',
         stateName: state?['state_name'] as String? ?? '',
         artworkTitle: submission['artwork_title'] as String,
         winnerName: profile?['display_name'] as String? ?? 'Artist unavailable',
         designDescription: submission['design_description'] as String,
         culturalInspiration: submission['cultural_inspiration'] as String,
-        artistStatement: submission['artist_statement'] as String,
+        layer1Meaning: submission['layer_1_meaning'] as String,
+        layer2Meaning: submission['layer_2_meaning'] as String,
+        layer3Meaning: submission['layer_3_meaning'] as String,
         finalVoteCount: (row['final_vote_count'] as num).toInt(),
         announcedAt: DateTime.parse(row['announced_at'] as String),
         artworkUrl: submission['artwork_file_url'] as String?,
@@ -734,16 +746,12 @@ class HeritageCommunityRepository {
     final winner = await _api.guard(
       () => _api.client
           .from('artwork_campaign_winners')
-          .select('artwork_campaign_categories(artwork_campaign_id)')
+          .select('artwork_campaign_id')
           .eq('artwork_campaign_winner_id', id)
           .maybeSingle(),
     );
     if (winner == null) return null;
-    final category =
-        winner['artwork_campaign_categories'] as Map<String, dynamic>;
-    final winners = await fetchWinners(
-      category['artwork_campaign_id'] as String,
-    );
+    final winners = await fetchWinners(winner['artwork_campaign_id'] as String);
     return winners.where((item) => item.id == id).firstOrNull;
   }
 }

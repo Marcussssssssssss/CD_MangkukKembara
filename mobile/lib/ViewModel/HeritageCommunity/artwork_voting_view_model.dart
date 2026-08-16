@@ -3,7 +3,7 @@ import '../../Model/Repositories/HeritageCommunity/heritage_community_repository
 import '../../Model/Repositories/HeritageCommunity/artwork_campaign_model.dart';
 import '../../Model/Repositories/HeritageCommunity/voting_entry_model.dart';
 
-/// View model for category artwork list, detail, voting and rankings.
+/// View model for campaign artwork, detail, voting and rankings.
 class ArtworkVotingViewModel extends ChangeNotifier {
   final HeritageCommunityRepository _repo;
   ArtworkVotingViewModel({HeritageCommunityRepository? repo})
@@ -12,8 +12,6 @@ class ArtworkVotingViewModel extends ChangeNotifier {
   List<ArtworkVotingEntryModel> _entries = [];
   ArtworkVotingEntryModel? _selectedEntry;
   List<VotingEntryModel> _rankings = [];
-  List<ArtworkCampaignCategoryModel> _categories = [];
-  String? _selectedCategoryId;
   bool _isLoading = false;
   bool _hasError = false;
   bool _isVoting = false;
@@ -25,14 +23,14 @@ class ArtworkVotingViewModel extends ChangeNotifier {
   List<ArtworkVotingEntryModel> get entries => _entries;
   ArtworkVotingEntryModel? get selectedEntry => _selectedEntry;
   List<VotingEntryModel> get rankings => _rankings;
-  List<ArtworkCampaignCategoryModel> get categories => _categories;
-  String? get selectedCategoryId => _selectedCategoryId;
   bool get isLoading => _isLoading;
   bool get hasError => _hasError;
   bool get isVoting => _isVoting;
   bool get voteSuccess => _voteSuccess;
   String? get errorMessage => _errorMessage;
   String get sort => _sort;
+  bool get hasVotedInCurrentCampaign =>
+      _entries.any((entry) => entry.hasCurrentUserVoted);
 
   Future<void> loadCampaign(
     String campaignId, {
@@ -45,32 +43,8 @@ class ArtworkVotingViewModel extends ChangeNotifier {
     if (showLoading) notifyListeners();
     try {
       _campaignId = campaignId;
-      _categories = await _repo.fetchCategoriesByCampaign(campaignId);
-      _selectedCategoryId = _categories.isEmpty ? null : _categories.first.id;
-      final entriesByCategory = await Future.wait(
-        _categories.map(
-          (category) => _repo.fetchVotingEntries(category.id, sort: _sort),
-        ),
-      );
-      _entries = entriesByCategory.expand((entries) => entries).toList();
+      _entries = await _repo.fetchVotingEntries(campaignId, sort: _sort);
       _sortEntries();
-    } catch (error) {
-      _hasError = true;
-      _errorMessage = error.toString();
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> loadEntries(String categoryId, {bool showLoading = true}) async {
-    if (_isLoading) return;
-    _selectedCategoryId = categoryId;
-    _isLoading = true;
-    _hasError = false;
-    if (showLoading) notifyListeners();
-    try {
-      _entries = await _repo.fetchVotingEntries(categoryId, sort: _sort);
     } catch (error) {
       _hasError = true;
       _errorMessage = error.toString();
@@ -116,7 +90,10 @@ class ArtworkVotingViewModel extends ChangeNotifier {
   }
 
   Future<bool> vote(String entryId, String userId) async {
+    if (_isVoting) return false;
     _isVoting = true;
+    _voteSuccess = false;
+    _errorMessage = null;
     notifyListeners();
     try {
       await _repo.submitVote(entryId, userId);

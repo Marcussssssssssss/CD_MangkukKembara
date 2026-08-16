@@ -18,6 +18,7 @@ truncate table public.artwork_campaign_winners,
 public.artwork_votes,
 public.artwork_voting_entries,
 public.artwork_voting_sessions,
+public.artwork_submission_photos,
 public.artwork_submissions,
 public.artwork_campaigns,
 public.community_comments,
@@ -49,6 +50,7 @@ alter sequence public.community_comment_number_seq restart with 1000;
 alter sequence public.artwork_number_seq restart with 1000;
 alter sequence public.artwork_campaign_number_seq restart with 1000;
 alter sequence public.artwork_submission_number_seq restart with 1000;
+alter sequence public.artwork_submission_photo_number_seq restart with 1000;
 alter sequence public.artwork_voting_session_number_seq restart with 1000;
 alter sequence public.artwork_voting_entry_number_seq restart with 1000;
 alter sequence public.artwork_vote_number_seq restart with 1000;
@@ -941,7 +943,9 @@ insert into public.artwork_submissions (
         artwork_title,
         design_description,
         cultural_inspiration,
-        artist_statement,
+        layer_1_meaning,
+        layer_2_meaning,
+        layer_3_meaning,
         artwork_file_url,
         review_status,
         submitted_at,
@@ -956,6 +960,8 @@ values (
         'A design combining spice trails, shophouses, and hawker tools.',
         'Penang trade history and street-food culture.',
         'The design represents movement between cultures and food traditions.',
+        'The middle layer celebrates the shophouses and communities connected by those routes.',
+        'The lower layer honours the hawker tools and shared meals that sustain Penang food heritage.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786265648/penang_spice_routes_melaka_paper_fbpjo0.png',
         'approved',
         '2026-02-10 10:00:00+08',
@@ -970,6 +976,8 @@ values (
         'A design showing an island path connecting famous food dishes.',
         'Penang island travel and local cuisine.',
         'The path represents a tourist journey through food.',
+        'The middle layer maps the neighbourhoods where distinct food traditions meet.',
+        'The lower layer represents the local tables where each journey becomes a shared memory.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786265653/island_food_journey_melaka_paper_f90wug.png',
         'approved',
         '2026-02-20 14:00:00+08',
@@ -984,6 +992,8 @@ values (
         'A design using heritage windows, tiles, and dining symbols.',
         'Historic Melaka architecture and Peranakan culture.',
         'Each window represents a story shared across generations.',
+        'The middle layer uses tile patterns to represent cultural exchange and continuity.',
+        'The lower layer celebrates dining traditions that bring families together.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786121176/melaka_tiffin_digital_pdf_export_pbu4tg.png',
         'approved',
         '2026-02-15 11:00:00+08',
@@ -998,6 +1008,8 @@ values (
         'Flowing spice motifs connect Melaka river scenes with traditional serving ware.',
         'Melaka River trade and Peranakan kitchens.',
         'The layered river pattern celebrates ingredients carried between communities.',
+        'The middle layer represents the kitchens where traded spices became family recipes.',
+        'The lower layer honours serving ware and meals shared across Melaka communities.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786288745/river-of-spices_rov5ls.jpg',
         'approved',
         '2026-02-25 16:00:00+08',
@@ -1012,6 +1024,8 @@ values (
         'A bold tiffin pattern combining the wau bulan with rice grains and local flowers.',
         'Kelantan kite craftsmanship and nasi kerabu colours.',
         'The circular composition reflects a shared meal beneath the moon.',
+        'The middle layer links the movement of the wau bulan with local floral motifs.',
+        'The lower layer celebrates rice, herbs, and the communal table of Kelantan.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786288628/ChatGPT_Image_Aug_9_2026_11_16_03_PM_psxzdz.png',
         'approved',
         '2026-02-12 09:15:00+08',
@@ -1026,6 +1040,8 @@ values (
         'Butterfly-pea blossoms and herb leaves form a garden around each tiffin tier.',
         'The natural ingredients and colours of nasi kerabu.',
         'Every illustrated herb honours the growers and cooks behind the dish.',
+        'The middle layer represents the garden biodiversity behind nasi kerabu.',
+        'The lower layer celebrates the cooks who transform those ingredients into heritage food.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786288630/ChatGPT_Image_Aug_9_2026_11_14_16_PM_3_cnivmm.png',
         'approved',
         '2026-03-01 12:30:00+08',
@@ -1040,6 +1056,8 @@ values (
         'A layered design of river lines, pepper vines, and the colours of a Kuching sunrise.',
         'Sarawak river life and laksa ingredients.',
         'Soft gradients represent recipes remembered across generations.',
+        'The middle layer follows pepper vines and river routes between Sarawak communities.',
+        'The lower layer represents the warmth of kitchens at the start of a new day.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786288622/ChatGPT_Image_Aug_9_2026_11_14_16_PM_4_hnmx6f.png',
         'approved',
         '2026-02-18 15:45:00+08',
@@ -1054,6 +1072,8 @@ values (
         'A graphic hornbill watches over bowls, chopsticks, and native foliage.',
         'Sarawak wildlife, forests, and communal dining.',
         'The design connects care for cultural foodways with care for the land.',
+        'The middle layer honours native foliage and the forest ecosystems surrounding communities.',
+        'The lower layer celebrates bowls shared at communal suppers.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786288625/ChatGPT_Image_Aug_9_2026_11_14_17_PM_5_tlurhx.png',
         'approved',
         '2026-03-05 18:20:00+08',
@@ -1068,6 +1088,8 @@ values (
         'Warm lanterns illuminate illustrated hawker tools and noodle bowls.',
         'George Town night markets and hawker culture.',
         'The artwork captures the warmth of discovering food after sunset.',
+        'The middle layer represents the tools and movement of night-market cooks.',
+        'The lower layer celebrates noodle bowls enjoyed together beneath the lanterns.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786288622/ChatGPT_Image_Aug_9_2026_11_14_18_PM_6_eslqmr.png',
         'pending',
         now() - interval '6 days',
@@ -1082,6 +1104,8 @@ values (
         'Shophouse arches frame a sequence of Penang dishes and tableware.',
         'George Town architecture and shared street-side meals.',
         'Each arch is a doorway into a different family food memory.',
+        'The middle layer connects the five-foot way with dishes served along the street.',
+        'The lower layer represents tables where neighbours and visitors gather.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786288637/ChatGPT_Image_Aug_9_2026_11_14_19_PM_7_nrfrh9.png',
         'approved',
         now() - interval '12 days',
@@ -1096,6 +1120,8 @@ values (
         'Peranakan tile geometry wraps around stacked tiffin tiers in vivid colour.',
         'Decorative tiles found in historic Melaka homes.',
         'Repeating patterns show how traditions adapt while keeping their roots.',
+        'The middle layer reflects the rhythm and craftsmanship of Peranakan geometry.',
+        'The lower layer represents traditions carried from the home into shared meals.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786288623/ChatGPT_Image_Aug_9_2026_11_14_20_PM_8_ahkhkj.png',
         'rejected',
         now() - interval '9 days',
@@ -1110,6 +1136,8 @@ values (
         'A round table illustration surrounded by rice balls, ceramics, and family hands.',
         'Family-run eateries and recipes passed down in Melaka.',
         'The open composition invites everyone to take a place at the table.',
+        'The middle layer honours ceramics and dishes used across generations.',
+        'The lower layer represents the hands that prepare and share family recipes.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786288625/ChatGPT_Image_Aug_9_2026_11_14_20_PM_9_yonosd.png',
         'approved',
         now() - interval '4 days',
@@ -1124,6 +1152,8 @@ values (
         'Blue blossoms, woven motifs, and grains of rice create a bright botanical design.',
         'Butterfly-pea flowers, songket, and Kelantanese cuisine.',
         'The piece celebrates colour drawn from nature and craft.',
+        'The middle layer weaves botanical forms into traditional textile rhythms.',
+        'The lower layer honours rice and the natural ingredients central to Kelantanese cuisine.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786288627/ChatGPT_Image_Aug_9_2026_11_14_20_PM_10_fl61wb.png',
         'approved',
         now() - interval '2 days',
@@ -1138,12 +1168,36 @@ values (
         'Steam and noodle lines weave through pepper leaves and river contours.',
         'The aroma of Sarawak laksa and the rivers of Borneo.',
         'Continuous lines represent the journeys that keep food traditions alive.',
+        'The middle layer connects pepper leaves and steam with Sarawak river contours.',
+        'The lower layer celebrates the bowls and communities that carry laksa traditions forward.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786288626/ChatGPT_Image_Aug_9_2026_11_14_21_PM_11_vdpydo.png',
         'approved',
         now() - interval '1 day',
         'P0001',
         now() - interval '12 hours'
     );
+
+-- Each submission requires one hero view, three flattened 360-degree layer
+-- files, and one top view. Reusing the seeded artwork URL keeps this fixture
+-- self-contained while preserving the production table shape and ordering.
+insert into public.artwork_submission_photos (
+        artwork_submission_id,
+        view_type,
+        photo_url,
+        sort_order
+    )
+select submission.artwork_submission_id,
+    required_view.view_type,
+    submission.artwork_file_url,
+    required_view.sort_order
+from public.artwork_submissions submission
+cross join (
+        values ('front_hero', 1),
+            ('layer_1_flat_360', 2),
+            ('layer_2_flat_360', 3),
+            ('layer_3_flat_360', 4),
+            ('top', 5)
+    ) as required_view(view_type, sort_order);
 -- Link each published tiffin artwork to the submission that won its campaign.
 -- The artwork IDs are preserved because heritage_tiffins already reference them.
 update public.artworks as artwork
@@ -1151,7 +1205,12 @@ set source_artwork_submission_id = submission.artwork_submission_id,
     profile_id = submission.profile_id,
     title = submission.artwork_title,
     description = submission.design_description,
-    artwork_meaning = submission.artist_statement,
+    artwork_meaning = concat_ws(
+        E'\n\n',
+        'Layer 1: ' || submission.layer_1_meaning,
+        'Layer 2: ' || submission.layer_2_meaning,
+        'Layer 3: ' || submission.layer_3_meaning
+    ),
     cultural_inspiration = submission.cultural_inspiration,
     image_url = submission.artwork_file_url,
     updated_at = now()
@@ -1577,11 +1636,26 @@ do $$
 begin
     if (select count(*) from public.artwork_campaigns) <> 8
         or (select count(*) from public.artwork_submissions) <> 14
+        or (select count(*) from public.artwork_submission_photos) <> 70
         or (select count(*) from public.artwork_voting_sessions) <> 8
         or (select count(*) from public.artwork_voting_entries) <> 12
         or (select count(*) from public.artwork_votes) <> 9
         or (select count(*) from public.artwork_campaign_winners) <> 4 then
         raise exception 'Seed verification failed: unexpected campaign subsystem row counts';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_submissions submission
+        left join public.artwork_submission_photos photo
+            on photo.artwork_submission_id = submission.artwork_submission_id
+        group by submission.artwork_submission_id
+        having count(photo.artwork_submission_photo_id) <> 5
+            or count(distinct photo.view_type) <> 5
+            or min(photo.sort_order) <> 1
+            or max(photo.sort_order) <> 5
+    ) then
+        raise exception 'Seed verification failed: a submission does not have all five artwork views';
     end if;
 
     if (select count(*) from public.artwork_voting_sessions where status = 'closed') <> 4

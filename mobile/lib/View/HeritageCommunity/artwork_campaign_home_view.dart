@@ -19,7 +19,6 @@ abstract final class _CampaignColors {
   static const Color background = Color(0xFFFFFFFF);
   static const Color border = Color(0xFFCCD6C8);
   static const Color darkGreen = Color(0xFF335C31);
-  static const Color mediumGreen = Color(0xFF61885B);
   static const Color yellow = Color(0xFFF9B10E);
   static const Color softYellow = Color(0xFFFEF5E4);
   static const Color text = Color(0xFF283427);
@@ -152,7 +151,9 @@ class _ArtworkCampaignPanelState extends State<ArtworkCampaignPanel>
   }
 }
 
-class _CampaignList extends StatelessWidget {
+enum _CampaignFilter { opening, ended }
+
+class _CampaignList extends StatefulWidget {
   final List<ArtworkCampaignModel> campaigns;
   final Future<void> Function() onRefresh;
 
@@ -163,72 +164,127 @@ class _CampaignList extends StatelessWidget {
   });
 
   @override
+  State<_CampaignList> createState() => _CampaignListState();
+}
+
+class _CampaignListState extends State<_CampaignList> {
+  _CampaignFilter _filter = _CampaignFilter.opening;
+
+  @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      child: ListView.builder(
-        physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
-        itemCount: campaigns.length,
-        itemBuilder: (context, index) {
-          final campaign = campaigns[index];
-          return Card(
-            margin: const EdgeInsets.only(bottom: 14),
-            clipBehavior: Clip.antiAlias,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: _CampaignColors.border),
+    final campaigns = widget.campaigns.where((campaign) {
+      return switch (_filter) {
+        _CampaignFilter.opening => campaign.isActive,
+        _CampaignFilter.ended => campaign.isCompleted,
+      };
+    }).toList();
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: SizedBox(
+            width: double.infinity,
+            child: SegmentedButton<_CampaignFilter>(
+              segments: const [
+                ButtonSegment(
+                  value: _CampaignFilter.opening,
+                  label: Text('Opening'),
+                  icon: Icon(Icons.lock_open_rounded),
+                ),
+                ButtonSegment(
+                  value: _CampaignFilter.ended,
+                  label: Text('Ended'),
+                  icon: Icon(Icons.event_busy_rounded),
+                ),
+              ],
+              selected: {_filter},
+              showSelectedIcon: false,
+              onSelectionChanged: (selection) {
+                setState(() => _filter = selection.first);
+              },
             ),
-            child: InkWell(
-              onTap: () => Navigator.pushNamed(
-                context,
-                AppRoutes.campaignDetail,
-                arguments: campaign.id,
-              ),
-              child: Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            campaign.title,
-                            style: Theme.of(context).textTheme.titleMedium
-                                ?.copyWith(fontWeight: FontWeight.w900),
+          ),
+        ),
+        Expanded(
+          child: campaigns.isEmpty
+              ? RefreshableStateView(
+                  onRefresh: widget.onRefresh,
+                  child: EmptyStateWidget(
+                    icon: _filter == _CampaignFilter.opening
+                        ? Icons.palette_outlined
+                        : Icons.history_rounded,
+                    title: _filter == _CampaignFilter.opening
+                        ? 'No opening campaigns'
+                        : 'No ended campaigns',
+                    subtitle: _filter == _CampaignFilter.opening
+                        ? 'There are no artwork campaigns open right now.'
+                        : 'Completed artwork campaigns will appear here.',
+                  ),
+                )
+              : RefreshIndicator(
+                  onRefresh: widget.onRefresh,
+                  child: ListView.builder(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                    itemCount: campaigns.length,
+                    itemBuilder: (context, index) {
+                      final campaign = campaigns[index];
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 14),
+                        clipBehavior: Clip.antiAlias,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: _CampaignColors.border),
+                        ),
+                        child: InkWell(
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            AppRoutes.campaignDetail,
+                            arguments: campaign.id,
+                          ),
+                          child: Padding(
+                            padding: const EdgeInsets.all(18),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        campaign.title,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .titleMedium
+                                            ?.copyWith(
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                      ),
+                                    ),
+                                    const Icon(Icons.chevron_right_rounded),
+                                  ],
+                                ),
+                                if (campaign.description.isNotEmpty) ...[
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    campaign.description,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: AppColors.textSecondary,
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
                           ),
                         ),
-                        const Icon(Icons.chevron_right_rounded),
-                      ],
-                    ),
-                    if (campaign.description.isNotEmpty) ...[
-                      const SizedBox(height: 8),
-                      Text(
-                        campaign.description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: AppColors.textSecondary),
-                      ),
-                    ],
-                    const SizedBox(height: 12),
-                    Chip(
-                      avatar: Icon(
-                        campaign.isActive
-                            ? Icons.how_to_vote_rounded
-                            : Icons.event_busy_rounded,
-                        size: 17,
-                      ),
-                      label: Text(campaign.statusLabel),
-                      visualDensity: VisualDensity.compact,
-                    ),
-                  ],
+                      );
+                    },
+                  ),
                 ),
-              ),
-            ),
-          );
-        },
-      ),
+        ),
+      ],
     );
   }
 }
@@ -278,7 +334,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
       value: _vm,
       child: Consumer2<ArtworkVotingViewModel, AuthViewModel>(
         builder: (ctx, vm, auth, _) {
-          if (vm.isLoading && vm.categories.isEmpty) {
+          if (vm.isLoading && vm.entries.isEmpty) {
             return const LoadingWidget();
           }
           if (vm.hasError) {
@@ -299,8 +355,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
     AuthViewModel auth,
   ) {
     final campaign = widget.campaign;
-    final showSubmitButton =
-        campaign.canSubmit && vm.selectedCategoryId != null;
+    final showSubmitButton = campaign.canSubmit;
     return Stack(
       children: [
         RefreshIndicator(
@@ -309,7 +364,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _CampaignHeader(campaign: campaign)),
-              if (vm.categories.isNotEmpty)
+              if (vm.entries.isNotEmpty)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -374,7 +429,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
             right: 16,
             bottom: 16,
             child: FloatingActionButton.extended(
-              onPressed: () => _openSubmission(context, auth, vm),
+              onPressed: () => _openSubmission(context, auth),
               icon: const Icon(Icons.add_rounded),
               label: const Text('Submit Artwork'),
               backgroundColor: _CampaignColors.darkGreen,
@@ -390,19 +445,6 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
     ArtworkVotingViewModel vm,
     AuthViewModel auth,
   ) {
-    if (vm.categories.isEmpty) {
-      return const [
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: EmptyStateWidget(
-            icon: Icons.category_outlined,
-            title: 'No categories available',
-            subtitle: 'Categories have not been published for this campaign.',
-          ),
-        ),
-      ];
-    }
-
     if (vm.entries.isEmpty) {
       return const [
         SliverFillRemaining(
@@ -422,9 +464,12 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
         sliver: SliverList(
           delegate: SliverChildBuilderDelegate((_, index) {
             final entry = vm.entries[index];
+            final campaignVoteAlreadyCast = vm.hasVotedInCurrentCampaign;
             return _ArtworkEntryCard(
               entry: entry,
-              votingEnabled: widget.campaign.canVote && entry.isVotingOpen,
+              votingEnabled: entry.isVotingOpen,
+              voteAlreadyCast: campaignVoteAlreadyCast,
+              isVoting: vm.isVoting,
               onOpen: () => Navigator.pushNamed(
                 context,
                 AppRoutes.artworkVotingDetail,
@@ -438,23 +483,16 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
     ];
   }
 
-  Future<void> _openSubmission(
-    BuildContext context,
-    AuthViewModel auth,
-    ArtworkVotingViewModel vm,
-  ) async {
+  Future<void> _openSubmission(BuildContext context, AuthViewModel auth) async {
     if (!auth.isLoggedIn) {
       await Navigator.pushNamed(context, AppRoutes.login);
       return;
     }
-    if (!context.mounted || vm.selectedCategoryId == null) return;
+    if (!context.mounted) return;
     await Navigator.pushNamed(
       context,
       AppRoutes.artworkSubmission,
-      arguments: {
-        'campaignId': widget.campaign.id,
-        'categoryId': vm.selectedCategoryId!,
-      },
+      arguments: {'campaignId': widget.campaign.id},
     );
   }
 
@@ -469,7 +507,17 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
     }
     if (entry.hasCurrentUserVoted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You already voted for this entry.')),
+        const SnackBar(
+          content: Text('You have already voted in this campaign.'),
+        ),
+      );
+      return;
+    }
+    if (_vm.hasVotedInCurrentCampaign) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can only vote once in each open campaign.'),
+        ),
       );
       return;
     }
@@ -480,6 +528,12 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Vote submitted!')));
       await _vm.refreshCampaign();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_vm.errorMessage ?? 'Vote could not be submitted.'),
+        ),
+      );
     }
   }
 }
@@ -491,95 +545,114 @@ class _CampaignHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusColor = campaign.isCompleted
-        ? _CampaignColors.yellow
-        : _CampaignColors.mediumGreen;
     final statusIcon = campaign.isCompleted
         ? Icons.event_busy_rounded
         : Icons.how_to_vote_rounded;
     final statusTitle = campaign.isCompleted
         ? 'Campaign Completed'
-        : 'Submissions & Voting Open';
+        : campaign.canSubmit
+        ? 'Submissions Open'
+        : 'Active Campaign';
     return GestureDetector(
       onTap: () => _showCampaignDetails(context),
       child: Container(
         width: double.infinity,
         margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-        height: 180,
         decoration: BoxDecoration(
-          color: _CampaignColors.background,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: _CampaignColors.yellow),
+          boxShadow: const [
+            BoxShadow(
+              color: Color(0x28335C31),
+              blurRadius: 16,
+              offset: Offset(0, 7),
+            ),
+          ],
         ),
-        // Keep the background artwork one pixel inside the outline. This
-        // prevents it from bleeding into or softening the rounded corners.
-        padding: const EdgeInsets.all(1),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(19),
-          clipBehavior: Clip.antiAlias,
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: Opacity(
-                  opacity: .72,
-                  child: Image.asset(
-                    'asset/image/campaign_background.png',
-                    fit: BoxFit.cover,
-                    alignment: Alignment.centerRight,
+        clipBehavior: Clip.antiAlias,
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'asset/image/tiffin_background_yellow.png',
+                fit: BoxFit.cover,
+                alignment: Alignment.center,
+              ),
+            ),
+            const Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xD9689863), Color(0xF02B522A)],
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(18),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(9),
-                          decoration: const BoxDecoration(
-                            color: _CampaignColors.softYellow,
-                            shape: BoxShape.circle,
+            ),
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Text(
+                          campaign.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Color(0xFFFDF8EC),
+                            fontSize: 22,
+                            height: 1.15,
+                            fontWeight: FontWeight.w900,
                           ),
-                          child: Icon(statusIcon, size: 22, color: statusColor),
                         ),
-                        const SizedBox(width: 12),
+                      ),
+                      const SizedBox(width: 12),
+                      const Icon(
+                        Icons.info_outline_rounded,
+                        color: Color(0xCCFFFFFF),
+                        size: 22,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: const Color(0x26FFFFFF),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0x55FFFFFF)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          statusIcon,
+                          size: 14,
+                          color: const Color(0xFFFDF8EC),
+                        ),
+                        const SizedBox(width: 6),
                         Text(
                           statusTitle,
-                          style: TextStyle(
-                            color: statusColor,
-                            fontSize: 16,
+                          style: const TextStyle(
+                            color: Color(0xFFFDF8EC),
+                            fontSize: 11,
                             fontWeight: FontWeight.w800,
                           ),
                         ),
                       ],
                     ),
-                    const Spacer(),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            campaign.title,
-                            style: const TextStyle(
-                              color: _CampaignColors.darkGreen,
-                              fontSize: 22,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                        const Icon(
-                          Icons.info_outline_rounded,
-                          color: _CampaignColors.yellow,
-                          size: 22,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );
@@ -594,7 +667,9 @@ class _CampaignHeader extends StatelessWidget {
         : AppColors.successLight;
     final statusLabel = campaign.isCompleted
         ? 'Campaign Completed'
-        : 'Submissions & Voting Open';
+        : campaign.canSubmit
+        ? 'Submissions Open'
+        : 'Active Campaign';
     return showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -709,12 +784,16 @@ class _CampaignHeader extends StatelessWidget {
 class _ArtworkEntryCard extends StatelessWidget {
   final ArtworkVotingEntryModel entry;
   final bool votingEnabled;
+  final bool voteAlreadyCast;
+  final bool isVoting;
   final VoidCallback onOpen;
   final VoidCallback onVote;
 
   const _ArtworkEntryCard({
     required this.entry,
     required this.votingEnabled,
+    required this.voteAlreadyCast,
+    required this.isVoting,
     required this.onOpen,
     required this.onVote,
   });
@@ -808,7 +887,7 @@ class _ArtworkEntryCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: ElevatedButton(
-                  onPressed: entry.hasCurrentUserVoted ? null : onVote,
+                  onPressed: voteAlreadyCast || isVoting ? null : onVote,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -816,7 +895,12 @@ class _ArtworkEntryCard extends StatelessWidget {
                     ),
                     minimumSize: Size.zero,
                   ),
-                  child: Text(entry.hasCurrentUserVoted ? 'Voted' : 'Vote'),
+                  child: isVoting && !voteAlreadyCast
+                      ? const SizedBox.square(
+                          dimension: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(entry.hasCurrentUserVoted ? 'Voted' : 'Vote'),
                 ),
               )
             else

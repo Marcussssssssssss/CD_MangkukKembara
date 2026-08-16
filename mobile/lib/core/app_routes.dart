@@ -24,7 +24,7 @@ import '../View/HeritageCommunity/community_search_view.dart';
 import '../View/HeritageCommunity/post_detail_view.dart';
 import '../View/HeritageCommunity/create_post_view.dart';
 import '../View/HeritageCommunity/artwork_campaign_home_view.dart';
-import '../View/HeritageCommunity/artwork_category_list_view.dart';
+import '../View/HeritageCommunity/artwork_campaign_detail_view.dart';
 import '../View/HeritageCommunity/artwork_voting_detail_view.dart';
 import '../View/HeritageCommunity/artwork_submission_view.dart';
 import '../View/HeritageCommunity/artwork_submission_success_view.dart';
@@ -65,8 +65,7 @@ abstract final class AppRoutes {
   static const String postDetail = '/post-detail';
   static const String createPost = '/create-post';
   static const String artworkCampaign = '/artwork-campaign';
-  static const String campaignDetail =
-      '/campaign-detail'; // → ArtworkCategoryListView
+  static const String campaignDetail = '/campaign-detail';
   static const String artworkVotingDetail = '/artwork-voting-detail';
   static const String artworkSubmission = '/artwork-submission';
   static const String artworkSubmissionSuccess = '/artwork-submission-success';
@@ -168,7 +167,7 @@ abstract final class AppRoutes {
         return _build(const ArtworkCampaignHomeView(), settings);
       case campaignDetail:
         return _build(
-          ArtworkCategoryListView(
+          ArtworkCampaignDetailView(
             campaignId: settings.arguments as String? ?? '',
           ),
           settings,
@@ -181,10 +180,7 @@ abstract final class AppRoutes {
       case artworkSubmission:
         final args = settings.arguments as Map<String, String>? ?? {};
         return _build(
-          ArtworkSubmissionView(
-            campaignId: args['campaignId'] ?? '',
-            categoryId: args['categoryId'] ?? '',
-          ),
+          ArtworkSubmissionView(campaignId: args['campaignId'] ?? ''),
           settings,
         );
       case artworkSubmissionSuccess:

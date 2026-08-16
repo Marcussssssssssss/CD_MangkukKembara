@@ -22,6 +22,7 @@ drop table if exists public.artwork_campaign_winners cascade;
 drop table if exists public.artwork_votes cascade;
 drop table if exists public.artwork_voting_entries cascade;
 drop table if exists public.artwork_voting_sessions cascade;
+drop table if exists public.artwork_submission_photos cascade;
 drop table if exists public.artwork_submissions cascade;
 drop table if exists public.artwork_campaign_categories cascade;
 drop table if exists public.artwork_campaigns cascade;
@@ -57,6 +58,7 @@ drop sequence if exists public.community_post_photo_number_seq cascade;
 drop sequence if exists public.community_post_like_number_seq cascade;
 drop sequence if exists public.community_comment_number_seq cascade;
 drop sequence if exists public.artwork_submission_number_seq cascade;
+drop sequence if exists public.artwork_submission_photo_number_seq cascade;
 drop sequence if exists public.artwork_vote_number_seq cascade;
 drop sequence if exists public.artwork_campaign_number_seq cascade;
 drop sequence if exists public.artwork_voting_session_number_seq cascade;
@@ -64,6 +66,7 @@ drop sequence if exists public.artwork_voting_entry_number_seq cascade;
 drop sequence if exists public.artwork_number_seq cascade;
 drop sequence if exists public.artwork_campaign_winner_number_seq cascade;
 drop function if exists public.create_profile_for_new_auth_user() cascade;
+drop function if exists public.create_artwork_submission(varchar, varchar, text, text, text, text, text, text, text, text, text, text) cascade;
 drop function if exists public.cast_artwork_vote(varchar) cascade;
 drop function if exists public.create_tie_break_session(varchar, timestamptz, timestamptz) cascade;
 drop function if exists public.finalize_artwork_voting_session(varchar) cascade;
@@ -474,8 +477,10 @@ create table public.artwork_submissions (
     profile_id          varchar(5) not null references public.profiles(profile_id),
     artwork_title       varchar(180) not null,
     design_description  text not null,
-    cultural_inspiration text,
-    artist_statement    text,
+    cultural_inspiration text not null,
+    layer_1_meaning     text not null,
+    layer_2_meaning     text not null,
+    layer_3_meaning     text not null,
     artwork_file_url    text not null,
     review_status       varchar(20) not null default 'pending'
                         check (review_status in ('pending', 'approved', 'rejected')),
@@ -486,6 +491,31 @@ create table public.artwork_submissions (
     constraint chk_artwork_submission_id_format
         check (artwork_submission_id ~ '^AS[0-9]{4}$')
 );
+
+-- Every submission includes a consistent set of review photographs. The front
+-- image is also retained in artwork_file_url as the public voting thumbnail.
+create table public.artwork_submission_photos (
+    artwork_submission_photo_id varchar(7) primary key,
+    artwork_submission_id varchar(6) not null references public.artwork_submissions(artwork_submission_id) on delete cascade,
+    view_type           varchar(30) not null
+                        check (view_type in (
+                            'front_hero', 'layer_1_flat_360',
+                            'layer_2_flat_360', 'layer_3_flat_360', 'top'
+                        )),
+    photo_url           text not null check (length(trim(photo_url)) > 0),
+    sort_order          smallint not null check (sort_order between 1 and 5),
+    created_at          timestamptz not null default now(),
+
+    constraint uq_artwork_submission_photo_view
+        unique (artwork_submission_id, view_type),
+    constraint uq_artwork_submission_photo_order
+        unique (artwork_submission_id, sort_order),
+    constraint chk_artwork_submission_photo_id_format
+        check (artwork_submission_photo_id ~ '^ASP[0-9]{4}$')
+);
+
+create index ix_artwork_submission_photos_submission
+on public.artwork_submission_photos (artwork_submission_id);
 
 create index ix_artwork_submissions_campaign
 on public.artwork_submissions (artwork_campaign_id);
@@ -627,6 +657,7 @@ create sequence public.community_post_photo_number_seq start 1000;
 create sequence public.community_post_like_number_seq start 1000;
 create sequence public.community_comment_number_seq start 1000;
 create sequence public.artwork_submission_number_seq start 1000;
+create sequence public.artwork_submission_photo_number_seq start 1000;
 create sequence public.artwork_vote_number_seq start 1000;
 create sequence public.artwork_campaign_number_seq start 1000;
 create sequence public.artwork_voting_session_number_seq start 1000;
@@ -657,6 +688,10 @@ set default ('CC' || lpad(nextval('public.community_comment_number_seq')::text, 
 alter table public.artwork_submissions
 alter column artwork_submission_id
 set default ('AS' || lpad(nextval('public.artwork_submission_number_seq')::text, 4, '0'));
+
+alter table public.artwork_submission_photos
+alter column artwork_submission_photo_id
+set default ('ASP' || lpad(nextval('public.artwork_submission_photo_number_seq')::text, 4, '0'));
 
 alter table public.artwork_votes
 alter column artwork_vote_id
@@ -704,6 +739,94 @@ $$;
 
 revoke all on function public.current_profile_id() from public;
 grant execute on function public.current_profile_id() to authenticated;
+
+-- Creates the submission and its required review views in one transaction.
+-- The server derives the profile and validates the campaign window so clients
+-- cannot submit on behalf of another user or bypass campaign dates.
+create or replace function public.create_artwork_submission(
+    p_artwork_campaign_id varchar(6),
+    p_artwork_title varchar(180),
+    p_design_description text,
+    p_cultural_inspiration text,
+    p_layer_1_meaning text,
+    p_layer_2_meaning text,
+    p_layer_3_meaning text,
+    p_front_hero_photo_url text,
+    p_layer_1_flat_360_url text,
+    p_layer_2_flat_360_url text,
+    p_layer_3_flat_360_url text,
+    p_top_photo_url text
+)
+returns public.artwork_submissions
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    selected_profile_id varchar(5);
+    created_submission public.artwork_submissions;
+begin
+    selected_profile_id := public.current_profile_id();
+    if selected_profile_id is null then
+        raise exception 'An active authenticated profile is required'
+            using errcode = '42501';
+    end if;
+
+    if nullif(trim(p_artwork_title), '') is null
+       or nullif(trim(p_design_description), '') is null
+       or nullif(trim(p_cultural_inspiration), '') is null
+       or nullif(trim(p_layer_1_meaning), '') is null
+       or nullif(trim(p_layer_2_meaning), '') is null
+       or nullif(trim(p_layer_3_meaning), '') is null then
+        raise exception 'All artwork details are required';
+    end if;
+
+    if nullif(trim(p_front_hero_photo_url), '') is null
+       or nullif(trim(p_layer_1_flat_360_url), '') is null
+       or nullif(trim(p_layer_2_flat_360_url), '') is null
+       or nullif(trim(p_layer_3_flat_360_url), '') is null
+       or nullif(trim(p_top_photo_url), '') is null then
+        raise exception 'All five required artwork views must be provided';
+    end if;
+
+    if not exists (
+        select 1
+        from public.artwork_campaigns campaign
+        where campaign.artwork_campaign_id = p_artwork_campaign_id
+          and campaign.status = 'active'
+          and now() between campaign.submission_start_at
+                        and campaign.submission_end_at
+    ) then
+        raise exception 'This campaign is no longer accepting artwork';
+    end if;
+
+    insert into public.artwork_submissions (
+        artwork_campaign_id, profile_id, artwork_title,
+        design_description, cultural_inspiration,
+        layer_1_meaning, layer_2_meaning, layer_3_meaning,
+        artwork_file_url, review_status
+    ) values (
+        p_artwork_campaign_id, selected_profile_id, trim(p_artwork_title),
+        trim(p_design_description), trim(p_cultural_inspiration),
+        trim(p_layer_1_meaning), trim(p_layer_2_meaning),
+        trim(p_layer_3_meaning), trim(p_front_hero_photo_url), 'pending'
+    ) returning * into created_submission;
+
+    insert into public.artwork_submission_photos (
+        artwork_submission_id, view_type, photo_url, sort_order
+    ) values
+        (created_submission.artwork_submission_id, 'front_hero', trim(p_front_hero_photo_url), 1),
+        (created_submission.artwork_submission_id, 'layer_1_flat_360', trim(p_layer_1_flat_360_url), 2),
+        (created_submission.artwork_submission_id, 'layer_2_flat_360', trim(p_layer_2_flat_360_url), 3),
+        (created_submission.artwork_submission_id, 'layer_3_flat_360', trim(p_layer_3_flat_360_url), 4),
+        (created_submission.artwork_submission_id, 'top', trim(p_top_photo_url), 5);
+
+    return created_submission;
+end;
+$$;
+
+revoke all on function public.create_artwork_submission(varchar, varchar, text, text, text, text, text, text, text, text, text, text) from public;
+grant execute on function public.create_artwork_submission(varchar, varchar, text, text, text, text, text, text, text, text, text, text) to authenticated;
 
 create or replace function public.is_current_profile_admin()
 returns boolean
@@ -1878,7 +2001,10 @@ declare
     selected_artwork_title varchar(180);
     selected_design_description text;
     selected_cultural_inspiration text;
-    selected_artist_statement text;
+    selected_layer_1_meaning text;
+    selected_layer_2_meaning text;
+    selected_layer_3_meaning text;
+    selected_artwork_meaning text;
     selected_artwork_file_url text;
     selected_artwork_id varchar(5);
     existing_winner_id varchar(7);
@@ -2003,14 +2129,18 @@ begin
         submission.artwork_title,
         submission.design_description,
         submission.cultural_inspiration,
-        submission.artist_statement,
+        submission.layer_1_meaning,
+        submission.layer_2_meaning,
+        submission.layer_3_meaning,
         submission.artwork_file_url
     into
         selected_submission_profile_id,
         selected_artwork_title,
         selected_design_description,
         selected_cultural_inspiration,
-        selected_artist_statement,
+        selected_layer_1_meaning,
+        selected_layer_2_meaning,
+        selected_layer_3_meaning,
         selected_artwork_file_url
     from public.artwork_submissions submission
     where submission.artwork_submission_id =
@@ -2020,6 +2150,13 @@ begin
     if not found then
         raise exception 'Winning submission is not approved';
     end if;
+
+    selected_artwork_meaning := concat_ws(
+        E'\n\n',
+        'Layer 1: ' || selected_layer_1_meaning,
+        'Layer 2: ' || selected_layer_2_meaning,
+        'Layer 3: ' || selected_layer_3_meaning
+    );
 
     select artwork.artwork_id
     into selected_artwork_id
@@ -2043,7 +2180,7 @@ begin
             selected_winning_submission_id,
             left(selected_artwork_title, 150),
             selected_design_description,
-            selected_artist_statement,
+            selected_artwork_meaning,
             selected_cultural_inspiration,
             selected_artwork_file_url,
             'published'
@@ -2054,7 +2191,7 @@ begin
         set profile_id = selected_submission_profile_id,
             title = left(selected_artwork_title, 150),
             description = selected_design_description,
-            artwork_meaning = selected_artist_statement,
+            artwork_meaning = selected_artwork_meaning,
             cultural_inspiration = selected_cultural_inspiration,
             image_url = selected_artwork_file_url,
             status = 'published',
@@ -2117,6 +2254,7 @@ alter table public.community_post_likes enable row level security;
 alter table public.community_comments enable row level security;
 alter table public.artwork_campaigns enable row level security;
 alter table public.artwork_submissions enable row level security;
+alter table public.artwork_submission_photos enable row level security;
 alter table public.artwork_voting_sessions enable row level security;
 alter table public.artwork_voting_entries enable row level security;
 alter table public.artwork_votes enable row level security;
@@ -2369,28 +2507,43 @@ create policy submissions_admin_read on public.artwork_submissions
 for select to authenticated
 using (public.is_current_profile_admin());
 
-create policy submissions_own_insert on public.artwork_submissions
-for insert to authenticated
-with check (
-    profile_id = public.current_profile_id()
-    and review_status = 'pending'
-    and reviewed_by_profile_id is null
-    and reviewed_at is null
-    and exists (
-        select 1
-        from public.artwork_campaigns campaign
-        where campaign.artwork_campaign_id =
-              artwork_submissions.artwork_campaign_id
-          and campaign.status = 'active'
-          and now() between campaign.submission_start_at
-                        and campaign.submission_end_at
-    )
-);
-
 create policy submissions_admin_update on public.artwork_submissions
 for update to authenticated
 using (public.is_current_profile_admin())
 with check (public.is_current_profile_admin());
+
+create policy submission_photos_public_read
+on public.artwork_submission_photos
+for select to anon, authenticated
+using (
+    exists (
+        select 1
+        from public.artwork_submissions submission
+        join public.artwork_campaigns campaign
+          on campaign.artwork_campaign_id = submission.artwork_campaign_id
+        where submission.artwork_submission_id =
+              artwork_submission_photos.artwork_submission_id
+          and submission.review_status = 'approved'
+          and campaign.status in ('active', 'completed')
+    )
+);
+
+create policy submission_photos_own_read
+on public.artwork_submission_photos
+for select to authenticated
+using (
+    exists (
+        select 1 from public.artwork_submissions submission
+        where submission.artwork_submission_id =
+              artwork_submission_photos.artwork_submission_id
+          and submission.profile_id = public.current_profile_id()
+    )
+);
+
+create policy submission_photos_admin_read
+on public.artwork_submission_photos
+for select to authenticated
+using (public.is_current_profile_admin());
 
 create policy voting_sessions_public_read on public.artwork_voting_sessions
 for select to anon, authenticated
@@ -2546,6 +2699,7 @@ grant select on public.states, public.food_categories, public.heritage_foods,
     public.vendor_tiffins, public.community_posts,
     public.community_post_photos, public.community_comments,
     public.artwork_campaigns, public.artwork_submissions,
+    public.artwork_submission_photos,
     public.artwork_voting_sessions,
     public.artwork_voting_entries, public.artwork_campaign_winners
 to anon, authenticated;
@@ -2556,7 +2710,7 @@ to authenticated;
 
 grant insert on public.user_tiffin_collection, public.community_posts,
     public.community_post_photos, public.community_post_likes,
-    public.community_comments, public.artwork_submissions
+    public.community_comments
 to authenticated;
 
 -- These table grants are broad enough for PostgREST, while the accompanying

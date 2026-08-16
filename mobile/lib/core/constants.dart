@@ -6,7 +6,7 @@ abstract final class AppConstants {
       'Explore authentic heritage foods, collect tiffins, '
       'and connect with Malaysia\'s culinary culture.';
 
-  static const int minReviewLength = 20;
+  static const int minReviewLength = 3;
   static const int maxReviewLength = 1500;
 
   static const List<String> malaysianStates = [
