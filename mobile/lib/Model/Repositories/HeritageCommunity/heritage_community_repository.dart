@@ -485,20 +485,15 @@ class HeritageCommunityRepository {
   Future<void> submitVote(String entryId, String userId) async {
     final user = _api.requireUser();
     if (user.id != userId) throw const AppException('Vote access denied.');
-    final profileId = await _currentProfileId();
-    final entry = await _api.guard(
-      () => _api.client
-          .from('artwork_voting_entries')
-          .select('artwork_voting_session_id')
-          .eq('artwork_voting_entry_id', entryId)
-          .single(),
-    );
+
+    // The database function derives the profile and voting session from the
+    // authenticated user and entry. It also checks the campaign/session dates
+    // and atomically enforces one vote per profile per active session.
     await _api.guard(
-      () => _api.client.from('artwork_votes').insert({
-        'artwork_voting_session_id': entry['artwork_voting_session_id'],
-        'artwork_voting_entry_id': entryId,
-        'profile_id': profileId,
-      }),
+      () => _api.client.rpc(
+        'cast_artwork_vote',
+        params: {'p_artwork_voting_entry_id': entryId},
+      ),
     );
   }
 

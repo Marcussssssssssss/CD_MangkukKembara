@@ -29,6 +29,8 @@ class ArtworkVotingViewModel extends ChangeNotifier {
   bool get voteSuccess => _voteSuccess;
   String? get errorMessage => _errorMessage;
   String get sort => _sort;
+  bool get hasVotedInCurrentCampaign =>
+      _entries.any((entry) => entry.hasCurrentUserVoted);
 
   Future<void> loadCampaign(
     String campaignId, {
@@ -88,7 +90,10 @@ class ArtworkVotingViewModel extends ChangeNotifier {
   }
 
   Future<bool> vote(String entryId, String userId) async {
+    if (_isVoting) return false;
     _isVoting = true;
+    _voteSuccess = false;
+    _errorMessage = null;
     notifyListeners();
     try {
       await _repo.submitVote(entryId, userId);

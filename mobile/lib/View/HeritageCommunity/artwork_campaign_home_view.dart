@@ -464,9 +464,12 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
         sliver: SliverList(
           delegate: SliverChildBuilderDelegate((_, index) {
             final entry = vm.entries[index];
+            final campaignVoteAlreadyCast = vm.hasVotedInCurrentCampaign;
             return _ArtworkEntryCard(
               entry: entry,
               votingEnabled: entry.isVotingOpen,
+              voteAlreadyCast: campaignVoteAlreadyCast,
+              isVoting: vm.isVoting,
               onOpen: () => Navigator.pushNamed(
                 context,
                 AppRoutes.artworkVotingDetail,
@@ -504,7 +507,17 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
     }
     if (entry.hasCurrentUserVoted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('You already voted for this entry.')),
+        const SnackBar(
+          content: Text('You have already voted in this campaign.'),
+        ),
+      );
+      return;
+    }
+    if (_vm.hasVotedInCurrentCampaign) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('You can only vote once in each open campaign.'),
+        ),
       );
       return;
     }
@@ -515,6 +528,12 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
         context,
       ).showSnackBar(const SnackBar(content: Text('Vote submitted!')));
       await _vm.refreshCampaign();
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_vm.errorMessage ?? 'Vote could not be submitted.'),
+        ),
+      );
     }
   }
 }
@@ -765,12 +784,16 @@ class _CampaignHeader extends StatelessWidget {
 class _ArtworkEntryCard extends StatelessWidget {
   final ArtworkVotingEntryModel entry;
   final bool votingEnabled;
+  final bool voteAlreadyCast;
+  final bool isVoting;
   final VoidCallback onOpen;
   final VoidCallback onVote;
 
   const _ArtworkEntryCard({
     required this.entry,
     required this.votingEnabled,
+    required this.voteAlreadyCast,
+    required this.isVoting,
     required this.onOpen,
     required this.onVote,
   });
@@ -864,7 +887,7 @@ class _ArtworkEntryCard extends StatelessWidget {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10),
                 child: ElevatedButton(
-                  onPressed: entry.hasCurrentUserVoted ? null : onVote,
+                  onPressed: voteAlreadyCast || isVoting ? null : onVote,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -872,7 +895,12 @@ class _ArtworkEntryCard extends StatelessWidget {
                     ),
                     minimumSize: Size.zero,
                   ),
-                  child: Text(entry.hasCurrentUserVoted ? 'Voted' : 'Vote'),
+                  child: isVoting && !voteAlreadyCast
+                      ? const SizedBox.square(
+                          dimension: 14,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : Text(entry.hasCurrentUserVoted ? 'Voted' : 'Vote'),
                 ),
               )
             else
