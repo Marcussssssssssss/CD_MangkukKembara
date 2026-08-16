@@ -58,7 +58,15 @@ drop sequence if exists public.community_post_like_number_seq cascade;
 drop sequence if exists public.community_comment_number_seq cascade;
 drop sequence if exists public.artwork_submission_number_seq cascade;
 drop sequence if exists public.artwork_vote_number_seq cascade;
+drop sequence if exists public.artwork_campaign_number_seq cascade;
+drop sequence if exists public.artwork_voting_session_number_seq cascade;
+drop sequence if exists public.artwork_voting_entry_number_seq cascade;
+drop sequence if exists public.artwork_number_seq cascade;
+drop sequence if exists public.artwork_campaign_winner_number_seq cascade;
 drop function if exists public.create_profile_for_new_auth_user() cascade;
+drop function if exists public.cast_artwork_vote(varchar) cascade;
+drop function if exists public.create_tie_break_session(varchar, timestamptz, timestamptz) cascade;
+drop function if exists public.finalize_artwork_voting_session(varchar) cascade;
 drop trigger if exists on_auth_user_created on auth.users;
 
 -- ============================================================================
@@ -195,6 +203,7 @@ create table public.heritage_foods (
 create table public.artworks (
     artwork_id          varchar(5) primary key,
     profile_id          varchar(5) not null references public.profiles(profile_id),
+    source_artwork_submission_id varchar(6),
     title               varchar(150) not null,
     description         text,
     artwork_meaning     text,
@@ -205,6 +214,7 @@ create table public.artworks (
     created_at          timestamptz not null default now(),
     updated_at          timestamptz not null default now(),
 
+    constraint uq_artwork_source_submission unique (source_artwork_submission_id),
     constraint chk_artwork_id_format
         check (artwork_id ~ '^A[0-9]{4}$')
 );
@@ -440,12 +450,13 @@ create table public.community_comments (
 
 create table public.artwork_campaigns (
     artwork_campaign_id varchar(6) primary key,
+    state_id            varchar(5) not null references public.states(state_id),
     campaign_title      varchar(180) not null,
     description         text,
     submission_start_at timestamptz not null,
     submission_end_at   timestamptz not null,
     status              varchar(30) not null default 'active'
-                        check (status in ('active', 'completed')),
+                        check (status in ('active', 'completed', 'inactive')),
     created_by_profile_id varchar(5) not null references public.profiles(profile_id),
     created_at          timestamptz not null default now(),
 
@@ -454,26 +465,12 @@ create table public.artwork_campaigns (
         check (artwork_campaign_id ~ '^AC[0-9]{4}$')
 );
 
--- Submission and voting run together for the full active campaign period.
--- Only one campaign can accept submissions and votes at a time.
-create unique index uq_single_live_artwork_campaign
-on public.artwork_campaigns ((true))
-where status = 'active';
-
-create table public.artwork_campaign_categories (
-    artwork_campaign_category_id varchar(7) primary key,
-    artwork_campaign_id varchar(6) not null references public.artwork_campaigns(artwork_campaign_id) on delete cascade,
-    state_id            varchar(5) not null references public.states(state_id),
-    category_name       varchar(150) not null,
-
-    constraint uq_campaign_category unique (artwork_campaign_id, state_id),
-    constraint chk_artwork_campaign_category_id_format
-        check (artwork_campaign_category_id ~ '^ACC[0-9]{4}$')
-);
+create index ix_artwork_campaigns_state
+on public.artwork_campaigns (state_id);
 
 create table public.artwork_submissions (
     artwork_submission_id varchar(6) primary key,
-    artwork_campaign_category_id varchar(7) not null references public.artwork_campaign_categories(artwork_campaign_category_id),
+    artwork_campaign_id  varchar(6) not null references public.artwork_campaigns(artwork_campaign_id),
     profile_id          varchar(5) not null references public.profiles(profile_id),
     artwork_title       varchar(180) not null,
     design_description  text not null,
@@ -490,6 +487,19 @@ create table public.artwork_submissions (
         check (artwork_submission_id ~ '^AS[0-9]{4}$')
 );
 
+create index ix_artwork_submissions_campaign
+on public.artwork_submissions (artwork_campaign_id);
+
+create index ix_artwork_submissions_profile
+on public.artwork_submissions (profile_id);
+
+-- Artworks are declared before submissions because heritage tiffins depend on
+-- them. Add the provenance foreign key now that submissions exist.
+alter table public.artworks
+add constraint fk_artwork_source_submission
+foreign key (source_artwork_submission_id)
+references public.artwork_submissions(artwork_submission_id);
+
 create table public.artwork_voting_sessions (
     artwork_voting_session_id varchar(7) primary key,
     artwork_campaign_id varchar(6) not null references public.artwork_campaigns(artwork_campaign_id) on delete cascade,
@@ -497,50 +507,113 @@ create table public.artwork_voting_sessions (
     voting_end_at      timestamptz not null,
     status             varchar(20) not null
                        check (status in ('scheduled', 'active', 'closed')),
+    session_type       varchar(20) not null default 'standard'
+                       check (session_type in ('standard', 'tie_break')),
+    parent_voting_session_id varchar(7),
 
     constraint chk_voting_dates check (voting_end_at > voting_start_at),
+    constraint chk_voting_session_parent check (
+        (session_type = 'standard' and parent_voting_session_id is null)
+        or
+        (session_type = 'tie_break' and parent_voting_session_id is not null)
+    ),
+    constraint chk_voting_session_not_self_parent check (
+        parent_voting_session_id is distinct from artwork_voting_session_id
+    ),
+    constraint uq_voting_session_id_campaign
+        unique (artwork_voting_session_id, artwork_campaign_id),
+    constraint fk_voting_session_parent_campaign
+        foreign key (parent_voting_session_id, artwork_campaign_id)
+        references public.artwork_voting_sessions (
+            artwork_voting_session_id,
+            artwork_campaign_id
+        ),
     constraint chk_artwork_voting_session_id_format
         check (artwork_voting_session_id ~ '^AVS[0-9]{4}$')
 );
 
+create unique index uq_one_active_session_per_campaign
+on public.artwork_voting_sessions (artwork_campaign_id)
+where status = 'active';
+
+create unique index uq_one_standard_session_per_campaign
+on public.artwork_voting_sessions (artwork_campaign_id)
+where session_type = 'standard';
+
+create unique index uq_one_tie_break_child
+on public.artwork_voting_sessions (parent_voting_session_id)
+where parent_voting_session_id is not null;
+
+create index ix_artwork_voting_sessions_campaign
+on public.artwork_voting_sessions (artwork_campaign_id);
+
 create table public.artwork_voting_entries (
     artwork_voting_entry_id varchar(7) primary key,
     artwork_voting_session_id varchar(7) not null references public.artwork_voting_sessions(artwork_voting_session_id) on delete cascade,
-    artwork_campaign_category_id varchar(7) not null references public.artwork_campaign_categories(artwork_campaign_category_id),
     artwork_submission_id varchar(6) not null references public.artwork_submissions(artwork_submission_id),
-    vote_count          integer not null default 0,
+    vote_count          integer not null default 0 check (vote_count >= 0),
     published_at       timestamptz not null default now(),
 
     constraint uq_voting_entry unique (artwork_voting_session_id, artwork_submission_id),
+    constraint uq_voting_entry_id_session
+        unique (artwork_voting_entry_id, artwork_voting_session_id),
     constraint chk_artwork_voting_entry_id_format
         check (artwork_voting_entry_id ~ '^AVE[0-9]{4}$')
 );
 
+create index ix_artwork_voting_entries_submission
+on public.artwork_voting_entries (artwork_submission_id);
+
 create table public.artwork_votes (
     artwork_vote_id     varchar(6) primary key,
     artwork_voting_session_id varchar(7) not null references public.artwork_voting_sessions(artwork_voting_session_id),
-    artwork_campaign_category_id varchar(7) not null references public.artwork_campaign_categories(artwork_campaign_category_id),
-    artwork_voting_entry_id varchar(7) not null references public.artwork_voting_entries(artwork_voting_entry_id),
+    artwork_voting_entry_id varchar(7) not null,
     profile_id          varchar(5) not null references public.profiles(profile_id),
     voted_at            timestamptz not null default now(),
 
-    constraint uq_one_vote_per_category
-        unique (artwork_voting_session_id, artwork_campaign_category_id, profile_id),
+    constraint uq_one_vote_per_session
+        unique (artwork_voting_session_id, profile_id),
+    constraint fk_vote_entry_session
+        foreign key (artwork_voting_entry_id, artwork_voting_session_id)
+        references public.artwork_voting_entries (
+            artwork_voting_entry_id,
+            artwork_voting_session_id
+        ),
     constraint chk_artwork_vote_id_format
         check (artwork_vote_id ~ '^AV[0-9]{4}$')
 );
 
+create index ix_artwork_votes_entry
+on public.artwork_votes (artwork_voting_entry_id);
+
+create index ix_artwork_votes_profile
+on public.artwork_votes (profile_id);
+
 create table public.artwork_campaign_winners (
     artwork_campaign_winner_id varchar(7) primary key,
     artwork_campaign_id varchar(6) not null references public.artwork_campaigns(artwork_campaign_id),
-    artwork_campaign_category_id varchar(7) not null references public.artwork_campaign_categories(artwork_campaign_category_id),
-    artwork_voting_entry_id varchar(7) not null references public.artwork_voting_entries(artwork_voting_entry_id),
-    final_vote_count    integer not null default 0,
-    final_rank          integer not null default 1,
+    artwork_voting_session_id varchar(7) not null,
+    artwork_voting_entry_id varchar(7) not null,
+    artwork_id          varchar(5) not null references public.artworks(artwork_id),
+    final_vote_count    integer not null default 0 check (final_vote_count >= 0),
+    final_rank          integer not null default 1 check (final_rank = 1),
     announced_by_profile_id varchar(5) not null references public.profiles(profile_id),
     announced_at       timestamptz not null default now(),
 
-    constraint uq_campaign_winner unique (artwork_campaign_id, artwork_campaign_category_id),
+    constraint uq_campaign_winner unique (artwork_campaign_id),
+    constraint uq_campaign_winner_artwork unique (artwork_id),
+    constraint fk_winner_session_campaign
+        foreign key (artwork_voting_session_id, artwork_campaign_id)
+        references public.artwork_voting_sessions (
+            artwork_voting_session_id,
+            artwork_campaign_id
+        ),
+    constraint fk_winner_entry_session
+        foreign key (artwork_voting_entry_id, artwork_voting_session_id)
+        references public.artwork_voting_entries (
+            artwork_voting_entry_id,
+            artwork_voting_session_id
+        ),
     constraint chk_artwork_campaign_winner_id_format
         check (artwork_campaign_winner_id ~ '^ACW[0-9]{4}$')
 );
@@ -555,6 +628,11 @@ create sequence public.community_post_like_number_seq start 1000;
 create sequence public.community_comment_number_seq start 1000;
 create sequence public.artwork_submission_number_seq start 1000;
 create sequence public.artwork_vote_number_seq start 1000;
+create sequence public.artwork_campaign_number_seq start 1000;
+create sequence public.artwork_voting_session_number_seq start 1000;
+create sequence public.artwork_voting_entry_number_seq start 1000;
+create sequence public.artwork_number_seq start 1000;
+create sequence public.artwork_campaign_winner_number_seq start 1000;
 
 alter table public.user_tiffin_collection
 alter column user_tiffin_collection_id
@@ -584,6 +662,26 @@ alter table public.artwork_votes
 alter column artwork_vote_id
 set default ('AV' || lpad(nextval('public.artwork_vote_number_seq')::text, 4, '0'));
 
+alter table public.artwork_campaigns
+alter column artwork_campaign_id
+set default ('AC' || lpad(nextval('public.artwork_campaign_number_seq')::text, 4, '0'));
+
+alter table public.artwork_voting_sessions
+alter column artwork_voting_session_id
+set default ('AVS' || lpad(nextval('public.artwork_voting_session_number_seq')::text, 4, '0'));
+
+alter table public.artwork_voting_entries
+alter column artwork_voting_entry_id
+set default ('AVE' || lpad(nextval('public.artwork_voting_entry_number_seq')::text, 4, '0'));
+
+alter table public.artworks
+alter column artwork_id
+set default ('A' || lpad(nextval('public.artwork_number_seq')::text, 4, '0'));
+
+alter table public.artwork_campaign_winners
+alter column artwork_campaign_winner_id
+set default ('ACW' || lpad(nextval('public.artwork_campaign_winner_number_seq')::text, 4, '0'));
+
 -- ============================================================================
 -- 8. ROW LEVEL SECURITY (RLS)
 -- Auth users are represented by profiles.auth_user_id. Seed/demo profiles have
@@ -606,6 +704,25 @@ $$;
 
 revoke all on function public.current_profile_id() from public;
 grant execute on function public.current_profile_id() to authenticated;
+
+create or replace function public.is_current_profile_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+    select exists (
+        select 1
+        from public.profiles
+        where auth_user_id = auth.uid()
+          and role = 'admin'
+          and is_active = true
+    )
+$$;
+
+revoke all on function public.is_current_profile_admin() from public;
+grant execute on function public.is_current_profile_admin() to authenticated;
 
 create or replace function public.is_valid_reply_parent(
     requested_parent_id varchar(6),
@@ -738,6 +855,662 @@ after insert or delete or update of community_post_id, status
 on public.community_comments
 for each row execute function public.sync_community_post_comment_count();
 
+-- Preserve the state and completion history of campaigns once participation
+-- begins. Empty campaigns remain editable/deletable by administrators.
+create or replace function public.guard_artwork_campaign_mutation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    campaign_has_history boolean;
+    campaign_has_winner boolean;
+begin
+    campaign_has_history :=
+        exists (
+            select 1 from public.artwork_submissions submission
+            where submission.artwork_campaign_id = old.artwork_campaign_id
+        )
+        or exists (
+            select 1 from public.artwork_voting_sessions voting_session
+            where voting_session.artwork_campaign_id = old.artwork_campaign_id
+        )
+        or exists (
+            select 1 from public.artwork_campaign_winners winner
+            where winner.artwork_campaign_id = old.artwork_campaign_id
+        );
+
+    campaign_has_winner := exists (
+        select 1 from public.artwork_campaign_winners winner
+        where winner.artwork_campaign_id = old.artwork_campaign_id
+    );
+
+    if tg_op = 'DELETE' then
+        if campaign_has_history then
+            raise exception 'A campaign with submissions, voting sessions or a winner cannot be deleted';
+        end if;
+
+        return old;
+    end if;
+
+    if campaign_has_history
+       and new.state_id is distinct from old.state_id then
+        raise exception 'Campaign state is immutable after participation begins';
+    end if;
+
+    if old.status = 'completed'
+       and new.status is distinct from old.status then
+        raise exception 'A completed campaign is terminal and cannot change status';
+    end if;
+
+    if campaign_has_winner and new.status = 'active' then
+        raise exception 'A campaign with a declared winner cannot be reopened';
+    end if;
+
+    if new.status <> 'active'
+       and exists (
+           select 1
+           from public.artwork_voting_sessions voting_session
+           where voting_session.artwork_campaign_id = old.artwork_campaign_id
+             and voting_session.status = 'active'
+       ) then
+        raise exception 'Close the active voting session before deactivating or completing its campaign';
+    end if;
+
+    if new.status = 'completed'
+       and old.status <> 'completed'
+       and not campaign_has_winner then
+        raise exception 'A campaign can only be completed after its winner is recorded';
+    end if;
+
+    return new;
+end;
+$$;
+
+create trigger guard_artwork_campaign_mutation_trigger
+before update or delete on public.artwork_campaigns
+for each row execute function public.guard_artwork_campaign_mutation();
+
+-- Keep standard/tie-break session chains chronological and within one
+-- campaign. The composite self-reference provides the same-campaign FK; this
+-- trigger enforces the business-state rules that a FK cannot express.
+create or replace function public.validate_artwork_voting_session()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    selected_parent_campaign_id varchar(6);
+    selected_parent_status varchar(20);
+    selected_parent_end_at timestamptz;
+    selected_campaign_status varchar(30);
+    selected_parent_top_vote_count integer;
+    selected_parent_top_tied_count integer;
+begin
+    select campaign.status
+    into selected_campaign_status
+    from public.artwork_campaigns campaign
+    where campaign.artwork_campaign_id = new.artwork_campaign_id;
+
+    if new.status = 'active'
+       and selected_campaign_status <> 'active' then
+        raise exception 'Only an active campaign can have an active voting session';
+    end if;
+
+    if new.parent_voting_session_id is null then
+        return new;
+    end if;
+
+    select
+        parent_session.artwork_campaign_id,
+        parent_session.status,
+        parent_session.voting_end_at
+    into
+        selected_parent_campaign_id,
+        selected_parent_status,
+        selected_parent_end_at
+    from public.artwork_voting_sessions parent_session
+    where parent_session.artwork_voting_session_id =
+          new.parent_voting_session_id
+    for key share;
+
+    if not found then
+        raise exception 'Parent voting session % does not exist',
+            new.parent_voting_session_id;
+    end if;
+
+    if selected_parent_campaign_id <> new.artwork_campaign_id then
+        raise exception 'Tie-break session and parent must belong to the same campaign';
+    end if;
+
+    if selected_parent_status <> 'closed' then
+        raise exception 'A tie-break can only follow a closed voting session';
+    end if;
+
+    if new.voting_start_at < selected_parent_end_at then
+        raise exception 'Tie-break voting cannot start before its parent session ends';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_campaign_winners winner
+        where winner.artwork_voting_session_id =
+              new.parent_voting_session_id
+    ) then
+        raise exception 'A finalized session cannot receive a tie-break child';
+    end if;
+
+    with parent_results as (
+        select
+            parent_entry.artwork_voting_entry_id,
+            count(parent_vote.artwork_vote_id)::integer as actual_vote_count
+        from public.artwork_voting_entries parent_entry
+        left join public.artwork_votes parent_vote
+          on parent_vote.artwork_voting_entry_id =
+             parent_entry.artwork_voting_entry_id
+        where parent_entry.artwork_voting_session_id =
+              new.parent_voting_session_id
+        group by parent_entry.artwork_voting_entry_id
+    ),
+    parent_top as (
+        select max(actual_vote_count) as top_vote_count
+        from parent_results
+    )
+    select
+        parent_top.top_vote_count,
+        count(*) filter (
+            where parent_results.actual_vote_count =
+                  parent_top.top_vote_count
+        )::integer
+    into
+        selected_parent_top_vote_count,
+        selected_parent_top_tied_count
+    from parent_results
+    cross join parent_top
+    group by parent_top.top_vote_count;
+
+    if selected_parent_top_vote_count is null
+       or selected_parent_top_tied_count < 2 then
+        raise exception 'A tie-break requires a genuine top tie in its parent session';
+    end if;
+
+    return new;
+end;
+$$;
+
+create trigger validate_artwork_voting_session_trigger
+before insert or update of
+    artwork_campaign_id,
+    voting_start_at,
+    voting_end_at,
+    session_type,
+    parent_voting_session_id
+on public.artwork_voting_sessions
+for each row execute function public.validate_artwork_voting_session();
+
+-- Voting history becomes progressively immutable. Structural session fields
+-- cannot change after entries, a child session or a winner exist, and status
+-- may move only scheduled -> active/closed -> closed.
+create or replace function public.guard_artwork_voting_session_mutation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    selected_child_start_at timestamptz;
+    selected_campaign_status varchar(30);
+begin
+    if tg_op = 'DELETE' then
+        if exists (
+            select 1 from public.artwork_voting_entries entry
+            where entry.artwork_voting_session_id =
+                  old.artwork_voting_session_id
+        )
+        or exists (
+            select 1 from public.artwork_voting_sessions child_session
+            where child_session.parent_voting_session_id =
+                  old.artwork_voting_session_id
+        )
+        or exists (
+            select 1 from public.artwork_campaign_winners winner
+            where winner.artwork_voting_session_id =
+                  old.artwork_voting_session_id
+        ) then
+            raise exception 'A voting session with entries, a tie-break child or a winner cannot be deleted';
+        end if;
+
+        return old;
+    end if;
+
+    if (
+        new.artwork_campaign_id is distinct from old.artwork_campaign_id
+        or new.voting_start_at is distinct from old.voting_start_at
+        or new.voting_end_at is distinct from old.voting_end_at
+        or new.session_type is distinct from old.session_type
+        or new.parent_voting_session_id is distinct from
+           old.parent_voting_session_id
+    ) and (
+        exists (
+            select 1 from public.artwork_voting_entries entry
+            where entry.artwork_voting_session_id =
+                  old.artwork_voting_session_id
+        )
+        or exists (
+            select 1 from public.artwork_voting_sessions child_session
+            where child_session.parent_voting_session_id =
+                  old.artwork_voting_session_id
+        )
+        or exists (
+            select 1 from public.artwork_campaign_winners winner
+            where winner.artwork_voting_session_id =
+                  old.artwork_voting_session_id
+        )
+    ) then
+        raise exception 'Voting-session structure is immutable after publication or finalization';
+    end if;
+
+    if new.status is distinct from old.status then
+        if old.status = 'scheduled'
+           and new.status not in ('active', 'closed') then
+            raise exception 'Invalid voting-session status transition';
+        elsif old.status = 'active'
+              and new.status <> 'closed' then
+            raise exception 'An active voting session can only be closed';
+        elsif old.status = 'closed' then
+            raise exception 'A closed voting session cannot be reopened';
+        end if;
+    end if;
+
+    if new.status = 'active' then
+        select campaign.status
+        into selected_campaign_status
+        from public.artwork_campaigns campaign
+        where campaign.artwork_campaign_id = new.artwork_campaign_id;
+
+        if selected_campaign_status <> 'active' then
+            raise exception 'Only an active campaign can have an active voting session';
+        end if;
+    end if;
+
+    select child_session.voting_start_at
+    into selected_child_start_at
+    from public.artwork_voting_sessions child_session
+    where child_session.parent_voting_session_id =
+          old.artwork_voting_session_id;
+
+    if found then
+        if new.status <> 'closed' then
+            raise exception 'A parent session must remain closed after its tie-break is created';
+        end if;
+
+        if new.voting_end_at > selected_child_start_at then
+            raise exception 'A parent session cannot end after its tie-break begins';
+        end if;
+    end if;
+
+    return new;
+end;
+$$;
+
+create trigger guard_artwork_voting_session_mutation_trigger
+before update or delete on public.artwork_voting_sessions
+for each row execute function public.guard_artwork_voting_session_mutation();
+
+-- An entry must always use an approved submission from its session's
+-- campaign. Tie-breaks may contain only the submissions tied for the highest
+-- actual vote total in their immediate parent session.
+create or replace function public.validate_artwork_voting_entry()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    selected_session_campaign_id varchar(6);
+    selected_session_type varchar(20);
+    selected_session_status varchar(20);
+    selected_parent_session_id varchar(7);
+    selected_submission_campaign_id varchar(6);
+    selected_review_status varchar(20);
+    parent_top_vote_count integer;
+    parent_top_tied_count integer;
+    selected_submission_is_top integer;
+begin
+    select
+        voting_session.artwork_campaign_id,
+        voting_session.session_type,
+        voting_session.status,
+        voting_session.parent_voting_session_id
+    into
+        selected_session_campaign_id,
+        selected_session_type,
+        selected_session_status,
+        selected_parent_session_id
+    from public.artwork_voting_sessions voting_session
+    where voting_session.artwork_voting_session_id =
+          new.artwork_voting_session_id
+    for share;
+
+    if not found then
+        raise exception 'Voting session % does not exist',
+            new.artwork_voting_session_id;
+    end if;
+
+    select
+        submission.artwork_campaign_id,
+        submission.review_status
+    into
+        selected_submission_campaign_id,
+        selected_review_status
+    from public.artwork_submissions submission
+    where submission.artwork_submission_id = new.artwork_submission_id
+    for share;
+
+    if not found then
+        raise exception 'Artwork submission % does not exist',
+            new.artwork_submission_id;
+    end if;
+
+    if selected_submission_campaign_id <> selected_session_campaign_id then
+        raise exception 'Voting entry submission and session must belong to the same campaign';
+    end if;
+
+    if selected_review_status <> 'approved' then
+        raise exception 'Only approved submissions can become voting entries';
+    end if;
+
+    if selected_session_status <> 'scheduled' then
+        raise exception 'Voting entries can only be added to a scheduled session';
+    end if;
+
+    if selected_session_type = 'tie_break' then
+        with parent_results as (
+            select
+                parent_entry.artwork_submission_id,
+                count(parent_vote.artwork_vote_id)::integer as actual_vote_count
+            from public.artwork_voting_entries parent_entry
+            left join public.artwork_votes parent_vote
+              on parent_vote.artwork_voting_entry_id =
+                 parent_entry.artwork_voting_entry_id
+            where parent_entry.artwork_voting_session_id =
+                  selected_parent_session_id
+            group by parent_entry.artwork_submission_id
+        ),
+        parent_top as (
+            select max(actual_vote_count) as top_vote_count
+            from parent_results
+        )
+        select
+            parent_top.top_vote_count,
+            count(*) filter (
+                where parent_results.actual_vote_count =
+                      parent_top.top_vote_count
+            )::integer,
+            count(*) filter (
+                where parent_results.artwork_submission_id =
+                      new.artwork_submission_id
+                  and parent_results.actual_vote_count =
+                      parent_top.top_vote_count
+            )::integer
+        into
+            parent_top_vote_count,
+            parent_top_tied_count,
+            selected_submission_is_top
+        from parent_results
+        cross join parent_top
+        group by parent_top.top_vote_count;
+
+        if parent_top_vote_count is null
+           or parent_top_tied_count < 2 then
+            raise exception 'Parent voting session does not have a top tie';
+        end if;
+
+        if selected_submission_is_top <> 1 then
+            raise exception 'Tie-break entries must be top-tied submissions from the parent session';
+        end if;
+    end if;
+
+    return new;
+end;
+$$;
+
+create trigger validate_artwork_voting_entry_trigger
+before insert or update of
+    artwork_voting_session_id,
+    artwork_submission_id
+on public.artwork_voting_entries
+for each row execute function public.validate_artwork_voting_entry();
+
+-- Published entries cannot be repointed or deleted. Direct entry UPDATE is not
+-- granted to API roles; only database-owned vote/finalization functions update
+-- the cached vote count.
+create or replace function public.guard_artwork_voting_entry_mutation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    selected_session_status varchar(20);
+begin
+    select voting_session.status
+    into selected_session_status
+    from public.artwork_voting_sessions voting_session
+    where voting_session.artwork_voting_session_id =
+          old.artwork_voting_session_id;
+
+    if tg_op = 'DELETE' then
+        if selected_session_status <> 'scheduled'
+           or exists (
+               select 1 from public.artwork_votes vote
+               where vote.artwork_voting_entry_id =
+                     old.artwork_voting_entry_id
+           )
+           or exists (
+               select 1 from public.artwork_campaign_winners winner
+               where winner.artwork_voting_entry_id =
+                     old.artwork_voting_entry_id
+           ) then
+            raise exception 'A published, voted-on or winning entry cannot be deleted';
+        end if;
+
+        return old;
+    end if;
+
+    if (
+        new.artwork_voting_session_id is distinct from
+            old.artwork_voting_session_id
+        or new.artwork_submission_id is distinct from
+           old.artwork_submission_id
+    ) and (
+        selected_session_status <> 'scheduled'
+        or exists (
+            select 1 from public.artwork_votes vote
+            where vote.artwork_voting_entry_id =
+                  old.artwork_voting_entry_id
+        )
+        or exists (
+            select 1 from public.artwork_campaign_winners winner
+            where winner.artwork_voting_entry_id =
+                  old.artwork_voting_entry_id
+        )
+    ) then
+        raise exception 'A published, voted-on or winning entry cannot be repointed';
+    end if;
+
+    return new;
+end;
+$$;
+
+create trigger guard_artwork_voting_entry_mutation_trigger
+before update or delete on public.artwork_voting_entries
+for each row execute function public.guard_artwork_voting_entry_mutation();
+
+-- Once a submission participates in voting, its campaign, owner and approval
+-- cannot be changed in a way that invalidates existing entries or winners.
+create or replace function public.guard_artwork_submission_mutation()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+    if exists (
+        select 1
+        from public.artwork_voting_entries entry
+        where entry.artwork_submission_id = old.artwork_submission_id
+    ) and (
+        new.artwork_campaign_id is distinct from old.artwork_campaign_id
+        or new.profile_id is distinct from old.profile_id
+        or (
+            old.review_status = 'approved'
+            and new.review_status <> 'approved'
+        )
+    ) then
+        raise exception 'A submission used in voting must remain approved in its original campaign and profile';
+    end if;
+
+    return new;
+end;
+$$;
+
+create trigger guard_artwork_submission_mutation_trigger
+before update of artwork_campaign_id, profile_id, review_status
+on public.artwork_submissions
+for each row execute function public.guard_artwork_submission_mutation();
+
+-- A winner must come from a closed terminal session with one undisputed first
+-- place. Its published artwork must retain the winning submission as its
+-- provenance and the original submitter as the artwork creator.
+create or replace function public.validate_artwork_campaign_winner()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    selected_session_campaign_id varchar(6);
+    selected_session_status varchar(20);
+    selected_submission_id varchar(6);
+    selected_submission_profile_id varchar(5);
+    selected_actual_vote_count integer;
+    selected_top_vote_count integer;
+    selected_top_tied_count integer;
+    selected_artwork_submission_id varchar(6);
+    selected_artwork_profile_id varchar(5);
+begin
+    select
+        voting_session.artwork_campaign_id,
+        voting_session.status
+    into
+        selected_session_campaign_id,
+        selected_session_status
+    from public.artwork_voting_sessions voting_session
+    where voting_session.artwork_voting_session_id =
+          new.artwork_voting_session_id;
+
+    if not found
+       or selected_session_campaign_id <> new.artwork_campaign_id then
+        raise exception 'Winner session must belong to the selected campaign';
+    end if;
+
+    if selected_session_status <> 'closed' then
+        raise exception 'A winner can only be announced from a closed session';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_voting_sessions child_session
+        where child_session.parent_voting_session_id =
+              new.artwork_voting_session_id
+    ) then
+        raise exception 'A session with a tie-break child is not terminal';
+    end if;
+
+    select
+        entry.artwork_submission_id,
+        submission.profile_id,
+        count(vote.artwork_vote_id)::integer
+    into
+        selected_submission_id,
+        selected_submission_profile_id,
+        selected_actual_vote_count
+    from public.artwork_voting_entries entry
+    join public.artwork_submissions submission
+      on submission.artwork_submission_id = entry.artwork_submission_id
+    left join public.artwork_votes vote
+      on vote.artwork_voting_entry_id = entry.artwork_voting_entry_id
+    where entry.artwork_voting_entry_id = new.artwork_voting_entry_id
+      and entry.artwork_voting_session_id = new.artwork_voting_session_id
+    group by entry.artwork_submission_id, submission.profile_id;
+
+    if not found then
+        raise exception 'Winning entry does not belong to the selected session';
+    end if;
+
+    with session_results as (
+        select
+            entry.artwork_voting_entry_id,
+            count(vote.artwork_vote_id)::integer as actual_vote_count
+        from public.artwork_voting_entries entry
+        left join public.artwork_votes vote
+          on vote.artwork_voting_entry_id = entry.artwork_voting_entry_id
+        where entry.artwork_voting_session_id =
+              new.artwork_voting_session_id
+        group by entry.artwork_voting_entry_id
+    ),
+    session_top as (
+        select max(actual_vote_count) as top_vote_count
+        from session_results
+    )
+    select
+        session_top.top_vote_count,
+        count(*) filter (
+            where session_results.actual_vote_count =
+                  session_top.top_vote_count
+        )::integer
+    into selected_top_vote_count, selected_top_tied_count
+    from session_results
+    cross join session_top
+    group by session_top.top_vote_count;
+
+    if selected_top_vote_count is null
+       or selected_top_tied_count <> 1
+       or selected_actual_vote_count <> selected_top_vote_count then
+        raise exception 'Winner must be the unique highest-vote entry';
+    end if;
+
+    if new.final_rank <> 1
+       or new.final_vote_count <> selected_actual_vote_count then
+        raise exception 'Winner rank and vote total must match the database result';
+    end if;
+
+    select
+        artwork.source_artwork_submission_id,
+        artwork.profile_id
+    into
+        selected_artwork_submission_id,
+        selected_artwork_profile_id
+    from public.artworks artwork
+    where artwork.artwork_id = new.artwork_id;
+
+    if not found
+       or selected_artwork_submission_id is distinct from selected_submission_id
+       or selected_artwork_profile_id <> selected_submission_profile_id then
+        raise exception 'Winner artwork must originate from the winning submission and submitter';
+    end if;
+
+    return new;
+end;
+$$;
+
+create trigger validate_artwork_campaign_winner_trigger
+before insert or update on public.artwork_campaign_winners
+for each row execute function public.validate_artwork_campaign_winner();
+
 create or replace function public.sync_artwork_voting_entry_vote_count()
 returns trigger
 language plpgsql
@@ -745,22 +1518,28 @@ security definer
 set search_path = public, pg_temp
 as $$
 begin
-    if tg_op <> 'INSERT' then
+    if tg_op = 'DELETE'
+       or (
+           tg_op = 'UPDATE'
+           and old.artwork_voting_entry_id is distinct from
+               new.artwork_voting_entry_id
+       ) then
         update public.artwork_voting_entries
-        set vote_count = (
-            select count(*) from public.artwork_votes votes
-            where votes.artwork_voting_entry_id = old.artwork_voting_entry_id
-        )
+        set vote_count = greatest(vote_count - 1, 0)
         where artwork_voting_entry_id = old.artwork_voting_entry_id;
     end if;
-    if tg_op <> 'DELETE' then
+
+    if tg_op = 'INSERT'
+       or (
+           tg_op = 'UPDATE'
+           and old.artwork_voting_entry_id is distinct from
+               new.artwork_voting_entry_id
+       ) then
         update public.artwork_voting_entries
-        set vote_count = (
-            select count(*) from public.artwork_votes votes
-            where votes.artwork_voting_entry_id = new.artwork_voting_entry_id
-        )
+        set vote_count = vote_count + 1
         where artwork_voting_entry_id = new.artwork_voting_entry_id;
     end if;
+
     return null;
 end;
 $$;
@@ -769,6 +1548,552 @@ create trigger sync_artwork_voting_entry_vote_count_trigger
 after insert or delete or update of artwork_voting_entry_id
 on public.artwork_votes
 for each row execute function public.sync_artwork_voting_entry_vote_count();
+
+-- Participants vote by entry only. The server derives the current profile and
+-- session, locks the session against concurrent finalization, and returns the
+-- existing vote for an identical retry.
+create or replace function public.cast_artwork_vote(
+    p_artwork_voting_entry_id varchar(7)
+)
+returns table (
+    vote_id varchar(6),
+    entry_id varchar(7),
+    session_id varchar(7),
+    current_vote_count integer,
+    cast_at timestamptz
+)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    selected_profile_id varchar(5);
+    selected_session_id varchar(7);
+    selected_submission_status varchar(20);
+    selected_submission_campaign_id varchar(6);
+    selected_session_campaign_id varchar(6);
+    selected_session_status varchar(20);
+    selected_voting_start_at timestamptz;
+    selected_voting_end_at timestamptz;
+    selected_campaign_status varchar(30);
+    created_vote_id varchar(6);
+    created_voted_at timestamptz;
+    existing_entry_id varchar(7);
+begin
+    selected_profile_id := public.current_profile_id();
+
+    if selected_profile_id is null then
+        raise exception 'An active authenticated profile is required'
+            using errcode = '42501';
+    end if;
+
+    select
+        entry.artwork_voting_session_id,
+        submission.review_status,
+        submission.artwork_campaign_id
+    into
+        selected_session_id,
+        selected_submission_status,
+        selected_submission_campaign_id
+    from public.artwork_voting_entries entry
+    join public.artwork_submissions submission
+      on submission.artwork_submission_id = entry.artwork_submission_id
+    where entry.artwork_voting_entry_id = p_artwork_voting_entry_id;
+
+    if not found then
+        raise exception 'Voting entry % does not exist',
+            p_artwork_voting_entry_id;
+    end if;
+
+    select
+        voting_session.artwork_campaign_id,
+        voting_session.status,
+        voting_session.voting_start_at,
+        voting_session.voting_end_at
+    into
+        selected_session_campaign_id,
+        selected_session_status,
+        selected_voting_start_at,
+        selected_voting_end_at
+    from public.artwork_voting_sessions voting_session
+    where voting_session.artwork_voting_session_id = selected_session_id
+    for update;
+
+    if selected_submission_campaign_id <> selected_session_campaign_id then
+        raise exception 'Voting entry is not valid for its session campaign';
+    end if;
+
+    if selected_submission_status <> 'approved' then
+        raise exception 'Only approved submissions can receive votes';
+    end if;
+
+    if selected_session_status <> 'active'
+       or now() < selected_voting_start_at
+       or now() > selected_voting_end_at then
+        raise exception 'Voting session is not open';
+    end if;
+
+    select campaign.status
+    into selected_campaign_status
+    from public.artwork_campaigns campaign
+    where campaign.artwork_campaign_id = selected_session_campaign_id;
+
+    if selected_campaign_status <> 'active' then
+        raise exception 'Artwork campaign is not active';
+    end if;
+
+    insert into public.artwork_votes (
+        artwork_voting_session_id,
+        artwork_voting_entry_id,
+        profile_id
+    )
+    values (
+        selected_session_id,
+        p_artwork_voting_entry_id,
+        selected_profile_id
+    )
+    on conflict (artwork_voting_session_id, profile_id) do nothing
+    returning
+        artwork_votes.artwork_vote_id,
+        artwork_votes.voted_at
+    into created_vote_id, created_voted_at;
+
+    if created_vote_id is null then
+        select
+            existing_vote.artwork_vote_id,
+            existing_vote.artwork_voting_entry_id,
+            existing_vote.voted_at
+        into
+            created_vote_id,
+            existing_entry_id,
+            created_voted_at
+        from public.artwork_votes existing_vote
+        where existing_vote.artwork_voting_session_id = selected_session_id
+          and existing_vote.profile_id = selected_profile_id;
+
+        if existing_entry_id <> p_artwork_voting_entry_id then
+            raise exception 'This profile has already voted for another entry in this session'
+                using errcode = '23505';
+        end if;
+    end if;
+
+    return query
+    select
+        created_vote_id,
+        p_artwork_voting_entry_id,
+        selected_session_id,
+        entry.vote_count,
+        created_voted_at
+    from public.artwork_voting_entries entry
+    where entry.artwork_voting_entry_id = p_artwork_voting_entry_id;
+end;
+$$;
+
+revoke all on function public.cast_artwork_vote(varchar) from public;
+grant execute on function public.cast_artwork_vote(varchar) to authenticated;
+
+-- Admin-only creation of the next session in a tie-break chain. Entries are
+-- copied from the parent's genuinely top-tied submissions; clients cannot
+-- choose a different candidate set.
+create or replace function public.create_tie_break_session(
+    p_parent_voting_session_id varchar(7),
+    p_voting_start_at timestamptz,
+    p_voting_end_at timestamptz
+)
+returns varchar(7)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    selected_campaign_id varchar(6);
+    selected_campaign_status varchar(30);
+    selected_parent_status varchar(20);
+    selected_parent_end_at timestamptz;
+    selected_top_vote_count integer;
+    selected_top_tied_count integer;
+    created_session_id varchar(7);
+begin
+    if not public.is_current_profile_admin() then
+        raise exception 'Administrator access is required'
+            using errcode = '42501';
+    end if;
+
+    if p_voting_end_at <= p_voting_start_at then
+        raise exception 'Tie-break end time must be after its start time';
+    end if;
+
+    select
+        parent_session.artwork_campaign_id,
+        parent_session.status,
+        parent_session.voting_end_at
+    into
+        selected_campaign_id,
+        selected_parent_status,
+        selected_parent_end_at
+    from public.artwork_voting_sessions parent_session
+    where parent_session.artwork_voting_session_id =
+          p_parent_voting_session_id
+    for update;
+
+    if not found then
+        raise exception 'Parent voting session % does not exist',
+            p_parent_voting_session_id;
+    end if;
+
+    if selected_parent_status <> 'closed' then
+        raise exception 'A tie-break can only follow a closed session';
+    end if;
+
+    select campaign.status
+    into selected_campaign_status
+    from public.artwork_campaigns campaign
+    where campaign.artwork_campaign_id = selected_campaign_id
+    for update;
+
+    if selected_campaign_status <> 'active' then
+        raise exception 'A tie-break can only be created for an active campaign';
+    end if;
+
+    if p_voting_start_at < selected_parent_end_at then
+        raise exception 'Tie-break voting cannot start before its parent session ends';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_voting_sessions child_session
+        where child_session.parent_voting_session_id =
+              p_parent_voting_session_id
+    ) then
+        raise exception 'This session already has a tie-break child';
+    end if;
+
+    with parent_results as (
+        select
+            entry.artwork_voting_entry_id,
+            count(vote.artwork_vote_id)::integer as actual_vote_count
+        from public.artwork_voting_entries entry
+        left join public.artwork_votes vote
+          on vote.artwork_voting_entry_id = entry.artwork_voting_entry_id
+        where entry.artwork_voting_session_id =
+              p_parent_voting_session_id
+        group by entry.artwork_voting_entry_id
+    ),
+    parent_top as (
+        select max(actual_vote_count) as top_vote_count
+        from parent_results
+    )
+    select
+        parent_top.top_vote_count,
+        count(*) filter (
+            where parent_results.actual_vote_count =
+                  parent_top.top_vote_count
+        )::integer
+    into selected_top_vote_count, selected_top_tied_count
+    from parent_results
+    cross join parent_top
+    group by parent_top.top_vote_count;
+
+    if selected_top_vote_count is null
+       or selected_top_tied_count < 2 then
+        raise exception 'Parent session does not have a top tie';
+    end if;
+
+    insert into public.artwork_voting_sessions (
+        artwork_campaign_id,
+        voting_start_at,
+        voting_end_at,
+        status,
+        session_type,
+        parent_voting_session_id
+    )
+    values (
+        selected_campaign_id,
+        p_voting_start_at,
+        p_voting_end_at,
+        'scheduled',
+        'tie_break',
+        p_parent_voting_session_id
+    )
+    returning artwork_voting_session_id into created_session_id;
+
+    with parent_results as (
+        select
+            entry.artwork_submission_id,
+            count(vote.artwork_vote_id)::integer as actual_vote_count
+        from public.artwork_voting_entries entry
+        left join public.artwork_votes vote
+          on vote.artwork_voting_entry_id = entry.artwork_voting_entry_id
+        where entry.artwork_voting_session_id =
+              p_parent_voting_session_id
+        group by entry.artwork_submission_id
+    ),
+    parent_top as (
+        select max(actual_vote_count) as top_vote_count
+        from parent_results
+    )
+    insert into public.artwork_voting_entries (
+        artwork_voting_session_id,
+        artwork_submission_id
+    )
+    select
+        created_session_id,
+        parent_results.artwork_submission_id
+    from parent_results
+    cross join parent_top
+    where parent_results.actual_vote_count = parent_top.top_vote_count
+    order by parent_results.artwork_submission_id;
+
+    return created_session_id;
+end;
+$$;
+
+revoke all on function public.create_tie_break_session(varchar, timestamptz, timestamptz)
+from public;
+grant execute on function public.create_tie_break_session(varchar, timestamptz, timestamptz)
+to authenticated;
+
+-- Admin-only finalization of a closed, terminal session. A tied result is
+-- deliberately rejected so the admin can schedule a tie-break with explicit
+-- dates. A unique winner, artwork promotion, winner record and campaign status
+-- change are committed atomically.
+create or replace function public.finalize_artwork_voting_session(
+    p_artwork_voting_session_id varchar(7)
+)
+returns varchar(7)
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    selected_admin_profile_id varchar(5);
+    selected_campaign_id varchar(6);
+    selected_session_status varchar(20);
+    selected_campaign_status varchar(30);
+    selected_top_vote_count integer;
+    selected_top_tied_count integer;
+    selected_winning_entry_id varchar(7);
+    selected_winning_submission_id varchar(6);
+    selected_submission_profile_id varchar(5);
+    selected_artwork_title varchar(180);
+    selected_design_description text;
+    selected_cultural_inspiration text;
+    selected_artist_statement text;
+    selected_artwork_file_url text;
+    selected_artwork_id varchar(5);
+    existing_winner_id varchar(7);
+    created_winner_id varchar(7);
+begin
+    if not public.is_current_profile_admin() then
+        raise exception 'Administrator access is required'
+            using errcode = '42501';
+    end if;
+
+    selected_admin_profile_id := public.current_profile_id();
+
+    select
+        voting_session.artwork_campaign_id,
+        voting_session.status
+    into
+        selected_campaign_id,
+        selected_session_status
+    from public.artwork_voting_sessions voting_session
+    where voting_session.artwork_voting_session_id =
+          p_artwork_voting_session_id
+    for update;
+
+    if not found then
+        raise exception 'Voting session % does not exist',
+            p_artwork_voting_session_id;
+    end if;
+
+    if selected_session_status <> 'closed' then
+        raise exception 'Only a closed voting session can be finalized';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_voting_sessions child_session
+        where child_session.parent_voting_session_id =
+              p_artwork_voting_session_id
+    ) then
+        raise exception 'Only the terminal session in a tie-break chain can be finalized';
+    end if;
+
+    select campaign.status
+    into selected_campaign_status
+    from public.artwork_campaigns campaign
+    where campaign.artwork_campaign_id = selected_campaign_id
+    for update;
+
+    select winner.artwork_campaign_winner_id
+    into existing_winner_id
+    from public.artwork_campaign_winners winner
+    where winner.artwork_campaign_id = selected_campaign_id;
+
+    if existing_winner_id is not null then
+        return existing_winner_id;
+    end if;
+
+    if selected_campaign_status <> 'active' then
+        raise exception 'Only an active campaign can be finalized';
+    end if;
+
+    update public.artwork_voting_entries entry
+    set vote_count = (
+        select count(*)::integer
+        from public.artwork_votes vote
+        where vote.artwork_voting_entry_id =
+              entry.artwork_voting_entry_id
+    )
+    where entry.artwork_voting_session_id =
+          p_artwork_voting_session_id;
+
+    with session_results as (
+        select
+            entry.artwork_voting_entry_id,
+            entry.artwork_submission_id,
+            count(vote.artwork_vote_id)::integer as actual_vote_count
+        from public.artwork_voting_entries entry
+        left join public.artwork_votes vote
+          on vote.artwork_voting_entry_id = entry.artwork_voting_entry_id
+        where entry.artwork_voting_session_id =
+              p_artwork_voting_session_id
+        group by
+            entry.artwork_voting_entry_id,
+            entry.artwork_submission_id
+    ),
+    session_top as (
+        select max(actual_vote_count) as top_vote_count
+        from session_results
+    )
+    select
+        session_top.top_vote_count,
+        count(*) filter (
+            where session_results.actual_vote_count =
+                  session_top.top_vote_count
+        )::integer,
+        min(session_results.artwork_voting_entry_id) filter (
+            where session_results.actual_vote_count =
+                  session_top.top_vote_count
+        ),
+        min(session_results.artwork_submission_id) filter (
+            where session_results.actual_vote_count =
+                  session_top.top_vote_count
+        )
+    into
+        selected_top_vote_count,
+        selected_top_tied_count,
+        selected_winning_entry_id,
+        selected_winning_submission_id
+    from session_results
+    cross join session_top
+    group by session_top.top_vote_count;
+
+    if selected_top_vote_count is null then
+        raise exception 'Voting session has no entries';
+    end if;
+
+    if selected_top_tied_count <> 1 then
+        raise exception 'Top vote is tied; create a tie-break session before finalizing';
+    end if;
+
+    select
+        submission.profile_id,
+        submission.artwork_title,
+        submission.design_description,
+        submission.cultural_inspiration,
+        submission.artist_statement,
+        submission.artwork_file_url
+    into
+        selected_submission_profile_id,
+        selected_artwork_title,
+        selected_design_description,
+        selected_cultural_inspiration,
+        selected_artist_statement,
+        selected_artwork_file_url
+    from public.artwork_submissions submission
+    where submission.artwork_submission_id =
+          selected_winning_submission_id
+      and submission.review_status = 'approved';
+
+    if not found then
+        raise exception 'Winning submission is not approved';
+    end if;
+
+    select artwork.artwork_id
+    into selected_artwork_id
+    from public.artworks artwork
+    where artwork.source_artwork_submission_id =
+          selected_winning_submission_id;
+
+    if selected_artwork_id is null then
+        insert into public.artworks (
+            profile_id,
+            source_artwork_submission_id,
+            title,
+            description,
+            artwork_meaning,
+            cultural_inspiration,
+            image_url,
+            status
+        )
+        values (
+            selected_submission_profile_id,
+            selected_winning_submission_id,
+            left(selected_artwork_title, 150),
+            selected_design_description,
+            selected_artist_statement,
+            selected_cultural_inspiration,
+            selected_artwork_file_url,
+            'published'
+        )
+        returning artwork_id into selected_artwork_id;
+    else
+        update public.artworks
+        set profile_id = selected_submission_profile_id,
+            title = left(selected_artwork_title, 150),
+            description = selected_design_description,
+            artwork_meaning = selected_artist_statement,
+            cultural_inspiration = selected_cultural_inspiration,
+            image_url = selected_artwork_file_url,
+            status = 'published',
+            updated_at = now()
+        where artwork_id = selected_artwork_id;
+    end if;
+
+    insert into public.artwork_campaign_winners (
+        artwork_campaign_id,
+        artwork_voting_session_id,
+        artwork_voting_entry_id,
+        artwork_id,
+        final_vote_count,
+        final_rank,
+        announced_by_profile_id
+    )
+    values (
+        selected_campaign_id,
+        p_artwork_voting_session_id,
+        selected_winning_entry_id,
+        selected_artwork_id,
+        selected_top_vote_count,
+        1,
+        selected_admin_profile_id
+    )
+    returning artwork_campaign_winner_id into created_winner_id;
+
+    update public.artwork_campaigns
+    set status = 'completed'
+    where artwork_campaign_id = selected_campaign_id;
+
+    return created_winner_id;
+end;
+$$;
+
+revoke all on function public.finalize_artwork_voting_session(varchar)
+from public;
+grant execute on function public.finalize_artwork_voting_session(varchar)
+to authenticated;
 
 alter table public.profiles enable row level security;
 alter table public.states enable row level security;
@@ -791,7 +2116,6 @@ alter table public.community_post_photos enable row level security;
 alter table public.community_post_likes enable row level security;
 alter table public.community_comments enable row level security;
 alter table public.artwork_campaigns enable row level security;
-alter table public.artwork_campaign_categories enable row level security;
 alter table public.artwork_submissions enable row level security;
 alter table public.artwork_voting_sessions enable row level security;
 alter table public.artwork_voting_entries enable row level security;
@@ -1019,41 +2343,54 @@ create policy campaigns_public_read on public.artwork_campaigns
 for select to anon, authenticated
 using (status in ('active', 'completed'));
 
-create policy campaign_categories_public_read
-on public.artwork_campaign_categories
-for select to anon, authenticated
-using (
-    exists (
-        select 1 from public.artwork_campaigns campaigns
-        where campaigns.artwork_campaign_id = artwork_campaign_categories.artwork_campaign_id
-          and campaigns.status in ('active', 'completed')
-    )
-);
+create policy campaigns_admin_manage on public.artwork_campaigns
+for all to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
 
 create policy submissions_public_read on public.artwork_submissions
 for select to anon, authenticated
-using (review_status = 'approved');
+using (
+    review_status = 'approved'
+    and exists (
+        select 1
+        from public.artwork_campaigns campaign
+        where campaign.artwork_campaign_id =
+              artwork_submissions.artwork_campaign_id
+          and campaign.status in ('active', 'completed')
+    )
+);
 
 create policy submissions_own_read on public.artwork_submissions
 for select to authenticated
 using (profile_id = public.current_profile_id());
+
+create policy submissions_admin_read on public.artwork_submissions
+for select to authenticated
+using (public.is_current_profile_admin());
 
 create policy submissions_own_insert on public.artwork_submissions
 for insert to authenticated
 with check (
     profile_id = public.current_profile_id()
     and review_status = 'pending'
+    and reviewed_by_profile_id is null
+    and reviewed_at is null
     and exists (
         select 1
-        from public.artwork_campaign_categories categories
-        join public.artwork_campaigns campaigns
-          on campaigns.artwork_campaign_id = categories.artwork_campaign_id
-        where categories.artwork_campaign_category_id = artwork_submissions.artwork_campaign_category_id
-          and campaigns.status = 'active'
-          and now() between campaigns.submission_start_at
-                        and campaigns.submission_end_at
+        from public.artwork_campaigns campaign
+        where campaign.artwork_campaign_id =
+              artwork_submissions.artwork_campaign_id
+          and campaign.status = 'active'
+          and now() between campaign.submission_start_at
+                        and campaign.submission_end_at
     )
 );
+
+create policy submissions_admin_update on public.artwork_submissions
+for update to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
 
 create policy voting_sessions_public_read on public.artwork_voting_sessions
 for select to anon, authenticated
@@ -1065,40 +2402,46 @@ using (
     )
 );
 
+create policy voting_sessions_admin_manage
+on public.artwork_voting_sessions
+for all to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
+
 create policy voting_entries_public_read on public.artwork_voting_entries
 for select to anon, authenticated
 using (
     exists (
-        select 1 from public.artwork_submissions submissions
-        where submissions.artwork_submission_id = artwork_voting_entries.artwork_submission_id
-          and submissions.review_status = 'approved'
+        select 1
+        from public.artwork_submissions submission
+        join public.artwork_voting_sessions voting_session
+          on voting_session.artwork_voting_session_id =
+             artwork_voting_entries.artwork_voting_session_id
+        join public.artwork_campaigns campaign
+          on campaign.artwork_campaign_id =
+             voting_session.artwork_campaign_id
+        where submission.artwork_submission_id =
+              artwork_voting_entries.artwork_submission_id
+          and submission.artwork_campaign_id =
+              voting_session.artwork_campaign_id
+          and submission.review_status = 'approved'
+          and campaign.status in ('active', 'completed')
     )
 );
+
+create policy voting_entries_admin_manage
+on public.artwork_voting_entries
+for all to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
 
 create policy artwork_votes_own_read on public.artwork_votes
 for select to authenticated
 using (profile_id = public.current_profile_id());
 
-create policy artwork_votes_own_insert on public.artwork_votes
-for insert to authenticated
-with check (
-    profile_id = public.current_profile_id()
-    and exists (
-        select 1 from public.artwork_voting_entries entries
-        join public.artwork_voting_sessions sessions
-          on sessions.artwork_voting_session_id = entries.artwork_voting_session_id
-        join public.artwork_campaigns campaigns
-          on campaigns.artwork_campaign_id = sessions.artwork_campaign_id
-        where entries.artwork_voting_entry_id = artwork_votes.artwork_voting_entry_id
-          and entries.artwork_voting_session_id = artwork_votes.artwork_voting_session_id
-          and entries.artwork_campaign_category_id = artwork_votes.artwork_campaign_category_id
-          and sessions.status = 'active'
-          and now() between sessions.voting_start_at and sessions.voting_end_at
-          and campaigns.status = 'active'
-          and now() between campaigns.submission_start_at
-                        and campaigns.submission_end_at
-    )
-);
+create policy artwork_votes_admin_read on public.artwork_votes
+for select to authenticated
+using (public.is_current_profile_admin());
 
 create policy campaign_winners_public_read
 on public.artwork_campaign_winners
@@ -1109,7 +2452,17 @@ using (
         where campaigns.artwork_campaign_id = artwork_campaign_winners.artwork_campaign_id
           and campaigns.status = 'completed'
     )
+    and exists (
+        select 1 from public.artworks winner_artwork
+        where winner_artwork.artwork_id = artwork_campaign_winners.artwork_id
+          and winner_artwork.status = 'published'
+    )
 );
+
+create policy campaign_winners_admin_read
+on public.artwork_campaign_winners
+for select to authenticated
+using (public.is_current_profile_admin());
 
 -- ============================================================================
 -- 9. SIMPLE VIEWS
@@ -1151,16 +2504,31 @@ group by p.profile_id;
 create view public.v_artwork_rankings
 with (security_invoker = true) as
 select
-    ave.artwork_voting_entry_id,
-    ave.artwork_voting_session_id,
-    ave.artwork_campaign_category_id,
-    ave.artwork_submission_id,
-    ave.vote_count,
+    entry.artwork_voting_entry_id,
+    entry.artwork_voting_session_id,
+    voting_session.artwork_campaign_id,
+    entry.artwork_submission_id,
+    entry.vote_count,
     dense_rank() over (
-        partition by ave.artwork_voting_session_id, ave.artwork_campaign_category_id
-        order by ave.vote_count desc, ave.published_at asc
-    ) as ranking
-from public.artwork_voting_entries ave;
+        partition by entry.artwork_voting_session_id
+        order by entry.vote_count desc
+    ) as ranking,
+    row_number() over (
+        partition by entry.artwork_voting_session_id
+        order by
+            entry.vote_count desc,
+            entry.published_at asc,
+            entry.artwork_voting_entry_id
+    ) as display_order,
+    count(*) over (
+        partition by
+            entry.artwork_voting_session_id,
+            entry.vote_count
+    ) as tied_entry_count
+from public.artwork_voting_entries entry
+join public.artwork_voting_sessions voting_session
+  on voting_session.artwork_voting_session_id =
+     entry.artwork_voting_session_id;
 
 -- PostgREST privileges. RLS remains the row-level authority.
 revoke all on public.profiles from anon, authenticated;
@@ -1177,8 +2545,8 @@ grant select on public.states, public.food_categories, public.heritage_foods,
     public.vendor_operating_hours, public.vendor_foods,
     public.vendor_tiffins, public.community_posts,
     public.community_post_photos, public.community_comments,
-    public.artwork_campaigns, public.artwork_campaign_categories,
-    public.artwork_submissions, public.artwork_voting_sessions,
+    public.artwork_campaigns, public.artwork_submissions,
+    public.artwork_voting_sessions,
     public.artwork_voting_entries, public.artwork_campaign_winners
 to anon, authenticated;
 
@@ -1188,9 +2556,23 @@ to authenticated;
 
 grant insert on public.user_tiffin_collection, public.community_posts,
     public.community_post_photos, public.community_post_likes,
-    public.community_comments, public.artwork_submissions,
-    public.artwork_votes
+    public.community_comments, public.artwork_submissions
 to authenticated;
+
+-- These table grants are broad enough for PostgREST, while the accompanying
+-- RLS policies allow the operations only for active administrators.
+grant insert, update, delete on public.artwork_campaigns,
+    public.artwork_voting_sessions
+to authenticated;
+
+grant insert, delete on public.artwork_voting_entries
+to authenticated;
+
+grant update (
+    review_status,
+    reviewed_by_profile_id,
+    reviewed_at
+) on public.artwork_submissions to authenticated;
 
 grant delete on public.community_posts, public.community_post_likes
 to authenticated;
@@ -1210,7 +2592,9 @@ grant usage, select on public.user_tiffin_collection_number_seq,
     public.community_post_like_number_seq,
     public.community_comment_number_seq,
     public.artwork_submission_number_seq,
-    public.artwork_vote_number_seq
+    public.artwork_campaign_number_seq,
+    public.artwork_voting_session_number_seq,
+    public.artwork_voting_entry_number_seq
 to authenticated;
 
 do $$
