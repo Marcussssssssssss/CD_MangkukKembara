@@ -19,6 +19,7 @@ class ArtworkVotingViewModel extends ChangeNotifier {
   String? _errorMessage;
   String _sort = 'Most Voted';
   String? _campaignId;
+  int _campaignLoadVersion = 0;
 
   List<ArtworkVotingEntryModel> get entries => _entries;
   ArtworkVotingEntryModel? get selectedEntry => _selectedEntry;
@@ -36,21 +37,31 @@ class ArtworkVotingViewModel extends ChangeNotifier {
     String campaignId, {
     bool showLoading = true,
   }) async {
-    if (_isLoading) return;
+    if (_isLoading && _campaignId == campaignId) return;
+    final loadVersion = ++_campaignLoadVersion;
+    final campaignChanged = _campaignId != campaignId;
     _isLoading = true;
     _hasError = false;
     _errorMessage = null;
+    if (campaignChanged) {
+      _campaignId = campaignId;
+      _entries = [];
+    }
     if (showLoading) notifyListeners();
     try {
-      _campaignId = campaignId;
-      _entries = await _repo.fetchVotingEntries(campaignId, sort: _sort);
+      final entries = await _repo.fetchVotingEntries(campaignId, sort: _sort);
+      if (loadVersion != _campaignLoadVersion) return;
+      _entries = entries;
       _sortEntries();
     } catch (error) {
+      if (loadVersion != _campaignLoadVersion) return;
       _hasError = true;
       _errorMessage = error.toString();
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (loadVersion == _campaignLoadVersion) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 

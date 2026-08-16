@@ -394,26 +394,31 @@ class HeritageCommunityRepository {
     );
     return _fetchVotingEntriesForSession(
       session['artwork_voting_session_id'] as String,
+      campaignId: campaignId,
       sort: sort,
     );
   }
 
   Future<List<ArtworkVotingEntryModel>> _fetchVotingEntriesForSession(
     String sessionId, {
+    required String campaignId,
     String? sort,
   }) async {
     var request = _api.client
         .from('artwork_voting_entries')
         .select('''
-      *, artwork_submissions(
-        profile_id, artwork_title, design_description, cultural_inspiration,
+      *, artwork_submissions!inner(
+        artwork_campaign_id, profile_id, artwork_title,
+        design_description, cultural_inspiration,
         layer_1_meaning, layer_2_meaning, layer_3_meaning,
         artwork_file_url, submitted_at
-      ), artwork_voting_sessions(
+      ), artwork_voting_sessions!inner(
         artwork_campaign_id, status, voting_start_at, voting_end_at
       )
     ''')
-        .eq('artwork_voting_session_id', sessionId);
+        .eq('artwork_voting_session_id', sessionId)
+        .eq('artwork_submissions.artwork_campaign_id', campaignId)
+        .eq('artwork_voting_sessions.artwork_campaign_id', campaignId);
     final rows = await _api.guard(
       () => switch (sort) {
         'New' => request.order('published_at', ascending: false),
@@ -472,13 +477,20 @@ class HeritageCommunityRepository {
     final row = await _api.guard(
       () => _api.client
           .from('artwork_voting_entries')
-          .select('artwork_voting_session_id')
+          .select('''
+            artwork_voting_session_id,
+            artwork_voting_sessions!inner(artwork_campaign_id)
+          ''')
           .eq('artwork_voting_entry_id', id)
           .maybeSingle(),
     );
     if (row == null) return null;
+    final session = row['artwork_voting_sessions'] as Map<String, dynamic>?;
+    final campaignId = session?['artwork_campaign_id'] as String?;
+    if (campaignId == null) return null;
     final entries = await _fetchVotingEntriesForSession(
       row['artwork_voting_session_id'] as String,
+      campaignId: campaignId,
     );
     return entries.where((entry) => entry.id == id).firstOrNull;
   }

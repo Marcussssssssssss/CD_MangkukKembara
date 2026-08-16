@@ -1345,8 +1345,15 @@ begin
         raise exception 'Only approved submissions can become voting entries';
     end if;
 
-    if selected_session_status <> 'scheduled' then
-        raise exception 'Voting entries can only be added to a scheduled session';
+    -- Standard campaign galleries accept newly approved artwork while their
+    -- voting session is scheduled or active. Tie-break candidate sets must
+    -- remain frozen once voting starts.
+    if selected_session_type = 'tie_break'
+       and selected_session_status <> 'scheduled' then
+        raise exception 'Tie-break entries can only be added to a scheduled session';
+    elsif selected_session_type = 'standard'
+          and selected_session_status not in ('scheduled', 'active') then
+        raise exception 'Standard voting entries can only be added to a scheduled or active session';
     end if;
 
     if selected_session_type = 'tie_break' then
@@ -1406,6 +1413,98 @@ before insert or update of
     artwork_submission_id
 on public.artwork_voting_entries
 for each row execute function public.validate_artwork_voting_entry();
+
+-- Keep the public campaign gallery in sync with approved submissions. The
+-- gallery reads voting entries because votes belong to a specific session;
+-- without this trigger, an approved submission can remain invisible until an
+-- administrator manually creates its voting-entry row.
+create or replace function public.publish_approved_artwork_submission()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+    if new.review_status = 'approved'
+       and tg_op = 'INSERT' then
+        insert into public.artwork_voting_entries (
+            artwork_voting_session_id,
+            artwork_submission_id
+        )
+        select
+            voting_session.artwork_voting_session_id,
+            new.artwork_submission_id
+        from public.artwork_voting_sessions voting_session
+        where voting_session.artwork_campaign_id = new.artwork_campaign_id
+          and voting_session.session_type = 'standard'
+          and voting_session.status in ('scheduled', 'active')
+        on conflict (
+            artwork_voting_session_id,
+            artwork_submission_id
+        ) do nothing;
+    elsif new.review_status = 'approved'
+          and old.review_status is distinct from new.review_status then
+        insert into public.artwork_voting_entries (
+            artwork_voting_session_id,
+            artwork_submission_id
+        )
+        select
+            voting_session.artwork_voting_session_id,
+            new.artwork_submission_id
+        from public.artwork_voting_sessions voting_session
+        where voting_session.artwork_campaign_id = new.artwork_campaign_id
+          and voting_session.session_type = 'standard'
+          and voting_session.status in ('scheduled', 'active')
+        on conflict (
+            artwork_voting_session_id,
+            artwork_submission_id
+        ) do nothing;
+    end if;
+
+    return new;
+end;
+$$;
+
+create trigger publish_approved_artwork_submission_trigger
+after insert or update of review_status
+on public.artwork_submissions
+for each row execute function public.publish_approved_artwork_submission();
+
+-- Also populate a standard session when it is activated with artwork that had
+-- already been approved before the session existed.
+create or replace function public.publish_approved_artworks_for_session()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+    if new.session_type = 'standard'
+       and new.status in ('scheduled', 'active') then
+        insert into public.artwork_voting_entries (
+            artwork_voting_session_id,
+            artwork_submission_id
+        )
+        select
+            new.artwork_voting_session_id,
+            submission.artwork_submission_id
+        from public.artwork_submissions submission
+        where submission.artwork_campaign_id = new.artwork_campaign_id
+          and submission.review_status = 'approved'
+        on conflict (
+            artwork_voting_session_id,
+            artwork_submission_id
+        ) do nothing;
+    end if;
+
+    return new;
+end;
+$$;
+
+create trigger publish_approved_artworks_for_session_trigger
+after update of status
+on public.artwork_voting_sessions
+for each row execute function public.publish_approved_artworks_for_session();
 
 -- Published entries cannot be repointed or deleted. Direct entry UPDATE is not
 -- granted to API roles; only database-owned vote/finalization functions update
