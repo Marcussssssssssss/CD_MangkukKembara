@@ -6,6 +6,8 @@ import '../../core/app_routes.dart';
 import '../../core/constants.dart';
 import '../../ViewModel/HeritageCommunity/create_post_view_model.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
+import '../../Model/Repositories/HeritageTreasureMap/vendor_model.dart';
+import '../HeritageTreasureMap/treasure_map_view.dart';
 import '../Widgets/rating_bar.dart';
 
 /// C4. Create Community Post Form.
@@ -25,7 +27,6 @@ class _CreatePostViewState extends State<CreatePostView> {
   void initState() {
     super.initState();
     _vm = CreatePostViewModel();
-    _vm.loadVendors();
   }
 
   @override
@@ -42,65 +43,7 @@ class _CreatePostViewState extends State<CreatePostView> {
         builder: (ctx, vm, auth, _) {
           return Scaffold(
             backgroundColor: AppColors.background,
-            appBar: AppBar(
-              title: const Text('Share Heritage Experience'),
-              actions: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 16),
-                  child: TextButton(
-                    onPressed: !vm.isSubmitting && auth.currentUser != null
-                        ? () async {
-                            final formValid =
-                                _formKey.currentState?.validate() ?? false;
-                            final ok = await _vm.submitPost(
-                              auth.currentUser!.id,
-                            );
-                            if (ok && ctx.mounted) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                const SnackBar(
-                                  content: Text('Post published successfully!'),
-                                ),
-                              );
-                              Navigator.pushReplacementNamed(
-                                ctx,
-                                AppRoutes.postDetail,
-                                arguments: vm.createdPost!.id,
-                              );
-                            } else if (ctx.mounted &&
-                                (!formValid || vm.errorMessage != null)) {
-                              ScaffoldMessenger.of(ctx).showSnackBar(
-                                SnackBar(
-                                  content: Text(
-                                    vm.errorMessage ??
-                                        'Please correct the highlighted fields.',
-                                  ),
-                                  backgroundColor: AppColors.error,
-                                ),
-                              );
-                            }
-                          }
-                        : null,
-                    child: vm.isSubmitting
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        : const Text(
-                            'Publish',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.w800,
-                              fontSize: 16,
-                            ),
-                          ),
-                  ),
-                ),
-              ],
-            ),
+            appBar: AppBar(title: const Text('Share a Post')),
             body: !auth.isLoggedIn
                 ? Center(
                     child: Padding(
@@ -135,31 +78,25 @@ class _CreatePostViewState extends State<CreatePostView> {
                           // Vendor selector
                           _SectionLabel('Vendor *'),
                           GestureDetector(
-                            onTap: () async {
-                              await _showVendorPicker(ctx, vm);
-                            },
+                            onTap: () => _selectVendorFromMap(ctx, vm),
                             child: Container(
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
                                 borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
-                                  color: vm.selectedVendorId == null
-                                      ? AppColors.error.withAlpha(100)
-                                      : AppColors.divider,
-                                ),
+                                border: Border.all(color: AppColors.divider),
                               ),
                               child: Row(
                                 children: [
                                   const Icon(
-                                    Icons.storefront_rounded,
-                                    color: AppColors.textHint,
+                                    Icons.map_outlined,
+                                    color: AppColors.primary,
                                   ),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Text(
                                       vm.selectedVendorName ??
-                                          'Select a vendor... (tap to choose)',
+                                          'Choose a vendor from the heritage map',
                                       style: TextStyle(
                                         color: vm.selectedVendorName != null
                                             ? AppColors.textPrimary
@@ -168,24 +105,13 @@ class _CreatePostViewState extends State<CreatePostView> {
                                     ),
                                   ),
                                   const Icon(
-                                    Icons.arrow_drop_down_rounded,
-                                    color: AppColors.textHint,
+                                    Icons.chevron_right_rounded,
+                                    color: AppColors.primary,
                                   ),
                                 ],
                               ),
                             ),
                           ),
-                          if (vm.selectedVendorId == null)
-                            const Padding(
-                              padding: EdgeInsets.only(top: 4, left: 4),
-                              child: Text(
-                                'Please select a vendor',
-                                style: TextStyle(
-                                  color: AppColors.error,
-                                  fontSize: 11,
-                                ),
-                              ),
-                            ),
                           const SizedBox(height: 20),
 
                           // Star rating
@@ -375,7 +301,29 @@ class _CreatePostViewState extends State<CreatePostView> {
                               ),
                             ),
                           ],
-                          const SizedBox(height: 32),
+                          const SizedBox(height: 24),
+                          ElevatedButton.icon(
+                            onPressed:
+                                !vm.isSubmitting && auth.currentUser != null
+                                ? () => _publishPost(ctx, vm, auth)
+                                : null,
+                            icon: vm.isSubmitting
+                                ? const SizedBox.square(
+                                    dimension: 18,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      color: Colors.white,
+                                    ),
+                                  )
+                                : const Icon(Icons.publish_rounded),
+                            label: Text(
+                              vm.isSubmitting ? 'Publishing…' : 'Publish Post',
+                            ),
+                            style: ElevatedButton.styleFrom(
+                              minimumSize: const Size.fromHeight(52),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
                         ],
                       ),
                     ),
@@ -386,40 +334,47 @@ class _CreatePostViewState extends State<CreatePostView> {
     );
   }
 
-  Future<void> _showVendorPicker(
+  Future<void> _publishPost(
+    BuildContext context,
+    CreatePostViewModel vm,
+    AuthViewModel auth,
+  ) async {
+    final formValid = _formKey.currentState?.validate() ?? false;
+    final ok = await vm.submitPost(auth.currentUser!.id);
+    if (!context.mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Post published successfully!')),
+      );
+      Navigator.pushReplacementNamed(
+        context,
+        AppRoutes.postDetail,
+        arguments: vm.createdPost!.id,
+      );
+    } else if (!formValid || vm.errorMessage != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            vm.errorMessage ?? 'Please correct the highlighted fields.',
+          ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _selectVendorFromMap(
     BuildContext context,
     CreatePostViewModel vm,
   ) async {
-    if (vm.isLoadingVendors) return;
-    if (vm.vendors.isEmpty) {
-      await vm.loadVendors();
-      if (!context.mounted || vm.vendors.isEmpty) return;
-    }
-    await showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (sheetContext) => SafeArea(
-        child: ListView.builder(
-          itemCount: vm.vendors.length,
-          itemBuilder: (_, index) {
-            final vendor = vm.vendors[index];
-            return ListTile(
-              leading: const Icon(Icons.storefront_rounded),
-              title: Text(vendor.name),
-              subtitle: Text(
-                vendor.address,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-              onTap: () {
-                vm.selectVendor(vendor.id, vendor.name);
-                Navigator.pop(sheetContext);
-              },
-            );
-          },
-        ),
+    final vendor = await Navigator.push<VendorModel>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const TreasureMapView(selectionMode: true),
+        settings: const RouteSettings(name: 'vendor-map-selection'),
       ),
     );
+    if (vendor != null) vm.selectVendor(vendor.id, vendor.name);
   }
 }
 

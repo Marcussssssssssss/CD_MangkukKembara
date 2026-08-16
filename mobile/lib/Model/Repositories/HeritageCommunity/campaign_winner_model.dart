@@ -8,7 +8,9 @@ class CampaignWinnerModel {
   final String winnerName;
   final String designDescription;
   final String culturalInspiration;
-  final String artistStatement;
+  final String layer1Meaning;
+  final String layer2Meaning;
+  final String layer3Meaning;
   final int finalVoteCount;
   final DateTime announcedAt;
   final String? artworkUrl;
@@ -22,7 +24,9 @@ class CampaignWinnerModel {
     required this.winnerName,
     required this.designDescription,
     required this.culturalInspiration,
-    required this.artistStatement,
+    required this.layer1Meaning,
+    required this.layer2Meaning,
+    required this.layer3Meaning,
     required this.finalVoteCount,
     required this.announcedAt,
     this.artworkUrl,

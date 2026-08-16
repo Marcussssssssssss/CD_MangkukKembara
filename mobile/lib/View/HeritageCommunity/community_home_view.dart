@@ -15,15 +15,11 @@ import 'artwork_campaign_home_view.dart';
 /// Map-inspired palette used only by the Community landing page.
 abstract final class _CommunityPageColors {
   static const Color background = Color(0xFFFFFFFF);
-  static const Color softBackground = Color(0xFFF5F7F3);
-  static const Color searchField = Color(0xFFEEF3EC);
   static const Color border = Color(0xFFCCD6C8);
   static const Color darkGreen = Color(0xFF335C31);
   static const Color mediumGreen = Color(0xFF61885B);
   static const Color yellow = Color(0xFFF9B10E);
   static const Color selectedTab = Color(0xFFFEF5E4);
-  static const Color text = Color(0xFF283427);
-  static const Color hint = Color(0xFF929992);
 }
 
 /// C1. Heritage Community and artwork campaigns home view.
@@ -36,7 +32,6 @@ class CommunityHomeView extends StatefulWidget {
 
 class _CommunityHomeViewState extends State<CommunityHomeView> {
   late final CommunityFeedViewModel _vm;
-  final _searchCtrl = TextEditingController();
   final _pageController = PageController();
   int _selectedTab = 0;
 
@@ -49,7 +44,6 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
 
   @override
   void dispose() {
-    _searchCtrl.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -148,54 +142,6 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
   ) {
     return Column(
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-          child: TextField(
-            controller: _searchCtrl,
-            style: const TextStyle(color: _CommunityPageColors.text),
-            decoration: InputDecoration(
-              hintText: 'Search community posts...',
-              hintStyle: const TextStyle(color: _CommunityPageColors.hint),
-              prefixIcon: const Icon(
-                Icons.search_rounded,
-                color: _CommunityPageColors.darkGreen,
-              ),
-              filled: true,
-              fillColor: _CommunityPageColors.searchField,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: _CommunityPageColors.border),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(color: _CommunityPageColors.border),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(14),
-                borderSide: const BorderSide(
-                  color: _CommunityPageColors.darkGreen,
-                  width: 1.5,
-                ),
-              ),
-              suffixIcon: _searchCtrl.text.isNotEmpty
-                  ? IconButton(
-                      tooltip: 'Clear search',
-                      icon: const Icon(Icons.clear_rounded),
-                      onPressed: () {
-                        _searchCtrl.clear();
-                        vm.setQuery('');
-                      },
-                    )
-                  : null,
-            ),
-            onChanged: vm.setQuery,
-            onSubmitted: (query) => Navigator.pushNamed(
-              context,
-              AppRoutes.communitySearch,
-              arguments: query,
-            ),
-          ),
-        ),
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),

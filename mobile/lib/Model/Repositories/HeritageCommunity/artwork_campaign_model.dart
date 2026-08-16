@@ -70,7 +70,9 @@ class ArtworkVotingEntryModel {
   final String artworkTitle;
   final String designDescription;
   final String culturalInspiration;
-  final String artistStatement;
+  final String layer1Meaning;
+  final String layer2Meaning;
+  final String layer3Meaning;
   final String submitterName;
   final int voteCount;
   final int currentRank;
@@ -86,7 +88,9 @@ class ArtworkVotingEntryModel {
     required this.artworkTitle,
     required this.designDescription,
     required this.culturalInspiration,
-    required this.artistStatement,
+    required this.layer1Meaning,
+    required this.layer2Meaning,
+    required this.layer3Meaning,
     required this.submitterName,
     this.voteCount = 0,
     this.currentRank = 0,
@@ -103,7 +107,9 @@ class ArtworkVotingEntryModel {
     artworkTitle: artworkTitle,
     designDescription: designDescription,
     culturalInspiration: culturalInspiration,
-    artistStatement: artistStatement,
+    layer1Meaning: layer1Meaning,
+    layer2Meaning: layer2Meaning,
+    layer3Meaning: layer3Meaning,
     submitterName: submitterName,
     voteCount: voteCount,
     currentRank: rank,
@@ -143,7 +149,9 @@ class ArtworkVotingEntryModel {
       artworkTitle: submission['artwork_title'] as String? ?? '',
       designDescription: submission['design_description'] as String? ?? '',
       culturalInspiration: submission['cultural_inspiration'] as String? ?? '',
-      artistStatement: submission['artist_statement'] as String? ?? '',
+      layer1Meaning: submission['layer_1_meaning'] as String? ?? '',
+      layer2Meaning: submission['layer_2_meaning'] as String? ?? '',
+      layer3Meaning: submission['layer_3_meaning'] as String? ?? '',
       submitterName:
           submitter?['display_name'] as String? ?? 'Artist unavailable',
       voteCount: (json['vote_count'] as num? ?? 0).toInt(),

@@ -407,7 +407,8 @@ class HeritageCommunityRepository {
         .select('''
       *, artwork_submissions(
         profile_id, artwork_title, design_description, cultural_inspiration,
-        artist_statement, artwork_file_url, submitted_at
+        layer_1_meaning, layer_2_meaning, layer_3_meaning,
+        artwork_file_url, submitted_at
       ), artwork_voting_sessions(
         artwork_campaign_id, status, voting_start_at, voting_end_at
       )
@@ -503,8 +504,14 @@ class HeritageCommunityRepository {
     required String artworkTitle,
     required String designDescription,
     required String culturalInspiration,
-    required String artistStatement,
-    required XFile artworkFile,
+    required String layer1Meaning,
+    required String layer2Meaning,
+    required String layer3Meaning,
+    required XFile frontHeroFile,
+    required XFile layer1Flat360File,
+    required XFile layer2Flat360File,
+    required XFile layer3Flat360File,
+    required XFile topArtworkFile,
   }) async {
     final user = _api.requireUser();
     if (user.id != userId) {
@@ -533,28 +540,62 @@ class HeritageCommunityRepository {
         now.isAfter(campaignEnd)) {
       throw const AppException('This campaign is no longer accepting artwork.');
     }
-    final upload = await _cloudinary.uploadImage(
-      artworkFile,
-      folder: 'mangkukkembara/artwork-submissions/${user.id}',
-      maxBytes: 10 * 1024 * 1024,
+    final uploadFolder =
+        'mangkukkembara/artwork-submissions/${user.id}/$campaignId';
+    final uploads = await Future.wait([
+      _cloudinary.uploadImage(
+        frontHeroFile,
+        folder: '$uploadFolder/front-hero',
+        maxBytes: 10 * 1024 * 1024,
+      ),
+      _cloudinary.uploadImage(
+        layer1Flat360File,
+        folder: '$uploadFolder/layer-1-flat-360',
+        maxBytes: 10 * 1024 * 1024,
+      ),
+      _cloudinary.uploadImage(
+        layer2Flat360File,
+        folder: '$uploadFolder/layer-2-flat-360',
+        maxBytes: 10 * 1024 * 1024,
+      ),
+      _cloudinary.uploadImage(
+        layer3Flat360File,
+        folder: '$uploadFolder/layer-3-flat-360',
+        maxBytes: 10 * 1024 * 1024,
+      ),
+      _cloudinary.uploadImage(
+        topArtworkFile,
+        folder: '$uploadFolder/top',
+        maxBytes: 10 * 1024 * 1024,
+      ),
+    ]);
+    final response = await _api.guard(
+      () => _api.client.rpc(
+        'create_artwork_submission',
+        params: {
+          'p_artwork_campaign_id': campaignId,
+          'p_artwork_title': artworkTitle.trim(),
+          'p_design_description': designDescription.trim(),
+          'p_cultural_inspiration': culturalInspiration.trim(),
+          'p_layer_1_meaning': layer1Meaning.trim(),
+          'p_layer_2_meaning': layer2Meaning.trim(),
+          'p_layer_3_meaning': layer3Meaning.trim(),
+          'p_front_hero_photo_url': uploads[0].secureUrl,
+          'p_layer_1_flat_360_url': uploads[1].secureUrl,
+          'p_layer_2_flat_360_url': uploads[2].secureUrl,
+          'p_layer_3_flat_360_url': uploads[3].secureUrl,
+          'p_top_photo_url': uploads[4].secureUrl,
+        },
+      ),
     );
-    final profileId = await _currentProfileId();
-    final json = await _api.guard(
-      () => _api.client
-          .from('artwork_submissions')
-          .insert({
-            'artwork_campaign_id': campaignId,
-            'profile_id': profileId,
-            'artwork_title': artworkTitle.trim(),
-            'design_description': designDescription.trim(),
-            'cultural_inspiration': culturalInspiration.trim(),
-            'artist_statement': artistStatement.trim(),
-            'artwork_file_url': upload.secureUrl,
-            'review_status': 'pending',
-          })
-          .select()
-          .single(),
-    );
+    final json = switch (response) {
+      final Map<String, dynamic> row => row,
+      final List<dynamic> rows when rows.length == 1 =>
+        rows.single as Map<String, dynamic>,
+      _ => throw const AppException(
+        'The submitted artwork could not be confirmed.',
+      ),
+    };
     return ArtworkSubmissionModel.fromJson(
       json,
       campaignName: campaign['campaign_title'] as String,
@@ -576,7 +617,8 @@ class HeritageCommunityRepository {
       () => _api.client
           .from('artwork_submissions')
           .select('''
-        *, artwork_campaigns(campaign_title)
+        *, artwork_campaigns(campaign_title),
+        artwork_submission_photos(view_type, photo_url, sort_order)
       ''')
           .eq('profile_id', profileId)
           .order('submitted_at', ascending: false),
@@ -659,7 +701,8 @@ class HeritageCommunityRepository {
           vote_count,
           artwork_submissions(
             artwork_title, design_description, cultural_inspiration,
-            artist_statement, profile_id, artwork_file_url
+            layer_1_meaning, layer_2_meaning, layer_3_meaning,
+            profile_id, artwork_file_url
           )
         )
       ''')
@@ -689,7 +732,9 @@ class HeritageCommunityRepository {
         winnerName: profile?['display_name'] as String? ?? 'Artist unavailable',
         designDescription: submission['design_description'] as String,
         culturalInspiration: submission['cultural_inspiration'] as String,
-        artistStatement: submission['artist_statement'] as String,
+        layer1Meaning: submission['layer_1_meaning'] as String,
+        layer2Meaning: submission['layer_2_meaning'] as String,
+        layer3Meaning: submission['layer_3_meaning'] as String,
         finalVoteCount: (row['final_vote_count'] as num).toInt(),
         announcedAt: DateTime.parse(row['announced_at'] as String),
         artworkUrl: submission['artwork_file_url'] as String?,
