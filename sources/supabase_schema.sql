@@ -1768,9 +1768,10 @@ after insert or delete or update of artwork_voting_entry_id
 on public.artwork_votes
 for each row execute function public.sync_artwork_voting_entry_vote_count();
 
--- Participants vote by entry only. The server derives the current profile and
--- session, locks the session against concurrent finalization, and returns the
--- existing vote for an identical retry.
+-- Participants vote by entry only. Calling this function casts a first vote,
+-- moves an existing vote to another entry, or removes it when the selected
+-- entry is tapped again. The session lock serializes the change with campaign
+-- finalization and the vote-count trigger keeps both entries in sync.
 create or replace function public.cast_artwork_vote(
     p_artwork_voting_entry_id varchar(7)
 )
@@ -1861,39 +1862,45 @@ begin
         raise exception 'Artwork campaign is not active';
     end if;
 
-    insert into public.artwork_votes (
-        artwork_voting_session_id,
-        artwork_voting_entry_id,
-        profile_id
-    )
-    values (
-        selected_session_id,
-        p_artwork_voting_entry_id,
-        selected_profile_id
-    )
-    on conflict (artwork_voting_session_id, profile_id) do nothing
-    returning
-        artwork_votes.artwork_vote_id,
-        artwork_votes.voted_at
-    into created_vote_id, created_voted_at;
+    select
+        existing_vote.artwork_vote_id,
+        existing_vote.artwork_voting_entry_id,
+        existing_vote.voted_at
+    into
+        created_vote_id,
+        existing_entry_id,
+        created_voted_at
+    from public.artwork_votes existing_vote
+    where existing_vote.artwork_voting_session_id = selected_session_id
+      and existing_vote.profile_id = selected_profile_id
+    for update;
 
     if created_vote_id is null then
-        select
-            existing_vote.artwork_vote_id,
-            existing_vote.artwork_voting_entry_id,
-            existing_vote.voted_at
-        into
-            created_vote_id,
-            existing_entry_id,
-            created_voted_at
-        from public.artwork_votes existing_vote
-        where existing_vote.artwork_voting_session_id = selected_session_id
-          and existing_vote.profile_id = selected_profile_id;
-
-        if existing_entry_id <> p_artwork_voting_entry_id then
-            raise exception 'This profile has already voted for another entry in this session'
-                using errcode = '23505';
-        end if;
+        insert into public.artwork_votes (
+            artwork_voting_session_id,
+            artwork_voting_entry_id,
+            profile_id
+        )
+        values (
+            selected_session_id,
+            p_artwork_voting_entry_id,
+            selected_profile_id
+        )
+        returning
+            artwork_votes.artwork_vote_id,
+            artwork_votes.voted_at
+        into created_vote_id, created_voted_at;
+    elsif existing_entry_id = p_artwork_voting_entry_id then
+        delete from public.artwork_votes
+        where artwork_vote_id = created_vote_id;
+        created_vote_id := null;
+        created_voted_at := null;
+    else
+        update public.artwork_votes
+        set artwork_voting_entry_id = p_artwork_voting_entry_id,
+            voted_at = now()
+        where artwork_vote_id = created_vote_id
+        returning artwork_votes.voted_at into created_voted_at;
     end if;
 
     return query

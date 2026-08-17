@@ -15,7 +15,6 @@ class ArtworkVotingViewModel extends ChangeNotifier {
   bool _isLoading = false;
   bool _hasError = false;
   bool _isVoting = false;
-  bool _voteSuccess = false;
   String? _errorMessage;
   String _sort = 'Most Voted';
   String? _campaignId;
@@ -27,11 +26,8 @@ class ArtworkVotingViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   bool get hasError => _hasError;
   bool get isVoting => _isVoting;
-  bool get voteSuccess => _voteSuccess;
   String? get errorMessage => _errorMessage;
   String get sort => _sort;
-  bool get hasVotedInCurrentCampaign =>
-      _entries.any((entry) => entry.hasCurrentUserVoted);
 
   Future<void> loadCampaign(
     String campaignId, {
@@ -69,6 +65,7 @@ class ArtworkVotingViewModel extends ChangeNotifier {
     if (_isLoading) return;
     _isLoading = true;
     _hasError = false;
+    _errorMessage = null;
     if (showLoading) notifyListeners();
     try {
       _selectedEntry = await _repo.fetchVotingEntryById(entryId);
@@ -100,16 +97,20 @@ class ArtworkVotingViewModel extends ChangeNotifier {
     }
   }
 
-  Future<bool> vote(String entryId, String userId) async {
+  Future<bool> vote(
+    String entryId,
+    String userId, {
+    bool refreshEntry = false,
+  }) async {
     if (_isVoting) return false;
     _isVoting = true;
-    _voteSuccess = false;
     _errorMessage = null;
     notifyListeners();
     try {
       await _repo.submitVote(entryId, userId);
-      _voteSuccess = true;
-      notifyListeners();
+      if (refreshEntry) {
+        _selectedEntry = await _repo.fetchVotingEntryById(entryId);
+      }
       return true;
     } catch (error) {
       _errorMessage = error.toString();
@@ -140,17 +141,5 @@ class ArtworkVotingViewModel extends ChangeNotifier {
       for (var index = 0; index < _entries.length; index++)
         _entries[index].withRank(index + 1),
     ];
-  }
-
-  Future<void> refreshCampaign({bool showLoading = false}) async {
-    final campaignId = _campaignId;
-    if (campaignId != null) {
-      await loadCampaign(campaignId, showLoading: showLoading);
-    }
-  }
-
-  void clearVoteSuccess() {
-    _voteSuccess = false;
-    notifyListeners();
   }
 }
