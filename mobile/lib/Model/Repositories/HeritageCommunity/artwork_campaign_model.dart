@@ -79,6 +79,9 @@ class ArtworkVotingEntryModel {
   final bool hasCurrentUserVoted;
   final bool isVotingOpen;
   final String artworkUrl;
+  final String layer1Flat360Url;
+  final String layer2Flat360Url;
+  final String layer3Flat360Url;
   final DateTime? publishedAt;
 
   const ArtworkVotingEntryModel({
@@ -97,6 +100,9 @@ class ArtworkVotingEntryModel {
     this.hasCurrentUserVoted = false,
     this.isVotingOpen = false,
     required this.artworkUrl,
+    this.layer1Flat360Url = '',
+    this.layer2Flat360Url = '',
+    this.layer3Flat360Url = '',
     this.publishedAt,
   });
 
@@ -116,6 +122,9 @@ class ArtworkVotingEntryModel {
     hasCurrentUserVoted: hasCurrentUserVoted,
     isVotingOpen: isVotingOpen,
     artworkUrl: artworkUrl,
+    layer1Flat360Url: layer1Flat360Url,
+    layer2Flat360Url: layer2Flat360Url,
+    layer3Flat360Url: layer3Flat360Url,
     publishedAt: publishedAt,
   );
 
@@ -135,6 +144,15 @@ class ArtworkVotingEntryModel {
     final votingEnd = DateTime.tryParse(
       session['voting_end_at'] as String? ?? '',
     );
+    final photos =
+        (submission['artwork_submission_photos'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>();
+    final photoUrls = <String, String>{
+      for (final photo in photos)
+        if (photo['view_type'] is String && photo['photo_url'] is String)
+          photo['view_type'] as String: photo['photo_url'] as String,
+    };
+    final artworkUrl = submission['artwork_file_url'] as String? ?? '';
     final now = DateTime.now();
     final votingIsOpen =
         session['status'] == 'active' &&
@@ -158,7 +176,10 @@ class ArtworkVotingEntryModel {
       currentRank: rank,
       hasCurrentUserVoted: hasVoted,
       isVotingOpen: votingIsOpen,
-      artworkUrl: submission['artwork_file_url'] as String? ?? '',
+      artworkUrl: artworkUrl,
+      layer1Flat360Url: photoUrls['layer_1_flat_360'] ?? artworkUrl,
+      layer2Flat360Url: photoUrls['layer_2_flat_360'] ?? artworkUrl,
+      layer3Flat360Url: photoUrls['layer_3_flat_360'] ?? artworkUrl,
       publishedAt: DateTime.tryParse(json['published_at'] as String? ?? ''),
     );
   }
