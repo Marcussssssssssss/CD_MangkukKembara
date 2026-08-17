@@ -1647,7 +1647,7 @@ do $$
 begin
     if (select count(*) from public.artwork_campaigns) <> 8
         or (select count(*) from public.artwork_submissions) <> 14
-        or (select count(*) from public.artwork_submission_photos) <> 70
+        or (select count(*) from public.artwork_submission_photos) <> 56
         or (select count(*) from public.artwork_voting_sessions) <> 8
         or (select count(*) from public.artwork_voting_entries) <> 12
         or (select count(*) from public.artwork_votes) <> 9
