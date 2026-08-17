@@ -6,6 +6,34 @@ import { uploadTiffinImage, uploadHeritageVideo } from '../../../services/cloudi
 // ---------------------------------------------------------------------------
 
 /**
+ * Attach the public artist profile to each artwork without querying the
+ * RLS-protected profiles table directly. The existing `profiles` property is
+ * preserved so TiffinCard, TiffinDetails and TiffinForm keep the same shape.
+ */
+async function enrichArtworksWithPublicProfiles(artworks) {
+  const profileIds = [...new Set(
+    artworks.map(artwork => artwork.profile_id).filter(Boolean)
+  )];
+
+  if (profileIds.length === 0) return artworks;
+
+  const publicProfiles = await queryRows(
+    'public_profiles',
+    'profile_id, display_name, avatar_url',
+    q => q.in('profile_id', profileIds)
+  );
+
+  const publicProfilesById = new Map(
+    publicProfiles.map(profile => [profile.profile_id, profile])
+  );
+
+  return artworks.map(artwork => ({
+    ...artwork,
+    profiles: publicProfilesById.get(artwork.profile_id) || null,
+  }));
+}
+
+/**
  * Helper to generate the next HT0000 ID format.
  */
 async function getNextTiffinId() {
@@ -83,12 +111,13 @@ export async function fetchTiffins() {
  * Fetch all reference data needed for the Tiffin Forms.
  */
 export async function fetchReferenceData() {
-  const [states, foods, artworks] = await Promise.all([
+  const [states, foods, artworkRows] = await Promise.all([
     queryRows('states', '*', q => q.eq('is_active', true).order('state_name')),
     queryRows('heritage_foods', '*', q => q.eq('is_active', true).order('food_name')),
-    // Artwork join profile to get artist name (since artwork creator is a normal profile)
-    queryRows('artworks', '*, profiles(display_name)', q => q.neq('status', 'inactive').order('title'))
+    queryRows('artworks', '*', q => q.neq('status', 'inactive').order('title'))
   ]);
+
+  const artworks = await enrichArtworksWithPublicProfiles(artworkRows);
 
   return { states, foods, artworks };
 }
