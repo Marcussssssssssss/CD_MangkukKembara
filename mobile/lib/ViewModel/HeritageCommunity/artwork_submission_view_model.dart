@@ -3,13 +3,7 @@ import '../../Model/Repositories/HeritageCommunity/heritage_community_repository
 import '../../Model/Repositories/HeritageCommunity/artwork_submission_model.dart';
 import 'package:image_picker/image_picker.dart';
 
-enum ArtworkPhotoView {
-  frontHero,
-  layer1Flat360,
-  layer2Flat360,
-  layer3Flat360,
-  top,
-}
+enum ArtworkPhotoView { frontHero, layer1Flat360, layer2Flat360, layer3Flat360 }
 
 /// View model for the Submit Artwork form.
 class ArtworkSubmissionViewModel extends ChangeNotifier {
@@ -108,7 +102,6 @@ class ArtworkSubmissionViewModel extends ChangeNotifier {
         layer1Flat360File: _artworkPhotos[ArtworkPhotoView.layer1Flat360]!,
         layer2Flat360File: _artworkPhotos[ArtworkPhotoView.layer2Flat360]!,
         layer3Flat360File: _artworkPhotos[ArtworkPhotoView.layer3Flat360]!,
-        topArtworkFile: _artworkPhotos[ArtworkPhotoView.top]!,
       );
       _success = true;
       notifyListeners();

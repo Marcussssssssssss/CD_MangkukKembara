@@ -1177,8 +1177,8 @@ values (
         now() - interval '12 hours'
     );
 
--- Each submission requires one hero view, three flattened 360-degree layer
--- files, and one top view. Reusing the seeded artwork URL keeps this fixture
+-- Each submission requires one hero view and three flattened 360-degree layer
+-- files. Reusing the seeded artwork URL keeps this fixture
 -- self-contained while preserving the production table shape and ordering.
 insert into public.artwork_submission_photos (
         artwork_submission_id,
@@ -1195,8 +1195,7 @@ cross join (
         values ('front_hero', 1),
             ('layer_1_flat_360', 2),
             ('layer_2_flat_360', 3),
-            ('layer_3_flat_360', 4),
-            ('top', 5)
+            ('layer_3_flat_360', 4)
     ) as required_view(view_type, sort_order);
 -- Link each published tiffin artwork to the submission that won its campaign.
 -- The artwork IDs are preserved because heritage_tiffins already reference them.
@@ -1650,12 +1649,12 @@ begin
         left join public.artwork_submission_photos photo
             on photo.artwork_submission_id = submission.artwork_submission_id
         group by submission.artwork_submission_id
-        having count(photo.artwork_submission_photo_id) <> 5
-            or count(distinct photo.view_type) <> 5
+        having count(photo.artwork_submission_photo_id) <> 4
+            or count(distinct photo.view_type) <> 4
             or min(photo.sort_order) <> 1
-            or max(photo.sort_order) <> 5
+            or max(photo.sort_order) <> 4
     ) then
-        raise exception 'Seed verification failed: a submission does not have all five artwork views';
+        raise exception 'Seed verification failed: a submission does not have all four artwork views';
     end if;
 
     if (select count(*) from public.artwork_voting_sessions where status = 'closed') <> 4

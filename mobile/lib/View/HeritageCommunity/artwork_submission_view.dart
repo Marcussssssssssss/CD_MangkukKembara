@@ -9,7 +9,7 @@ import '../../core/app_routes.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../ViewModel/HeritageCommunity/artwork_submission_view_model.dart';
 
-/// Guided artwork submission with the five views required for review.
+/// Guided artwork submission with the four views required for review.
 class ArtworkSubmissionView extends StatefulWidget {
   final String campaignId;
 
@@ -125,7 +125,7 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
           const SizedBox(height: 18),
           _SectionCard(
             step: '2',
-            title: 'Add five required artwork views',
+            title: 'Add four required artwork views',
             subtitle:
                 'Follow the required tiffin layout. Each flattened layer must show continuous artwork from seam to seam.',
             child: Column(
@@ -169,15 +169,6 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
                   previewAspectRatio: 3,
                 ),
                 const SizedBox(height: 12),
-                _photoCard(
-                  vm,
-                  ArtworkPhotoView.top,
-                  title: '5. Top View',
-                  description:
-                      'Upload a true lid view showing the artwork under and around the knob or handle.',
-                  icon: Icons.vertical_align_top_rounded,
-                ),
-                const SizedBox(height: 12),
                 const _UploadRequirements(),
               ],
             ),
@@ -205,7 +196,7 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
                   )
                 : const Icon(Icons.send_rounded),
             label: Text(
-              vm.isSubmitting ? 'Uploading 5 views…' : 'Submit for review',
+              vm.isSubmitting ? 'Uploading 4 views…' : 'Submit for review',
             ),
             style: ElevatedButton.styleFrom(
               minimumSize: const Size.fromHeight(52),
@@ -215,7 +206,7 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
           Text(
             vm.canSubmit
                 ? 'Ready to submit. Your entry will be locked while it is under review.'
-                : 'Complete all written fields and add all 5 required views.',
+                : 'Complete all written fields and add all 4 required views.',
             textAlign: TextAlign.center,
             style: const TextStyle(
               fontSize: 12,

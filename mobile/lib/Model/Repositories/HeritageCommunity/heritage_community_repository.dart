@@ -411,7 +411,8 @@ class HeritageCommunityRepository {
         artwork_campaign_id, profile_id, artwork_title,
         design_description, cultural_inspiration,
         layer_1_meaning, layer_2_meaning, layer_3_meaning,
-        artwork_file_url, submitted_at
+        artwork_file_url, submitted_at,
+        artwork_submission_photos(view_type, photo_url, sort_order)
       ), artwork_voting_sessions!inner(
         artwork_campaign_id, status, voting_start_at, voting_end_at
       )
@@ -523,7 +524,6 @@ class HeritageCommunityRepository {
     required XFile layer1Flat360File,
     required XFile layer2Flat360File,
     required XFile layer3Flat360File,
-    required XFile topArtworkFile,
   }) async {
     final user = _api.requireUser();
     if (user.id != userId) {
@@ -575,11 +575,6 @@ class HeritageCommunityRepository {
         folder: '$uploadFolder/layer-3-flat-360',
         maxBytes: 10 * 1024 * 1024,
       ),
-      _cloudinary.uploadImage(
-        topArtworkFile,
-        folder: '$uploadFolder/top',
-        maxBytes: 10 * 1024 * 1024,
-      ),
     ]);
     final response = await _api.guard(
       () => _api.client.rpc(
@@ -596,7 +591,6 @@ class HeritageCommunityRepository {
           'p_layer_1_flat_360_url': uploads[1].secureUrl,
           'p_layer_2_flat_360_url': uploads[2].secureUrl,
           'p_layer_3_flat_360_url': uploads[3].secureUrl,
-          'p_top_photo_url': uploads[4].secureUrl,
         },
       ),
     );

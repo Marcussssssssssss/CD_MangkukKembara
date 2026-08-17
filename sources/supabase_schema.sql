@@ -66,7 +66,7 @@ drop sequence if exists public.artwork_voting_entry_number_seq cascade;
 drop sequence if exists public.artwork_number_seq cascade;
 drop sequence if exists public.artwork_campaign_winner_number_seq cascade;
 drop function if exists public.create_profile_for_new_auth_user() cascade;
-drop function if exists public.create_artwork_submission(varchar, varchar, text, text, text, text, text, text, text, text, text, text) cascade;
+drop function if exists public.create_artwork_submission(varchar, varchar, text, text, text, text, text, text, text, text, text) cascade;
 drop function if exists public.cast_artwork_vote(varchar) cascade;
 drop function if exists public.create_tie_break_session(varchar, timestamptz, timestamptz) cascade;
 drop function if exists public.finalize_artwork_voting_session(varchar) cascade;
@@ -500,10 +500,10 @@ create table public.artwork_submission_photos (
     view_type           varchar(30) not null
                         check (view_type in (
                             'front_hero', 'layer_1_flat_360',
-                            'layer_2_flat_360', 'layer_3_flat_360', 'top'
+                            'layer_2_flat_360', 'layer_3_flat_360'
                         )),
     photo_url           text not null check (length(trim(photo_url)) > 0),
-    sort_order          smallint not null check (sort_order between 1 and 5),
+    sort_order          smallint not null check (sort_order between 1 and 4),
     created_at          timestamptz not null default now(),
 
     constraint uq_artwork_submission_photo_view
@@ -754,8 +754,7 @@ create or replace function public.create_artwork_submission(
     p_front_hero_photo_url text,
     p_layer_1_flat_360_url text,
     p_layer_2_flat_360_url text,
-    p_layer_3_flat_360_url text,
-    p_top_photo_url text
+    p_layer_3_flat_360_url text
 )
 returns public.artwork_submissions
 language plpgsql
@@ -784,9 +783,8 @@ begin
     if nullif(trim(p_front_hero_photo_url), '') is null
        or nullif(trim(p_layer_1_flat_360_url), '') is null
        or nullif(trim(p_layer_2_flat_360_url), '') is null
-       or nullif(trim(p_layer_3_flat_360_url), '') is null
-       or nullif(trim(p_top_photo_url), '') is null then
-        raise exception 'All five required artwork views must be provided';
+       or nullif(trim(p_layer_3_flat_360_url), '') is null then
+        raise exception 'All four required artwork views must be provided';
     end if;
 
     if not exists (
@@ -818,15 +816,14 @@ begin
         (created_submission.artwork_submission_id, 'front_hero', trim(p_front_hero_photo_url), 1),
         (created_submission.artwork_submission_id, 'layer_1_flat_360', trim(p_layer_1_flat_360_url), 2),
         (created_submission.artwork_submission_id, 'layer_2_flat_360', trim(p_layer_2_flat_360_url), 3),
-        (created_submission.artwork_submission_id, 'layer_3_flat_360', trim(p_layer_3_flat_360_url), 4),
-        (created_submission.artwork_submission_id, 'top', trim(p_top_photo_url), 5);
+        (created_submission.artwork_submission_id, 'layer_3_flat_360', trim(p_layer_3_flat_360_url), 4);
 
     return created_submission;
 end;
 $$;
 
-revoke all on function public.create_artwork_submission(varchar, varchar, text, text, text, text, text, text, text, text, text, text) from public;
-grant execute on function public.create_artwork_submission(varchar, varchar, text, text, text, text, text, text, text, text, text, text) to authenticated;
+revoke all on function public.create_artwork_submission(varchar, varchar, text, text, text, text, text, text, text, text, text) from public;
+grant execute on function public.create_artwork_submission(varchar, varchar, text, text, text, text, text, text, text, text, text) to authenticated;
 
 create or replace function public.is_current_profile_admin()
 returns boolean
