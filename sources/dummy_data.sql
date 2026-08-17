@@ -106,6 +106,18 @@ values (
         'MY',
         null,
         true
+    ),
+    (
+        'P1002',
+        '9982e9ef-6d0a-45e4-9ba1-3bed6ccd8385'::uuid,
+        'admin',
+        'Marcus',
+        null,
+        null,
+        null,
+        'MY',
+        null,
+        true
     );
 -- ============================================================================
 -- 3. STATES AND FOOD CATEGORIES
