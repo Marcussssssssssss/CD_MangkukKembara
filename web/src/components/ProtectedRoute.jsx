@@ -8,7 +8,7 @@ import { useAuth } from '../hooks/useAuth';
  * centered spinner is shown to prevent a flash of the login page.
  */
 export default function ProtectedRoute({ children }) {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+  const { isAuthenticated, isAdmin, loading, signOut } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -30,6 +30,25 @@ export default function ProtectedRoute({ children }) {
         <p className="mb-6 text-surface-600">
           You do not have administrator privileges to view this portal.
         </p>
+        <div className="flex gap-4">
+          <button
+            onClick={() => {
+              window.location.href = '/login';
+            }}
+            className="rounded-lg bg-surface-200 px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-300 transition-colors"
+          >
+            Return to Login
+          </button>
+          <button
+            onClick={async () => {
+              await signOut();
+              window.location.href = '/login';
+            }}
+            className="rounded-lg bg-red-100 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-200 transition-colors"
+          >
+            Sign Out
+          </button>
+        </div>
       </div>
     );
   }
