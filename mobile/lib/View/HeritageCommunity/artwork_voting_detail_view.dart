@@ -37,14 +37,6 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
       value: _vm,
       child: Consumer2<ArtworkVotingViewModel, AuthViewModel>(
         builder: (ctx, vm, auth, _) {
-          if (vm.voteSuccess) {
-            WidgetsBinding.instance.addPostFrameCallback((_) {
-              ScaffoldMessenger.of(
-                ctx,
-              ).showSnackBar(const SnackBar(content: Text('Vote submitted!')));
-              _vm.clearVoteSuccess();
-            });
-          }
           return Scaffold(
             backgroundColor: AppColors.background,
             appBar: AppBar(title: const Text('Artwork')),
@@ -220,8 +212,25 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
       return;
     }
     final entry = _vm.selectedEntry;
-    if (entry == null || entry.hasCurrentUserVoted || _vm.isVoting) return;
-    await _vm.vote(entry.id, auth.currentUser!.id);
+    if (entry == null || _vm.isVoting) return;
+    final wasVoted = entry.hasCurrentUserVoted;
+    final ok = await _vm.vote(
+      entry.id,
+      auth.currentUser!.id,
+      refreshEntry: true,
+    );
+    if (!context.mounted) return;
+    if (ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(wasVoted ? 'Vote removed.' : 'Vote submitted!')),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_vm.errorMessage ?? 'Vote could not be updated.'),
+        ),
+      );
+    }
   }
 }
 
@@ -259,11 +268,11 @@ class _VoteBar extends StatelessWidget {
               ),
             ),
             icon: isVoting
-                ? const SizedBox.square(
+                ? SizedBox.square(
                     dimension: 18,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white,
+                      color: hasVoted ? AppColors.success : Colors.white,
                     ),
                   )
                 : Icon(
@@ -272,10 +281,10 @@ class _VoteBar extends StatelessWidget {
                         : Icons.favorite_border_rounded,
                   ),
             label: Text(
-              hasVoted ? 'You Voted for This Entry' : 'Vote for This Artwork',
+              hasVoted ? 'Voted (Tap to Unvote)' : 'Vote for This Artwork',
               style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
             ),
-            onPressed: isVoting || hasVoted ? null : onVote,
+            onPressed: isVoting ? null : onVote,
           ),
         ),
       ),

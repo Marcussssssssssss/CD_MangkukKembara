@@ -426,7 +426,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
                     ),
                   ),
                 ),
-              ..._buildCampaignSlivers(context, vm, auth),
+              ..._buildCampaignSlivers(context, vm),
               if (showSubmitButton)
                 const SliverToBoxAdapter(child: SizedBox(height: 88)),
             ],
@@ -451,7 +451,6 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
   List<Widget> _buildCampaignSlivers(
     BuildContext context,
     ArtworkVotingViewModel vm,
-    AuthViewModel auth,
   ) {
     if (vm.entries.isEmpty) {
       return const [
@@ -472,18 +471,16 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
         sliver: SliverList(
           delegate: SliverChildBuilderDelegate((_, index) {
             final entry = vm.entries[index];
-            final campaignVoteAlreadyCast = vm.hasVotedInCurrentCampaign;
             return _ArtworkEntryCard(
               entry: entry,
-              votingEnabled: entry.isVotingOpen,
-              voteAlreadyCast: campaignVoteAlreadyCast,
-              isVoting: vm.isVoting,
-              onOpen: () => Navigator.pushNamed(
-                context,
-                AppRoutes.artworkVotingDetail,
-                arguments: entry.id,
-              ),
-              onVote: () => _vote(context, auth, entry),
+              onOpen: () async {
+                await Navigator.pushNamed(
+                  context,
+                  AppRoutes.artworkVotingDetail,
+                  arguments: entry.id,
+                );
+                if (mounted) await _refresh();
+              },
             );
           }, childCount: vm.entries.length),
         ),
@@ -502,47 +499,6 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
       AppRoutes.artworkSubmission,
       arguments: {'campaignId': widget.campaign.id},
     );
-  }
-
-  Future<void> _vote(
-    BuildContext context,
-    AuthViewModel auth,
-    ArtworkVotingEntryModel entry,
-  ) async {
-    if (!auth.isLoggedIn) {
-      await Navigator.pushNamed(context, AppRoutes.login);
-      return;
-    }
-    if (entry.hasCurrentUserVoted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You have already voted in this campaign.'),
-        ),
-      );
-      return;
-    }
-    if (_vm.hasVotedInCurrentCampaign) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('You can only vote once in each open campaign.'),
-        ),
-      );
-      return;
-    }
-    final ok = await _vm.vote(entry.id, auth.currentUser!.id);
-    if (!context.mounted) return;
-    if (ok) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Vote submitted!')));
-      await _vm.refreshCampaign();
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(_vm.errorMessage ?? 'Vote could not be submitted.'),
-        ),
-      );
-    }
   }
 }
 
@@ -791,20 +747,9 @@ class _CampaignHeader extends StatelessWidget {
 
 class _ArtworkEntryCard extends StatelessWidget {
   final ArtworkVotingEntryModel entry;
-  final bool votingEnabled;
-  final bool voteAlreadyCast;
-  final bool isVoting;
   final VoidCallback onOpen;
-  final VoidCallback onVote;
 
-  const _ArtworkEntryCard({
-    required this.entry,
-    required this.votingEnabled,
-    required this.voteAlreadyCast,
-    required this.isVoting,
-    required this.onOpen,
-    required this.onVote,
-  });
+  const _ArtworkEntryCard({required this.entry, required this.onOpen});
 
   @override
   Widget build(BuildContext context) {
@@ -891,34 +836,13 @@ class _ArtworkEntryCard extends StatelessWidget {
                 ],
               ),
             ),
-            if (votingEnabled)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: ElevatedButton(
-                  onPressed: voteAlreadyCast || isVoting ? null : onVote,
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 12,
-                      vertical: 7,
-                    ),
-                    minimumSize: Size.zero,
-                  ),
-                  child: isVoting && !voteAlreadyCast
-                      ? const SizedBox.square(
-                          dimension: 14,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Text(entry.hasCurrentUserVoted ? 'Voted' : 'Vote'),
-                ),
-              )
-            else
-              const Padding(
-                padding: EdgeInsets.only(right: 12),
-                child: Icon(
-                  Icons.chevron_right_rounded,
-                  color: _CampaignColors.darkGreen,
-                ),
+            const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Icon(
+                Icons.chevron_right_rounded,
+                color: _CampaignColors.darkGreen,
               ),
+            ),
           ],
         ),
       ),
