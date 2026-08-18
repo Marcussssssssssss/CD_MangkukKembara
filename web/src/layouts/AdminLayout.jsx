@@ -9,7 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 const NAV_ITEMS = [
   {
     label: 'Dashboard',
-    to: '/',
+    to: '/dashboard',
     end: true,
     icon: (
       <path

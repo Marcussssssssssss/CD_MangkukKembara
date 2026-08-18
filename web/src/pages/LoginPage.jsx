@@ -13,10 +13,11 @@ export default function LoginPage() {
   const [error, setError] = useState(null);
   const [submitting, setSubmitting] = useState(false);
 
-  const { signIn, isAuthenticated, loading } = useAuth();
+  const { signIn, isAuthenticated, isAdmin, loading, user, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = location.state?.from?.pathname || '/';
+  const from = location.state?.from?.pathname;
+  const target = (from && from !== '/' && from !== '/login') ? from : '/tiffins';
 
   // ── Auth still loading → spinner ──
   if (loading) {
@@ -27,9 +28,8 @@ export default function LoginPage() {
     );
   }
 
-  // ── Already signed in → redirect ──
-  if (isAuthenticated) {
-    return <Navigate to={from} replace />;
+  if (isAuthenticated && isAdmin) {
+    return <Navigate to={target} replace />;
   }
 
   // ── Form submit handler ──
@@ -39,7 +39,7 @@ export default function LoginPage() {
     setSubmitting(true);
     try {
       await signIn(email, password);
-      navigate(from, { replace: true });
+      navigate(target, { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
@@ -63,6 +63,24 @@ export default function LoginPage() {
         {/* Card */}
         <div className="rounded-2xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur-xl">
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Non-Admin Notice */}
+            {isAuthenticated && !isAdmin && (
+              <div className="rounded-lg border border-yellow-500/20 bg-yellow-500/10 px-4 py-4 text-sm text-yellow-200">
+                <p className="mb-3">
+                  You are currently signed in as <strong className="font-semibold text-white">{user?.email}</strong>. This account does not have administrator privileges.
+                </p>
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => signOut()}
+                    className="rounded bg-yellow-500/20 px-3 py-1.5 text-xs font-semibold text-yellow-100 hover:bg-yellow-500/30 transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Error banner */}
             {error && (
               <div className="rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">

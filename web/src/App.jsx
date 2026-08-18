@@ -22,26 +22,26 @@ function App() {
   return (
     <Routes>
       {/* Public route */}
+      <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="/login" element={<LoginPage />} />
 
       {/* Protected routes — wrapped in AdminLayout */}
       <Route
-        path="/"
         element={
           <ProtectedRoute>
             <AdminLayout />
           </ProtectedRoute>
         }
       >
-        <Route index element={<DashboardPage />} />
-        <Route path="tiffins" element={<ManageTiffinsPage />} />
-        <Route path="vendors" element={<ManageVendorsPage />} />
-        <Route path="community" element={<HeritageCommunityPage />} />
+        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/tiffins" element={<ManageTiffinsPage />} />
+        <Route path="/vendors" element={<ManageVendorsPage />} />
+        <Route path="/community" element={<HeritageCommunityPage />} />
         {/* ── Future feature routes ── */}
       </Route>
 
       {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
+      <Route path="*" element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }
