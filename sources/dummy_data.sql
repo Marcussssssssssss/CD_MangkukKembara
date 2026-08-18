@@ -98,7 +98,7 @@ values (
     (
         'P0003',
         '326bbebb-c691-4c1b-9290-7953d240ee0d'::uuid,
-        'tourist',
+        'admin',
         'test',
         null,
         null,
