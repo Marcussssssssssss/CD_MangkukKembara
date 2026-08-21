@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import SubmissionDashboard from './components/SubmissionDashboard';
 import SubmissionDetails from './components/SubmissionDetails';
+import SubmissionReviewDialog from './components/SubmissionReviewDialog';
 import { fetchSubmissions, approveSubmission, rejectSubmission } from './services/communityService';
 import { useAuth } from '../../hooks/useAuth';
 
@@ -14,6 +15,8 @@ export default function SubmissionsManager() {
   
   // Modals state
   const [viewingSubmission, setViewingSubmission] = useState(null);
+  const [reviewConfirmation, setReviewConfirmation] = useState(null);
+  const [isReviewing, setIsReviewing] = useState(false);
 
   // --- Data Fetching ---
   useEffect(() => {
@@ -48,51 +51,43 @@ export default function SubmissionsManager() {
     setViewingSubmission(null);
   };
 
-  const handleReject = async (submission) => {
-    if (!profile || !profile.profile_id) {
-      alert("Unable to determine your profile ID for this action.");
-      return;
-    }
-    
-    if (window.confirm(`Are you sure you want to reject the submission "${submission.artwork_title}"?`)) {
-      try {
-        const updated = await rejectSubmission(submission.artwork_submission_id, profile.profile_id);
-        
-        setSubmissions((prev) =>
-          prev.map((s) => (s.artwork_submission_id === updated.artwork_submission_id ? updated : s))
-        );
-        
-        if (viewingSubmission && viewingSubmission.artwork_submission_id === updated.artwork_submission_id) {
-          setViewingSubmission(updated);
-        }
-        alert('Submission has been rejected.');
-      } catch (err) {
-        alert(err.message || 'Failed to reject submission.');
-      }
-    }
-  };
-
-  const handleApprove = async (submission) => {
+  const requestReviewConfirmation = (action, submission) => {
     if (!profile || !profile.profile_id) {
       alert('Unable to determine your profile ID for this action.');
       return;
     }
 
-    if (window.confirm(`Are you sure you want to approve the submission "${submission.artwork_title}"?`)) {
-      try {
-        const updated = await approveSubmission(submission.artwork_submission_id, profile.profile_id);
+    setReviewConfirmation({ action, submission });
+  };
 
-        setSubmissions((prev) =>
-          prev.map((item) => (item.artwork_submission_id === updated.artwork_submission_id ? updated : item))
-        );
+  const handleReject = (submission) => requestReviewConfirmation('reject', submission);
 
-        if (viewingSubmission?.artwork_submission_id === updated.artwork_submission_id) {
-          setViewingSubmission(updated);
-        }
-        alert('Submission has been approved.');
-      } catch (err) {
-        alert(err.message || 'Failed to approve submission.');
+  const handleApprove = (submission) => requestReviewConfirmation('approve', submission);
+
+  const handleConfirmReview = async () => {
+    if (!reviewConfirmation || isReviewing) return;
+
+    const { action, submission } = reviewConfirmation;
+    const reviewSubmission = action === 'approve' ? approveSubmission : rejectSubmission;
+
+    try {
+      setIsReviewing(true);
+      const updated = await reviewSubmission(submission.artwork_submission_id, profile.profile_id);
+
+      setSubmissions((prev) =>
+        prev.map((item) => (item.artwork_submission_id === updated.artwork_submission_id ? updated : item))
+      );
+
+      if (viewingSubmission?.artwork_submission_id === updated.artwork_submission_id) {
+        setViewingSubmission(updated);
       }
+
+      setReviewConfirmation(null);
+      alert(`Submission has been ${action === 'approve' ? 'approved' : 'rejected'}.`);
+    } catch (err) {
+      alert(err.message || `Failed to ${action} submission.`);
+    } finally {
+      setIsReviewing(false);
     }
   };
 
@@ -129,6 +124,15 @@ export default function SubmissionsManager() {
         onClose={handleClose}
         onApprove={handleApprove}
         onReject={handleReject}
+      />
+
+      <SubmissionReviewDialog
+        submission={reviewConfirmation?.submission}
+        action={reviewConfirmation?.action}
+        isOpen={!!reviewConfirmation}
+        isProcessing={isReviewing}
+        onClose={() => setReviewConfirmation(null)}
+        onConfirm={handleConfirmReview}
       />
     </div>
   );
