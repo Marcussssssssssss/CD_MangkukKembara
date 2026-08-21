@@ -52,6 +52,9 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
     if (!campaign && formData.submission_start_at < localToday()) {
       newErrors.submission_start_at = 'Submission Start cannot be before today.';
     }
+    if (campaign && formData.submission_end_at < localToday()) {
+      newErrors.submission_end_at = 'Submission End cannot be before today.';
+    }
     
     if (formData.submission_start_at && formData.submission_end_at) {
       if (new Date(formData.submission_end_at) <= new Date(formData.submission_start_at)) {
@@ -182,7 +185,7 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
                     name="submission_end_at"
                     value={formData.submission_end_at || ''}
                     onChange={handleChange}
-                    min={formData.submission_start_at || undefined}
+                    min={campaign ? localToday() : (formData.submission_start_at || undefined)}
                     className={`mt-2 block w-full rounded-lg border ${errors.submission_end_at ? 'border-red-500' : 'border-surface-300'} px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
                   />
                   {errors.submission_end_at && <p className="mt-1 text-xs text-red-500">{errors.submission_end_at}</p>}

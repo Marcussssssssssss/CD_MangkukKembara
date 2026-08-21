@@ -165,10 +165,9 @@ function ExtendCampaignButton({ campaign, onExtend }) {
   const [newEndDate, setNewEndDate] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [minDate] = useState(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const today = new Date();
     const pad = (number) => String(number).padStart(2, '0');
-    return `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+    return `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
   });
 
   if (!isSelecting) {
