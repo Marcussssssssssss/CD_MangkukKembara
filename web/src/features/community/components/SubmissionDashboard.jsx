@@ -1,11 +1,28 @@
+import { useMemo, useState } from 'react';
 import PageHeader from '../../../components/PageHeader';
+
+function SortableHeader({ column, sort, onSort, children }) {
+  const active = sort.column === column;
+  const ariaSort = !active ? 'none' : sort.direction === 'asc' ? 'ascending' : 'descending';
+  return (
+    <th scope="col" aria-sort={ariaSort} className="p-0 font-semibold">
+      <button type="button" onClick={() => onSort(column)} className="flex w-full items-center gap-1.5 px-6 py-4 text-left uppercase hover:bg-surface-100 hover:text-primary-600">
+        {children}
+        <span className={active ? 'text-primary-600' : 'text-surface-300'} aria-hidden="true">{active ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
+      </button>
+    </th>
+  );
+}
 
 export default function SubmissionDashboard({
   submissions,
   filterStatus,
   onFilterChange,
   onView,
+  onApprove,
+  onReject,
 }) {
+  const [sort, setSort] = useState({ column: null, direction: null });
   const statusColors = {
     pending: 'bg-yellow-100 text-yellow-800',
     approved: 'bg-green-100 text-green-700',
@@ -13,6 +30,44 @@ export default function SubmissionDashboard({
   };
 
   const getStatusDisplay = (status) => status.charAt(0).toUpperCase() + status.slice(1);
+
+  const sortedSubmissions = useMemo(() => {
+    const result = [...submissions];
+    if (!sort.column) {
+      const statusOrder = { pending: 0, approved: 1, rejected: 2 };
+      return result.sort((a, b) => {
+        const statusDifference = (statusOrder[a.review_status] ?? 3)
+          - (statusOrder[b.review_status] ?? 3);
+        if (statusDifference !== 0) return statusDifference;
+        return String(a.artwork_submission_id).localeCompare(
+          String(b.artwork_submission_id), undefined, { numeric: true },
+        );
+      });
+    }
+
+    const values = {
+      artwork: submission => submission.artwork_title || '',
+      campaign: submission => submission.artwork_campaigns?.campaign_title || '',
+      submitted: submission => new Date(submission.submitted_at).getTime(),
+      status: submission => submission.review_status || '',
+    };
+    const valueFor = values[sort.column];
+    const multiplier = sort.direction === 'asc' ? 1 : -1;
+    return result.sort((a, b) => {
+      const aValue = valueFor(a);
+      const bValue = valueFor(b);
+      if (typeof aValue === 'number') return (aValue - bValue) * multiplier;
+      return String(aValue).localeCompare(String(bValue), undefined, { sensitivity: 'base' }) * multiplier;
+    });
+  }, [submissions, sort]);
+
+  const changeSort = (column) => {
+    setSort(current => {
+      if (current.column !== column) return { column, direction: 'asc' };
+      if (current.direction === 'asc') return { column, direction: 'desc' };
+      return { column: null, direction: null };
+    });
+  };
 
   return (
     <div className="p-6 sm:p-8">
@@ -46,16 +101,16 @@ export default function SubmissionDashboard({
             <thead className="bg-surface-50 text-xs uppercase text-surface-500">
               <tr>
                 <th scope="col" className="px-6 py-4 font-semibold">Artwork Image</th>
-                <th scope="col" className="px-6 py-4 font-semibold">Title & Submitter</th>
-                <th scope="col" className="px-6 py-4 font-semibold">Campaign</th>
-                <th scope="col" className="px-6 py-4 font-semibold">Date Submitted</th>
-                <th scope="col" className="px-6 py-4 font-semibold">Status</th>
-                <th scope="col" className="px-6 py-4 font-semibold text-right">Actions</th>
+                <SortableHeader column="artwork" sort={sort} onSort={changeSort}>Title &amp; Submitter</SortableHeader>
+                <SortableHeader column="campaign" sort={sort} onSort={changeSort}>Campaign</SortableHeader>
+                <SortableHeader column="submitted" sort={sort} onSort={changeSort}>Date Submitted</SortableHeader>
+                <SortableHeader column="status" sort={sort} onSort={changeSort}>Status</SortableHeader>
+                <th scope="col" className="w-28 px-3 py-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-100">
-              {submissions.length > 0 ? (
-                submissions.map((sub) => {
+              {sortedSubmissions.length > 0 ? (
+                sortedSubmissions.map((sub) => {
                   const submitter = sub.profiles?.display_name || sub.profile_id;
                   const campaign = sub.artwork_campaigns;
                   const campaignTitle = campaign?.campaign_title || 'Unknown Campaign';
@@ -63,7 +118,11 @@ export default function SubmissionDashboard({
                   const date = new Date(sub.submitted_at).toLocaleDateString();
 
                   return (
-                    <tr key={sub.artwork_submission_id} className="hover:bg-surface-50">
+                    <tr
+                      key={sub.artwork_submission_id}
+                      onClick={() => onView(sub)}
+                      className="cursor-pointer transition-transform duration-150 hover:relative hover:z-10 hover:scale-[1.01] hover:bg-surface-50 hover:shadow-sm"
+                    >
                       <td className="px-6 py-4">
                         <div className="h-16 w-16 overflow-hidden rounded-lg bg-surface-100 border border-surface-200">
                           {sub.artwork_file_url ? (
@@ -93,13 +152,26 @@ export default function SubmissionDashboard({
                           {getStatusDisplay(sub.review_status)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-right">
-                        <button
-                          onClick={() => onView(sub)}
-                          className="text-primary-600 hover:text-primary-700 font-medium"
-                        >
-                          Review
-                        </button>
+                      <td className="w-28 px-3 py-4 text-right">
+                        <div className="ml-auto grid w-28 grid-cols-2 items-center gap-2">
+                          {(sub.review_status === 'pending' || sub.review_status === 'rejected') && (
+                            <button
+                              onClick={(event) => { event.stopPropagation(); onApprove(sub); }}
+                              className="font-medium text-green-600 hover:text-green-700"
+                            >
+                              Approve
+                            </button>
+                          )}
+                          {sub.review_status === 'approved' && <span aria-hidden="true" />}
+                          {sub.review_status === 'pending' && (
+                            <button
+                              onClick={(event) => { event.stopPropagation(); onReject(sub); }}
+                              className="font-medium text-red-600 hover:text-red-700"
+                            >
+                              Reject
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   );

@@ -1,9 +1,7 @@
 import {
-  supabase,
   queryRows,
   insertRows,
   updateRows,
-  deleteRows,
 } from '../../../services/supabase/api';
 
 const CAMPAIGN_STATUSES = new Set(['active', 'completed']);
@@ -28,21 +26,13 @@ const SUBMISSION_SELECT = `
       state_code,
       state_name
     )
-  )
-`;
-
-const VOTING_SESSION_SELECT = `
-  *,
-  artwork_campaigns!artwork_voting_sessions_artwork_campaign_id_fkey(
-    artwork_campaign_id,
-    campaign_title,
-    status,
-    state_id,
-    states!artwork_campaigns_state_id_fkey(
-      state_id,
-      state_code,
-      state_name
-    )
+  ),
+  artwork_submission_photos!artwork_submission_photos_artwork_submission_id_fkey(
+    artwork_submission_photo_id,
+    view_type,
+    photo_url,
+    sort_order,
+    created_at
   )
 `;
 
@@ -137,12 +127,16 @@ function mergePublicProfileIntoSubmission(submission, publicProfilesById) {
 
 async function enrichSubmissionsWithPublicProfiles(submissions) {
   const publicProfilesById = await fetchPublicProfilesById(
-    submissions.map(submission => submission.profile_id),
+    submissions.flatMap(submission => [
+      submission.profile_id,
+      submission.reviewed_by_profile_id,
+    ]),
   );
 
-  return submissions.map(submission => (
-    mergePublicProfileIntoSubmission(submission, publicProfilesById)
-  ));
+  return submissions.map(submission => ({
+    ...mergePublicProfileIntoSubmission(submission, publicProfilesById),
+    reviewer_profile: publicProfilesById.get(submission.reviewed_by_profile_id) || null,
+  }));
 }
 
 function submissionProfileIdsFromEntries(entries) {
@@ -191,16 +185,6 @@ async function fetchSubmissionById(submissionId) {
   return enrichedSubmission;
 }
 
-async function fetchVotingSessionById(sessionId) {
-  const [session] = await queryRows(
-    'artwork_voting_sessions',
-    VOTING_SESSION_SELECT,
-    query => query.eq('artwork_voting_session_id', sessionId),
-  );
-
-  return session || null;
-}
-
 async function reviewSubmission(submissionId, profileId, reviewStatus) {
   if (!profileId) {
     throw new Error('An administrator profile is required to review a submission.');
@@ -213,14 +197,17 @@ async function reviewSubmission(submissionId, profileId, reviewStatus) {
       reviewed_by_profile_id: profileId,
       reviewed_at: new Date().toISOString(),
     },
-    query => query
-      .eq('artwork_submission_id', submissionId)
-      .eq('review_status', 'pending'),
+    query => {
+      const scopedQuery = query.eq('artwork_submission_id', submissionId);
+      return reviewStatus === 'approved'
+        ? scopedQuery.in('review_status', ['pending', 'rejected'])
+        : scopedQuery.eq('review_status', 'pending');
+    },
   );
 
   if (!updatedSubmission) {
     throw new Error(
-      `Could not mark the submission as ${reviewStatus}. It may no longer be pending or does not exist.`,
+      `Could not mark the submission as ${reviewStatus}. Its status may have changed or it may no longer exist.`,
     );
   }
 
@@ -358,244 +345,6 @@ export async function approveSubmission(submissionId, profileId) {
  */
 export async function rejectSubmission(submissionId, profileId) {
   return reviewSubmission(submissionId, profileId, 'rejected');
-}
-
-/**
- * Fetch voting sessions with campaign and state information.
- */
-export async function fetchVotingSessions() {
-  return queryRows(
-    'artwork_voting_sessions',
-    VOTING_SESSION_SELECT,
-    query => query.order('voting_start_at', { ascending: false }),
-  );
-}
-
-/**
- * Create a standard session as scheduled, publish its entries, then activate it
- * only if its voting window has already started and has not ended.
- */
-export async function createVotingSession(
-  campaignId,
-  startAt,
-  endAt,
-  selectedSubmissions,
-) {
-  if (!campaignId) {
-    throw new Error('A campaign is required for the voting session.');
-  }
-
-  const votingStartAt = toIsoTimestamp(startAt, 'Voting start');
-  const votingEndAt = toIsoTimestamp(endAt, 'Voting end');
-
-  if (new Date(votingEndAt) <= new Date(votingStartAt)) {
-    throw new Error('Voting end must be later than voting start.');
-  }
-
-  const submissionIds = [...new Set(
-    (selectedSubmissions || [])
-      .map(submission => (
-        typeof submission === 'string'
-          ? submission
-          : submission?.artwork_submission_id
-      ))
-      .filter(Boolean),
-  )];
-
-  if (submissionIds.length === 0) {
-    throw new Error('Select at least one approved submission.');
-  }
-
-  const [createdSession] = await insertRows('artwork_voting_sessions', [{
-    artwork_campaign_id: campaignId,
-    voting_start_at: votingStartAt,
-    voting_end_at: votingEndAt,
-    status: 'scheduled',
-    session_type: 'standard',
-  }]);
-
-  if (!createdSession) {
-    throw new Error('The voting session was not created.');
-  }
-
-  const sessionId = createdSession.artwork_voting_session_id;
-  const entryPayloads = submissionIds.map(submissionId => ({
-    artwork_voting_session_id: sessionId,
-    artwork_submission_id: submissionId,
-  }));
-
-  try {
-    await insertRows('artwork_voting_entries', entryPayloads);
-  } catch (error) {
-    // The batch insert is atomic. Remove the still-empty scheduled session so a
-    // corrected retry is not blocked by the one-standard-session constraint.
-    try {
-      await deleteRows(
-        'artwork_voting_sessions',
-        query => query.eq('artwork_voting_session_id', sessionId),
-      );
-    } catch {
-      // Preserve the original entry-validation error for the caller.
-    }
-
-    throw error;
-  }
-
-  const now = new Date();
-  if (new Date(votingStartAt) <= now && now < new Date(votingEndAt)) {
-    await updateRows(
-      'artwork_voting_sessions',
-      { status: 'active' },
-      query => query
-        .eq('artwork_voting_session_id', sessionId)
-        .eq('status', 'scheduled'),
-    );
-  }
-
-  return (await fetchVotingSessionById(sessionId)) || createdSession;
-}
-
-/**
- * Activate a scheduled standard or tie-break session.
- */
-export async function activateVotingSession(sessionId) {
-  const [updatedSession] = await updateRows(
-    'artwork_voting_sessions',
-    { status: 'active' },
-    query => query
-      .eq('artwork_voting_session_id', sessionId)
-      .eq('status', 'scheduled'),
-  );
-
-  if (!updatedSession) {
-    throw new Error('Only an existing scheduled voting session can be activated.');
-  }
-
-  return (await fetchVotingSessionById(sessionId)) || updatedSession;
-}
-
-/**
- * Close a voting session before finalisation or tie-break creation.
- */
-export async function closeVotingSession(sessionId) {
-  const [updatedSession] = await updateRows(
-    'artwork_voting_sessions',
-    { status: 'closed' },
-    query => query.eq('artwork_voting_session_id', sessionId),
-  );
-
-  if (!updatedSession) {
-    throw new Error('The voting session could not be closed or does not exist.');
-  }
-
-  return (await fetchVotingSessionById(sessionId)) || updatedSession;
-}
-
-/**
- * Fetch one voting session with category-free entry and submission details.
- */
-export async function fetchVotingSessionDetails(sessionId) {
-  const [session] = await queryRows(
-    'artwork_voting_sessions',
-    `
-      *,
-      artwork_campaigns!artwork_voting_sessions_artwork_campaign_id_fkey(
-        artwork_campaign_id,
-        campaign_title,
-        status,
-        state_id,
-        states!artwork_campaigns_state_id_fkey(
-          state_id,
-          state_code,
-          state_name
-        )
-      ),
-      artwork_voting_entries!artwork_voting_entries_artwork_voting_session_id_fkey(
-        artwork_voting_entry_id,
-        artwork_submission_id,
-        vote_count,
-        published_at,
-        artwork_submissions!artwork_voting_entries_artwork_submission_id_fkey(
-          artwork_submission_id,
-          artwork_title,
-          design_description,
-          cultural_inspiration,
-          artist_statement,
-          artwork_file_url,
-          profile_id
-        )
-      )
-    `,
-    query => query.eq('artwork_voting_session_id', sessionId),
-  );
-
-  if (!session) return null;
-
-  const publicProfilesById = await fetchPublicProfilesById(
-    submissionProfileIdsFromEntries(session.artwork_voting_entries),
-  );
-
-  return {
-    ...session,
-    artwork_voting_entries: mergePublicProfilesIntoEntries(
-      session.artwork_voting_entries,
-      publicProfilesById,
-    ),
-  };
-}
-
-/**
- * Finalize a closed, uniquely won session. The RPC creates the artwork and
- * winner record and completes the campaign atomically.
- */
-export async function finalizeVotingSession(sessionId) {
-  const { data, error } = await supabase.rpc(
-    'finalize_artwork_voting_session',
-    { p_artwork_voting_session_id: sessionId },
-  );
-
-  if (error) {
-    throw new Error(error.message || 'Failed to finalize voting session.');
-  }
-
-  return data;
-}
-
-/**
- * Create a category-free tie-break. The RPC copies only the parent's top-tied
- * submissions and returns the database-generated session ID.
- */
-export async function createTieBreakSession(parentSessionId, startAt, endAt) {
-  const votingStartAt = toIsoTimestamp(startAt, 'Tie-break voting start');
-  const votingEndAt = toIsoTimestamp(endAt, 'Tie-break voting end');
-
-  if (new Date(votingEndAt) <= new Date(votingStartAt)) {
-    throw new Error('Tie-break voting end must be later than voting start.');
-  }
-
-  const { data: sessionId, error } = await supabase.rpc(
-    'create_tie_break_session',
-    {
-      p_parent_voting_session_id: parentSessionId,
-      p_voting_start_at: votingStartAt,
-      p_voting_end_at: votingEndAt,
-    },
-  );
-
-  if (error) {
-    throw new Error(error.message || 'Failed to create tie-break session.');
-  }
-
-  if (!sessionId) {
-    throw new Error('The tie-break session was not created.');
-  }
-
-  const now = new Date();
-  if (new Date(votingStartAt) <= now && now < new Date(votingEndAt)) {
-    return activateVotingSession(sessionId);
-  }
-
-  return fetchVotingSessionById(sessionId);
 }
 
 /**
