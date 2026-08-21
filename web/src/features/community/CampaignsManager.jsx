@@ -87,6 +87,10 @@ export default function CampaignsManager() {
     setViewingWinner(winner);
   };
 
+  const handleCloseWinner = () => {
+    setViewingWinner(null);
+  };
+
   const handleCloseModals = () => {
     setIsCreating(false);
     setEditingCampaign(null);
@@ -187,7 +191,7 @@ export default function CampaignsManager() {
       <WinnerDetails
         winner={viewingWinner}
         isOpen={!!viewingWinner}
-        onClose={handleCloseModals}
+        onClose={handleCloseWinner}
       />
 
       <CampaignForm

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
-import { fetchCampaignTopVotedArtworks } from '../services/communityService';
+import { fetchCampaignWinners } from '../services/communityService';
 import CampaignDateRange from './CampaignDateRange';
 
-export default function CampaignDetails({ campaign, isOpen, onClose, onEdit }) {
+export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onViewWinner }) {
   const [winners, setWinners] = useState([]);
   const [isLoadingWinners, setIsLoadingWinners] = useState(false);
 
@@ -14,7 +14,7 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit }) {
     const loadWinners = async () => {
       try {
         setIsLoadingWinners(true);
-        const data = await fetchCampaignTopVotedArtworks(campaign.artwork_campaign_id);
+        const data = await fetchCampaignWinners(campaign.artwork_campaign_id);
         if (!cancelled) setWinners(data);
       } catch (err) {
         console.error('Failed to load winners:', err);
@@ -78,13 +78,6 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit }) {
             </div>
           </div>
 
-          <CampaignDateRange
-            startAt={campaign.submission_start_at}
-            endAt={campaign.submission_end_at}
-          />
-
-
-
           {/* Campaign Winners */}
           {campaign.status === 'completed' && (
             <div>
@@ -95,20 +88,27 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit }) {
                 ) : winners.length > 0 ? (
                   (() => {
                     return (
-                      <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="grid grid-cols-1 gap-4">
                         {winners.map((winner) => {
-                          const submission = winner.artwork_submissions;
+                          const submission = winner.artwork_voting_entries?.artwork_submissions;
                           return (
-                            <div key={winner.artwork_voting_entry_id} className="flex gap-4 rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
+                            <button
+                              key={winner.artwork_campaign_winner_id}
+                              type="button"
+                              onClick={() => onViewWinner(winner)}
+                              className="group flex w-full gap-4 rounded-xl border border-surface-200 bg-white p-4 text-left shadow-sm transition hover:border-primary-300 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2"
+                              aria-label={`View details for ${submission?.artwork_title || 'winning artwork'}`}
+                            >
                               <div className="h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-surface-100">
-                                {submission?.artwork_file_url ? <img src={submission.artwork_file_url} alt={submission.artwork_title || 'Winning artwork'} className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-xs text-surface-400">No image</span>}
+                                {submission?.artwork_file_url ? <img src={submission.artwork_file_url} alt={submission.artwork_title || 'Winning artwork'} className="h-full w-full object-cover transition-transform group-hover:scale-105" /> : <span className="flex h-full items-center justify-center text-xs text-surface-400">No image</span>}
                               </div>
                               <div className="min-w-0 self-center">
-                                <h5 className="truncate font-bold text-surface-900">{submission?.artwork_title || 'Untitled artwork'}</h5>
+                                <h5 className="truncate font-bold text-surface-900 group-hover:text-primary-600">{submission?.artwork_title || 'Untitled artwork'}</h5>
+                                <p className="mt-1 text-xs text-surface-500">Rank #{winner.final_rank}</p>
                                 <p className="mt-2 text-xs font-bold uppercase tracking-wider text-surface-400">Vote Count</p>
-                                <p className="text-xl font-bold text-primary-600">{winner.vote_count}</p>
+                                <p className="text-xl font-bold text-primary-600">{winner.final_vote_count}</p>
                               </div>
-                            </div>
+                            </button>
                           );
                         })}
                       </div>
@@ -122,6 +122,11 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit }) {
               </div>
             </div>
           )}
+
+          <CampaignDateRange
+            startAt={campaign.submission_start_at}
+            endAt={campaign.submission_end_at}
+          />
 
         </div>
 

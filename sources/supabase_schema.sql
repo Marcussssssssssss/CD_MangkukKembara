@@ -1720,6 +1720,219 @@ create trigger validate_artwork_campaign_winner_trigger
 before insert or update on public.artwork_campaign_winners
 for each row execute function public.validate_artwork_campaign_winner();
 
+-- Record a confirmed winner when a campaign transitions to completed outside
+-- finalize_artwork_voting_session (for example, through an admin status update).
+-- A tied or unfinished result is deliberately left unconfirmed so that a
+-- tie-break session can be completed first. The unique constraints make this
+-- safe to run again, while the normal finalization function remains supported.
+create or replace function public.record_completed_campaign_winner()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    selected_session_id varchar(7);
+    selected_winning_entry_id varchar(7);
+    selected_winning_submission_id varchar(6);
+    selected_submission_profile_id varchar(5);
+    selected_top_vote_count integer;
+    selected_top_tied_count integer;
+    selected_artwork_id varchar(5);
+    selected_artwork_title varchar(180);
+    selected_design_description text;
+    selected_cultural_inspiration text;
+    selected_layer_1_meaning text;
+    selected_layer_2_meaning text;
+    selected_layer_3_meaning text;
+    selected_artwork_file_url text;
+begin
+    if new.status <> 'completed'
+       or old.status = 'completed'
+       or exists (
+           select 1
+           from public.artwork_campaign_winners winner
+           where winner.artwork_campaign_id = new.artwork_campaign_id
+       ) then
+        return new;
+    end if;
+
+    -- Use the closed terminal session. A tie-break, when present, is therefore
+    -- selected instead of its parent session.
+    select voting_session.artwork_voting_session_id
+    into selected_session_id
+    from public.artwork_voting_sessions voting_session
+    where voting_session.artwork_campaign_id = new.artwork_campaign_id
+      and voting_session.status = 'closed'
+      and not exists (
+          select 1
+          from public.artwork_voting_sessions child_session
+          where child_session.parent_voting_session_id =
+                voting_session.artwork_voting_session_id
+      )
+    order by voting_session.voting_end_at desc
+    limit 1;
+
+    if selected_session_id is null then
+        return new;
+    end if;
+
+    update public.artwork_voting_entries entry
+    set vote_count = (
+        select count(*)::integer
+        from public.artwork_votes vote
+        where vote.artwork_voting_entry_id = entry.artwork_voting_entry_id
+    )
+    where entry.artwork_voting_session_id = selected_session_id;
+
+    with session_results as (
+        select
+            entry.artwork_voting_entry_id,
+            entry.artwork_submission_id,
+            count(vote.artwork_vote_id)::integer as actual_vote_count
+        from public.artwork_voting_entries entry
+        left join public.artwork_votes vote
+          on vote.artwork_voting_entry_id = entry.artwork_voting_entry_id
+        where entry.artwork_voting_session_id = selected_session_id
+        group by
+            entry.artwork_voting_entry_id,
+            entry.artwork_submission_id
+    ),
+    session_top as (
+        select max(actual_vote_count) as top_vote_count
+        from session_results
+    )
+    select
+        session_top.top_vote_count,
+        count(*) filter (
+            where session_results.actual_vote_count = session_top.top_vote_count
+        )::integer,
+        min(session_results.artwork_voting_entry_id) filter (
+            where session_results.actual_vote_count = session_top.top_vote_count
+        ),
+        min(session_results.artwork_submission_id) filter (
+            where session_results.actual_vote_count = session_top.top_vote_count
+        )
+    into
+        selected_top_vote_count,
+        selected_top_tied_count,
+        selected_winning_entry_id,
+        selected_winning_submission_id
+    from session_results
+    cross join session_top
+    group by session_top.top_vote_count;
+
+    if selected_top_vote_count is null or selected_top_tied_count <> 1 then
+        return new;
+    end if;
+
+    select
+        submission.profile_id,
+        submission.artwork_title,
+        submission.design_description,
+        submission.cultural_inspiration,
+        submission.layer_1_meaning,
+        submission.layer_2_meaning,
+        submission.layer_3_meaning,
+        submission.artwork_file_url
+    into
+        selected_submission_profile_id,
+        selected_artwork_title,
+        selected_design_description,
+        selected_cultural_inspiration,
+        selected_layer_1_meaning,
+        selected_layer_2_meaning,
+        selected_layer_3_meaning,
+        selected_artwork_file_url
+    from public.artwork_submissions submission
+    where submission.artwork_submission_id = selected_winning_submission_id
+      and submission.artwork_campaign_id = new.artwork_campaign_id
+      and submission.review_status = 'approved';
+
+    if not found then
+        return new;
+    end if;
+
+    select artwork.artwork_id
+    into selected_artwork_id
+    from public.artworks artwork
+    where artwork.source_artwork_submission_id = selected_winning_submission_id;
+
+    if selected_artwork_id is null then
+        insert into public.artworks (
+            profile_id,
+            source_artwork_submission_id,
+            title,
+            description,
+            artwork_meaning,
+            cultural_inspiration,
+            image_url,
+            status
+        )
+        values (
+            selected_submission_profile_id,
+            selected_winning_submission_id,
+            left(selected_artwork_title, 150),
+            selected_design_description,
+            concat_ws(
+                E'\n\n',
+                'Layer 1: ' || selected_layer_1_meaning,
+                'Layer 2: ' || selected_layer_2_meaning,
+                'Layer 3: ' || selected_layer_3_meaning
+            ),
+            selected_cultural_inspiration,
+            selected_artwork_file_url,
+            'published'
+        )
+        returning artwork_id into selected_artwork_id;
+    else
+        update public.artworks
+        set profile_id = selected_submission_profile_id,
+            title = left(selected_artwork_title, 150),
+            description = selected_design_description,
+            artwork_meaning = concat_ws(
+                E'\n\n',
+                'Layer 1: ' || selected_layer_1_meaning,
+                'Layer 2: ' || selected_layer_2_meaning,
+                'Layer 3: ' || selected_layer_3_meaning
+            ),
+            cultural_inspiration = selected_cultural_inspiration,
+            image_url = selected_artwork_file_url,
+            status = 'published',
+            updated_at = now()
+        where artwork_id = selected_artwork_id;
+    end if;
+
+    insert into public.artwork_campaign_winners (
+        artwork_campaign_id,
+        artwork_voting_session_id,
+        artwork_voting_entry_id,
+        artwork_id,
+        final_vote_count,
+        final_rank,
+        announced_by_profile_id
+    )
+    values (
+        new.artwork_campaign_id,
+        selected_session_id,
+        selected_winning_entry_id,
+        selected_artwork_id,
+        selected_top_vote_count,
+        1,
+        new.created_by_profile_id
+    )
+    on conflict (artwork_campaign_id) do nothing;
+
+    return new;
+end;
+$$;
+
+create trigger record_completed_campaign_winner_trigger
+after update of status on public.artwork_campaigns
+for each row
+when (new.status = 'completed' and old.status is distinct from new.status)
+execute function public.record_completed_campaign_winner();
+
 create or replace function public.sync_artwork_voting_entry_vote_count()
 returns trigger
 language plpgsql
