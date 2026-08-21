@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
+import 'heritage_community_style.dart';
 
 /// C10. Artwork Submission Success Screen.
 class ArtworkSubmissionSuccessView extends StatelessWidget {
@@ -9,12 +10,20 @@ class ArtworkSubmissionSuccessView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: HeritageCommunityStyle.background,
       body: SafeArea(
         child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
+          child: Container(
+            margin: const EdgeInsets.all(24),
+            padding: const EdgeInsets.fromLTRB(24, 30, 24, 24),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(28),
+              border: Border.all(color: AppColors.divider),
+              boxShadow: HeritageCommunityStyle.cardShadow,
+            ),
             child: Column(
+              mainAxisSize: MainAxisSize.min,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TweenAnimationBuilder<double>(
@@ -23,24 +32,58 @@ class ArtworkSubmissionSuccessView extends StatelessWidget {
                   builder: (_, v, _) => Transform.scale(
                     scale: v,
                     child: Container(
-                      width: 100,
-                      height: 100,
+                      width: 112,
+                      height: 112,
                       decoration: BoxDecoration(
-                        color: AppColors.successLight,
+                        gradient: const LinearGradient(
+                          colors: [AppColors.accentLight, AppColors.accent],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
                         shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.accent.withAlpha(70),
+                            blurRadius: 22,
+                            offset: const Offset(0, 8),
+                          ),
+                        ],
                       ),
-                      child: const Icon(
-                        Icons.check_circle_rounded,
-                        size: 56,
-                        color: AppColors.success,
+                      child: const Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Icon(
+                            Icons.auto_awesome_rounded,
+                            size: 86,
+                            color: Color(0x2EFFFFFF),
+                          ),
+                          Icon(
+                            Icons.check_rounded,
+                            size: 58,
+                            color: Colors.white,
+                          ),
+                        ],
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
+                const Text(
+                  'ARTWORK JOURNEY STARTED',
+                  style: TextStyle(
+                    color: AppColors.accentDark,
+                    fontSize: 10,
+                    letterSpacing: 1.3,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 7),
                 Text(
                   'Submission Received!',
-                  style: Theme.of(context).textTheme.headlineSmall,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
@@ -54,7 +97,35 @@ class ArtworkSubmissionSuccessView extends StatelessWidget {
                   ),
                   textAlign: TextAlign.center,
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 20),
+                Container(
+                  padding: const EdgeInsets.all(13),
+                  decoration: BoxDecoration(
+                    color: HeritageCommunityStyle.sage,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(
+                        Icons.hourglass_top_rounded,
+                        size: 19,
+                        color: AppColors.primary,
+                      ),
+                      SizedBox(width: 9),
+                      Expanded(
+                        child: Text(
+                          'Next step: our team reviews your submission.',
+                          style: TextStyle(
+                            color: AppColors.primary,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(

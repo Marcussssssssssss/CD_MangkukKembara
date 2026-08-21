@@ -8,6 +8,7 @@ import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
+import 'heritage_community_style.dart';
 
 /// C7. Artwork Voting Detail View.
 class ArtworkVotingDetailView extends StatefulWidget {
@@ -38,8 +39,8 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
       child: Consumer2<ArtworkVotingViewModel, AuthViewModel>(
         builder: (ctx, vm, auth, _) {
           return Scaffold(
-            backgroundColor: AppColors.background,
-            appBar: AppBar(title: const Text('Artwork')),
+            backgroundColor: HeritageCommunityStyle.background,
+            appBar: heritageCommunityAppBar(title: 'Artwork Story'),
             body: vm.isLoading
                 ? const LoadingSpinner()
                 : vm.hasError || vm.selectedEntry == null
@@ -71,132 +72,64 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
 
   Widget _buildContent(BuildContext ctx, ArtworkVotingViewModel vm) {
     final e = vm.selectedEntry!;
-    const artColor = AppColors.primary;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 28),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _ArtworkIntro(entry: e),
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 14, 16, 0),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: _ExploreTiffin(entry: e),
           ),
-
-          Container(
-            margin: const EdgeInsets.fromLTRB(16, 16, 16, 28),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(22),
-              border: Border.all(color: AppColors.primaryContainer, width: 1.4),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x12000000),
-                  blurRadius: 10,
-                  offset: Offset(0, 4),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 26, 16, 0),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'The story within',
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ],
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 230,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
               children: [
-                Text(
-                  e.artworkTitle,
-                  style: Theme.of(ctx).textTheme.headlineSmall?.copyWith(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w900,
-                    height: 1.2,
-                  ),
+                _StoryCard(
+                  eyebrow: 'THE IDEA',
+                  title: 'Design narrative',
+                  body: e.designDescription,
+                  icon: Icons.draw_rounded,
+                  colors: const [Color(0xFFEAF2E6), Color(0xFFD6E5D1)],
+                  foreground: AppColors.primary,
                 ),
-                const SizedBox(height: 12),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(7),
-                      decoration: const BoxDecoration(
-                        color: AppColors.primaryContainer,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.person_outline_rounded,
-                        color: AppColors.primary,
-                        size: 18,
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'ARTWORK BY',
-                            style: TextStyle(
-                              color: AppColors.textHint,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              letterSpacing: 0.8,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            e.submitterName,
-                            style: const TextStyle(
-                              color: AppColors.textPrimary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w700,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                const Divider(height: 1),
-                const SizedBox(height: 16),
-                // Rank + votes
-                Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
-                      ),
-                      decoration: BoxDecoration(
-                        color: artColor.withAlpha(40),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        'Rank #${e.currentRank}',
-                        style: TextStyle(
-                          color: artColor,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Icon(
-                      Icons.how_to_vote_rounded,
-                      size: 16,
-                      color: AppColors.textHint,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '${e.voteCount} votes',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textSecondary,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 18),
-                _Section('Design Description', e.designDescription),
-                _Section(
-                  'Cultural Inspiration',
-                  e.culturalInspiration,
-                  bottomPadding: 0,
+                const SizedBox(width: 12),
+                _StoryCard(
+                  eyebrow: 'THE ROOTS',
+                  title: 'Cultural inspiration',
+                  body: e.culturalInspiration,
+                  icon: Icons.local_florist_rounded,
+                  colors: const [Color(0xFFFFF4D9), Color(0xFFFFE4A3)],
+                  foreground: AppColors.accentDark,
                 ),
               ],
             ),
@@ -231,6 +164,243 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
         ),
       );
     }
+  }
+}
+
+class _ArtworkIntro extends StatelessWidget {
+  final ArtworkVotingEntryModel entry;
+
+  const _ArtworkIntro({required this.entry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+      padding: const EdgeInsets.fromLTRB(20, 20, 18, 18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF416F43), Color(0xFF203F2A)],
+        ),
+        borderRadius: BorderRadius.circular(26),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1F335C31),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          const Positioned(
+            right: -18,
+            bottom: -30,
+            child: Icon(
+              Icons.palette_rounded,
+              size: 126,
+              color: Color(0x16FFFFFF),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'FEATURED ARTWORK',
+                style: TextStyle(
+                  color: AppColors.accentLight,
+                  fontSize: 10,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                entry.artworkTitle,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                  height: 1.12,
+                ),
+              ),
+              const SizedBox(height: 9),
+              Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Color(0x26FFFFFF),
+                    child: Icon(
+                      Icons.brush_rounded,
+                      size: 14,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Created by ${entry.submitterName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: Color(0xEFFFFFFF),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _ArtworkStat(
+                    icon: Icons.emoji_events_rounded,
+                    label: 'Rank #${entry.currentRank}',
+                  ),
+                  _ArtworkStat(
+                    icon: Icons.favorite_rounded,
+                    label: '${entry.voteCount} votes',
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ArtworkStat extends StatelessWidget {
+  final IconData icon;
+  final String label;
+
+  const _ArtworkStat({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0x24FFFFFF),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0x42FFFFFF)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.accentLight),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _StoryCard extends StatelessWidget {
+  final String eyebrow;
+  final String title;
+  final String body;
+  final IconData icon;
+  final List<Color> colors;
+  final Color foreground;
+
+  const _StoryCard({
+    required this.eyebrow,
+    required this.title,
+    required this.body,
+    required this.icon,
+    required this.colors,
+    required this.foreground,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final text = body.trim().isEmpty
+        ? 'This part of the artwork’s story is waiting to be shared.'
+        : body;
+    return Container(
+      width: MediaQuery.sizeOf(context).width * .78,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -12,
+            bottom: -18,
+            child: Icon(icon, size: 100, color: foreground.withAlpha(18)),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(150),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(icon, size: 17, color: foreground),
+                  ),
+                  const SizedBox(width: 9),
+                  Text(
+                    eyebrow,
+                    style: TextStyle(
+                      color: foreground.withAlpha(190),
+                      fontSize: 9,
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 15),
+              Text(
+                title,
+                style: TextStyle(
+                  color: foreground,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Text(
+                  text,
+                  maxLines: 5,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -363,18 +533,71 @@ class _ExploreTiffinState extends State<_ExploreTiffin> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          height: 300,
+        Row(
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Explore the artwork',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Discover every side of the design',
+                    style: TextStyle(color: AppColors.textHint, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: Text(
+                selectedItem.code,
+                key: ValueKey(selectedItem.code),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Container(
+          height: 320,
           width: double.infinity,
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.accentLight, AppColors.primaryLight],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(27),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x26335C31),
+                blurRadius: 18,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
           child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 220),
+            duration: const Duration(milliseconds: 260),
             child: _TiffinImageViewer(
               key: ValueKey(selectedItem.view),
               item: selectedItem,
             ),
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         Row(
           children: [
             for (var index = 0; index < items.length; index++) ...[
@@ -389,7 +612,7 @@ class _ExploreTiffinState extends State<_ExploreTiffin> {
             ],
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         AnimatedSize(
           duration: const Duration(milliseconds: 280),
           curve: Curves.easeOutCubic,
@@ -413,22 +636,32 @@ class _ExploreTiffinState extends State<_ExploreTiffin> {
                 : Container(
                     key: ValueKey('${selectedItem.view}-meaning'),
                     width: double.infinity,
-                    padding: const EdgeInsets.all(14),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: AppColors.surfaceVariant,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.divider),
+                      color: AppColors.accentContainer,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.accentLight),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          '${selectedItem.title} Meaning',
-                          style: const TextStyle(
-                            color: AppColors.primary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w900,
-                          ),
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.auto_stories_rounded,
+                              size: 17,
+                              color: AppColors.accentDark,
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              'Story of ${selectedItem.title}',
+                              style: const TextStyle(
+                                color: AppColors.accentDark,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 5),
                         Text(
@@ -466,16 +699,22 @@ class _TiffinLayerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final icon = switch (item.view) {
+      _TiffinView.front => Icons.view_in_ar_rounded,
+      _TiffinView.layer1 => Icons.looks_one_rounded,
+      _TiffinView.layer2 => Icons.looks_two_rounded,
+      _TiffinView.layer3 => Icons.looks_3_rounded,
+    };
     return Semantics(
       button: true,
       selected: selected,
       label: 'Show ${item.title}',
       child: Material(
-        color: selected ? AppColors.primary : AppColors.tagBg,
+        color: selected ? AppColors.primaryLight : Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: selected ? AppColors.primary : AppColors.divider,
+            color: selected ? AppColors.primaryLight : AppColors.divider,
             width: selected ? 2 : 1,
           ),
         ),
@@ -483,17 +722,26 @@ class _TiffinLayerButton extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           child: SizedBox(
-            height: 46,
-            child: Center(
-              child: Text(
-                item.code,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: selected ? Colors.white : AppColors.primary,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
+            height: 52,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 16,
+                  color: selected ? AppColors.accentLight : AppColors.primary,
                 ),
-              ),
+                const SizedBox(height: 2),
+                Text(
+                  item.code,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: selected ? Colors.white : AppColors.primary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -579,6 +827,40 @@ class _TiffinImageViewer extends StatelessWidget {
                   ),
                 ),
               ),
+            if (!item.isPanorama)
+              Positioned(
+                right: 12,
+                bottom: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xD9335C31),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.zoom_out_map_rounded,
+                        size: 13,
+                        color: Colors.white,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Tap to expand',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
           ],
         ),
       ),
@@ -622,42 +904,6 @@ class _FullscreenArtworkView extends StatelessWidget {
             ),
           ),
         ),
-      ),
-    );
-  }
-}
-
-class _Section extends StatelessWidget {
-  final String title;
-  final String body;
-  final double bottomPadding;
-
-  const _Section(this.title, this.body, {this.bottomPadding = 18});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: bottomPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w800,
-              color: AppColors.primary,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            body,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              color: AppColors.textSecondary,
-              height: 1.6,
-            ),
-          ),
-        ],
       ),
     );
   }

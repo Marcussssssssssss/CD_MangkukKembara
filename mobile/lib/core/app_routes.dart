@@ -20,7 +20,6 @@ import '../Model/Repositories/HeritageExperience/qr_scan_result_model.dart';
 
 // Module C — Heritage Community
 import '../View/HeritageCommunity/community_home_view.dart';
-import '../View/HeritageCommunity/community_search_view.dart';
 import '../View/HeritageCommunity/post_detail_view.dart';
 import '../View/HeritageCommunity/create_post_view.dart';
 import '../View/HeritageCommunity/artwork_campaign_home_view.dart';
@@ -61,7 +60,6 @@ abstract final class AppRoutes {
 
   // ── Module C ─────────────────────────────────────────────────────────────────
   static const String community = '/community';
-  static const String communitySearch = '/community-search';
   static const String postDetail = '/post-detail';
   static const String createPost = '/create-post';
   static const String artworkCampaign = '/artwork-campaign';
@@ -149,13 +147,6 @@ abstract final class AppRoutes {
       // Module C
       case community:
         return _build(const CommunityHomeView(), settings);
-      case communitySearch:
-        return _build(
-          CommunitySearchView(
-            initialQuery: settings.arguments as String? ?? '',
-          ),
-          settings,
-        );
       case postDetail:
         return _build(
           PostDetailView(postId: settings.arguments as String? ?? ''),

@@ -16,7 +16,7 @@ import '../Widgets/map_home_button.dart';
 
 /// Visual tokens for the refreshed artwork campaign experience.
 abstract final class _CampaignColors {
-  static const Color background = Color(0xFFFFFFFF);
+  static const Color background = Color(0xFFF9FBF7);
   static const Color border = Color(0xFFCCD6C8);
   static const Color darkGreen = Color(0xFF335C31);
   static const Color yellow = Color(0xFFF9B10E);
@@ -372,58 +372,12 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _CampaignHeader(campaign: campaign)),
-              if (vm.entries.isNotEmpty && !campaign.isCompleted)
+              if (vm.entries.isNotEmpty)
                 SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
-                    child: Row(
-                      children: [
-                        const Text(
-                          'Sort artworks',
-                          style: TextStyle(
-                            color: _CampaignColors.darkGreen,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                        const Spacer(),
-                        SegmentedButton<String>(
-                          segments: const [
-                            ButtonSegment(
-                              value: 'Most Voted',
-                              label: Text('Most voted'),
-                            ),
-                            ButtonSegment(value: 'New', label: Text('Newest')),
-                          ],
-                          selected: {vm.sort},
-                          onSelectionChanged: (selection) =>
-                              _vm.setSort(selection.first),
-                          showSelectedIcon: false,
-                          style: ButtonStyle(
-                            visualDensity: VisualDensity.compact,
-                            backgroundColor: WidgetStateProperty.resolveWith(
-                              (states) => states.contains(WidgetState.selected)
-                                  ? _CampaignColors.softYellow
-                                  : _CampaignColors.background,
-                            ),
-                            foregroundColor: WidgetStateProperty.resolveWith(
-                              (states) => states.contains(WidgetState.selected)
-                                  ? _CampaignColors.yellow
-                                  : _CampaignColors.darkGreen,
-                            ),
-                            side: const WidgetStatePropertyAll(
-                              BorderSide(color: _CampaignColors.border),
-                            ),
-                            textStyle: const WidgetStatePropertyAll(
-                              TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  child: _ArtworkGalleryHeader(
+                    isCompleted: campaign.isCompleted,
+                    sort: vm.sort,
+                    onSortChanged: _vm.setSort,
                   ),
                 ),
               ..._buildCampaignSlivers(context, vm),
@@ -503,6 +457,88 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
   }
 }
 
+class _ArtworkGalleryHeader extends StatelessWidget {
+  final bool isCompleted;
+  final String sort;
+  final ValueChanged<String> onSortChanged;
+
+  const _ArtworkGalleryHeader({
+    required this.isCompleted,
+    required this.sort,
+    required this.onSortChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isCompleted) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7F9F5),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: _CampaignColors.border),
+        ),
+        child: Row(
+          children: [
+            const Icon(
+              Icons.tune_rounded,
+              size: 17,
+              color: _CampaignColors.darkGreen,
+            ),
+            const SizedBox(width: 7),
+            const Text(
+              'Discover by',
+              style: TextStyle(
+                color: _CampaignColors.darkGreen,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const Spacer(),
+            SegmentedButton<String>(
+              segments: const [
+                ButtonSegment(
+                  value: 'Most Voted',
+                  label: Text('Popular'),
+                  icon: Icon(Icons.local_fire_department_rounded),
+                ),
+                ButtonSegment(
+                  value: 'New',
+                  label: Text('Fresh'),
+                  icon: Icon(Icons.auto_awesome_rounded),
+                ),
+              ],
+              selected: {sort},
+              onSelectionChanged: (selection) => onSortChanged(selection.first),
+              showSelectedIcon: false,
+              style: ButtonStyle(
+                visualDensity: VisualDensity.compact,
+                backgroundColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? _CampaignColors.darkGreen
+                      : Colors.white,
+                ),
+                foregroundColor: WidgetStateProperty.resolveWith(
+                  (states) => states.contains(WidgetState.selected)
+                      ? Colors.white
+                      : _CampaignColors.darkGreen,
+                ),
+                iconSize: const WidgetStatePropertyAll(14),
+                textStyle: const WidgetStatePropertyAll(
+                  TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _CampaignHeader extends StatelessWidget {
   final ArtworkCampaignModel campaign;
 
@@ -545,7 +581,7 @@ class _CampaignHeader extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xD9689863), Color(0xF02B522A)],
+                    colors: [Color(0xFF416F43), Color(0xFF203F2A)],
                   ),
                 ),
               ),
@@ -767,97 +803,176 @@ class _StandardArtworkCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-      color: _CampaignColors.background,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: _CampaignColors.border),
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _CampaignColors.border),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14335C31),
+            blurRadius: 14,
+            offset: Offset(0, 5),
+          ),
+        ],
       ),
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onOpen,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 120,
-              height: 124,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  AppNetworkImage(
-                    imageUrl: entry.artworkUrl,
-                    fit: BoxFit.contain,
-                    targetOptimizationWidth: 300,
-                  ),
-                  Align(
-                    alignment: Alignment.topLeft,
-                    child: Container(
-                      margin: const EdgeInsets.all(6),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 7,
-                        vertical: 3,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(22),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onOpen,
+          child: Row(
+            children: [
+              Container(
+                width: 128,
+                height: 142,
+                color: const Color(0xFFF3F6F0),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: AppNetworkImage(
+                        imageUrl: entry.artworkUrl,
+                        fit: BoxFit.contain,
+                        targetOptimizationWidth: 360,
                       ),
+                    ),
+                    const DecoratedBox(
                       decoration: BoxDecoration(
-                        color: _CampaignColors.darkGreen,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: Text(
-                        '#${entry.currentRank}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 11,
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [Colors.transparent, Color(0x26000000)],
+                          stops: [0.68, 1],
                         ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    entry.artworkTitle,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: _CampaignColors.darkGreen,
+                    Align(
+                      alignment: Alignment.topLeft,
+                      child: Container(
+                        margin: const EdgeInsets.all(8),
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: _CampaignColors.darkGreen,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: Colors.white, width: 2),
+                          boxShadow: const [
+                            BoxShadow(color: Colors.black26, blurRadius: 5),
+                          ],
+                        ),
+                        alignment: Alignment.center,
+                        child: Text(
+                          '#${entry.currentRank}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
                     ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    'by ${entry.submitterName}',
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: _CampaignColors.text,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 7),
-                  Text(
-                    '${entry.voteCount} votes',
-                    style: const TextStyle(
-                      color: _CampaignColors.darkGreen,
-                      fontWeight: FontWeight.w600,
-                      fontSize: 12,
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(right: 12),
-              child: Icon(
-                Icons.chevron_right_rounded,
-                color: _CampaignColors.darkGreen,
+              const SizedBox(width: 14),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'COMMUNITY CREATION',
+                        style: TextStyle(
+                          color: AppColors.textHint,
+                          fontSize: 9,
+                          letterSpacing: .8,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        entry.artworkTitle,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: _CampaignColors.darkGreen,
+                          fontWeight: FontWeight.w900,
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 5),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.brush_rounded,
+                            size: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 5),
+                          Expanded(
+                            child: Text(
+                              entry.submitterName,
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(color: _CampaignColors.text),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 11),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 9,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color: _CampaignColors.softYellow,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.favorite_rounded,
+                              size: 13,
+                              color: _CampaignColors.yellow,
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              '${entry.voteCount} votes',
+                              style: const TextStyle(
+                                color: _CampaignColors.darkGreen,
+                                fontWeight: FontWeight.w800,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          ],
+              const Padding(
+                padding: EdgeInsets.only(right: 10),
+                child: CircleAvatar(
+                  radius: 14,
+                  backgroundColor: Color(0xFFEEF3EC),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    size: 15,
+                    color: _CampaignColors.darkGreen,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
