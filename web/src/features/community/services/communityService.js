@@ -56,9 +56,9 @@ function toIsoTimestamp(value, fieldName) {
   return parsed.toISOString();
 }
 
-function campaignDateToIsoTimestamp(value, fieldName) {
+function campaignDateToIsoTimestamp(value, fieldName, time = '23:59:00') {
   const timestamp = /^\d{4}-\d{2}-\d{2}$/.test(value || '')
-    ? `${value}T23:59:00`
+    ? `${value}T${time}`
     : value;
   return toIsoTimestamp(timestamp, fieldName);
 }
@@ -80,6 +80,7 @@ function campaignPayloadFrom(campaignData) {
   const submissionStartAt = campaignDateToIsoTimestamp(
     campaignData.submission_start_at,
     'Submission start',
+    '00:00:00',
   );
   const submissionEndAt = campaignDateToIsoTimestamp(
     campaignData.submission_end_at,
@@ -306,22 +307,6 @@ export async function endCampaign(campaignId) {
     throw new Error('The campaign could not be ended.');
   }
 
-  return (await fetchCampaignById(campaignId)) || updatedCampaign;
-}
-
-export async function extendCampaign(campaignId, submissionEndAt) {
-  const newEndAt = campaignDateToIsoTimestamp(submissionEndAt, 'New submission end');
-  if (new Date(newEndAt) <= new Date()) {
-    throw new Error('The new end date must be in the future.');
-  }
-
-  const [updatedCampaign] = await updateRows(
-    'artwork_campaigns',
-    { submission_end_at: newEndAt, status: 'active' },
-    query => query.eq('artwork_campaign_id', campaignId),
-  );
-
-  if (!updatedCampaign) throw new Error('The campaign could not be extended.');
   return (await fetchCampaignById(campaignId)) || updatedCampaign;
 }
 

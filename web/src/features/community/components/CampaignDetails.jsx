@@ -1,10 +1,7 @@
 import { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
 import { fetchCampaignTopVotedArtworks } from '../services/communityService';
-
-const formatDate = (value) => new Intl.DateTimeFormat('en-GB', {
-  day: '2-digit', month: '2-digit', year: 'numeric',
-}).format(new Date(value));
+import CampaignDateRange from './CampaignDateRange';
 
 export default function CampaignDetails({ campaign, isOpen, onClose, onEdit }) {
   const [winners, setWinners] = useState([]);
@@ -43,9 +40,6 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit }) {
 
   const getStatusDisplay = (status) => status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-  const startDate = formatDate(campaign.submission_start_at);
-  const endDate = formatDate(campaign.submission_end_at);
-
   return (
     <Modal open={isOpen} onClose={onClose} title="Campaign Details" size="xl">
       <div className="flex flex-col p-6 max-h-[85vh] overflow-y-auto">
@@ -72,7 +66,7 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit }) {
           </div>
 
           {/* Timing Information */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 p-4 rounded-lg bg-surface-50 border border-surface-200">
+          <div className="p-4 rounded-lg bg-surface-50 border border-surface-200">
             <div>
               <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">State</h4>
               <p className="mt-1 font-medium text-surface-900">
@@ -82,15 +76,12 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit }) {
                 <p className="mt-0.5 text-xs text-surface-500">{campaign.states.state_code}</p>
               )}
             </div>
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">Submission Start</h4>
-              <p className="mt-1 font-medium text-surface-900">{startDate}</p>
-            </div>
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">Submission End</h4>
-              <p className="mt-1 font-medium text-surface-900">{endDate}</p>
-            </div>
           </div>
+
+          <CampaignDateRange
+            startAt={campaign.submission_start_at}
+            endAt={campaign.submission_end_at}
+          />
 
 
 
