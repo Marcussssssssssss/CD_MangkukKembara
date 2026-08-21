@@ -372,7 +372,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _CampaignHeader(campaign: campaign)),
-              if (vm.entries.isNotEmpty)
+              if (vm.entries.isNotEmpty && !campaign.isCompleted)
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
@@ -473,6 +473,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
             final entry = vm.entries[index];
             return _ArtworkEntryCard(
               entry: entry,
+              isWinner: widget.campaign.isCompleted && entry.currentRank == 1,
               onOpen: () async {
                 await Navigator.pushNamed(
                   context,
@@ -739,9 +740,30 @@ class _CampaignHeader extends StatelessWidget {
 
 class _ArtworkEntryCard extends StatelessWidget {
   final ArtworkVotingEntryModel entry;
+  final bool isWinner;
   final VoidCallback onOpen;
 
-  const _ArtworkEntryCard({required this.entry, required this.onOpen});
+  const _ArtworkEntryCard({
+    required this.entry,
+    required this.isWinner,
+    required this.onOpen,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isWinner) {
+      return _WinnerArtworkCard(entry: entry, onOpen: onOpen);
+    }
+
+    return _StandardArtworkCard(entry: entry, onOpen: onOpen);
+  }
+}
+
+class _StandardArtworkCard extends StatelessWidget {
+  final ArtworkVotingEntryModel entry;
+  final VoidCallback onOpen;
+
+  const _StandardArtworkCard({required this.entry, required this.onOpen});
 
   @override
   Widget build(BuildContext context) {
@@ -836,6 +858,199 @@ class _ArtworkEntryCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _WinnerArtworkCard extends StatelessWidget {
+  final ArtworkVotingEntryModel entry;
+  final VoidCallback onOpen;
+
+  const _WinnerArtworkCard({required this.entry, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    const gold = Color(0xFFF4B928);
+    const deepGold = Color(0xFFC98308);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 12),
+      padding: const EdgeInsets.all(2),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFFFE69A), gold, deepGold, Color(0xFFFFD65C)],
+        ),
+        borderRadius: BorderRadius.circular(21),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x45E6A315),
+            blurRadius: 18,
+            spreadRadius: 1,
+            offset: Offset(0, 7),
+          ),
+        ],
+      ),
+      child: Material(
+        color: const Color(0xFFFFFBEE),
+        borderRadius: BorderRadius.circular(19),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onOpen,
+          child: Stack(
+            children: [
+              const Positioned(
+                right: -18,
+                top: -28,
+                child: Icon(
+                  Icons.workspace_premium_rounded,
+                  size: 112,
+                  color: Color(0x14C98308),
+                ),
+              ),
+              Row(
+                children: [
+                  SizedBox(
+                    width: 120,
+                    height: 132,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        AppNetworkImage(
+                          imageUrl: entry.artworkUrl,
+                          fit: BoxFit.contain,
+                          targetOptimizationWidth: 300,
+                        ),
+                        const DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [Colors.transparent, Color(0x22000000)],
+                              stops: [0.65, 1],
+                            ),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.topLeft,
+                          child: Container(
+                            margin: const EdgeInsets.all(7),
+                            width: 35,
+                            height: 35,
+                            decoration: BoxDecoration(
+                              color: gold,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white, width: 2),
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x55000000),
+                                  blurRadius: 6,
+                                  offset: Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.emoji_events_rounded,
+                              color: Colors.white,
+                              size: 21,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 13),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 9,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [gold, deepGold],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.auto_awesome_rounded,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'CAMPAIGN CHAMPION',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    letterSpacing: .7,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            entry.artworkTitle,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
+                                  color: _CampaignColors.darkGreen,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'by ${entry.submitterName}',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: _CampaignColors.text),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 7),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.favorite_rounded,
+                                size: 14,
+                                color: deepGold,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${entry.voteCount} winning votes',
+                                style: const TextStyle(
+                                  color: deepGold,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.only(right: 10),
+                    child: Icon(Icons.chevron_right_rounded, color: deepGold),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
