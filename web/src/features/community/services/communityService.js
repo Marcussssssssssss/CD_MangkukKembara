@@ -387,9 +387,17 @@ export async function fetchCampaignWinners(campaignId) {
           artwork_title,
           design_description,
           cultural_inspiration,
-          artist_statement,
+          layer_1_meaning,
+          layer_2_meaning,
+          layer_3_meaning,
           artwork_file_url,
-          profile_id
+          profile_id,
+          artwork_submission_photos!artwork_submission_photos_artwork_submission_id_fkey(
+            artwork_submission_photo_id,
+            view_type,
+            photo_url,
+            sort_order
+          )
         )
       )
     `,
