@@ -1,20 +1,22 @@
 import { useState } from 'react';
 import Modal from '../../../components/Modal';
 
-const formatDateTimeLocal = (dateStr) => {
+const formatDateLocal = (dateStr) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   if (Number.isNaN(date.getTime())) return '';
   const pad = (number) => String(number).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 };
+
+const localToday = () => formatDateLocal(new Date());
 
 const initialFormData = (campaign) => ({
   campaign_title: campaign?.campaign_title || '',
   state_id: campaign?.state_id || '',
   description: campaign?.description || '',
-  submission_start_at: formatDateTimeLocal(campaign?.submission_start_at),
-  submission_end_at: formatDateTimeLocal(campaign?.submission_end_at),
+  submission_start_at: campaign ? formatDateLocal(campaign.submission_start_at) : localToday(),
+  submission_end_at: formatDateLocal(campaign?.submission_end_at),
   status: campaign?.status || 'active',
 });
 
@@ -47,6 +49,9 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
     if (!formData.description?.trim()) newErrors.description = 'Description is required.';
     if (!formData.submission_start_at) newErrors.submission_start_at = 'Submission Start is required.';
     if (!formData.submission_end_at) newErrors.submission_end_at = 'Submission End is required.';
+    if (!campaign && formData.submission_start_at < localToday()) {
+      newErrors.submission_start_at = 'Submission Start cannot be before today.';
+    }
     
     if (formData.submission_start_at && formData.submission_end_at) {
       if (new Date(formData.submission_end_at) <= new Date(formData.submission_start_at)) {
@@ -119,7 +124,7 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
                   {errors.campaign_title && <p className="mt-1 text-xs text-red-500">{errors.campaign_title}</p>}
                 </div>
 
-                <div className="sm:col-span-2">
+                {!campaign && <div className="sm:col-span-2">
                   <label htmlFor="state_id" className="block text-sm font-medium text-surface-900">
                     State <span className="text-red-500">*</span>
                   </label>
@@ -139,12 +144,7 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
                     ))}
                   </select>
                   {errors.state_id && <p className="mt-1 text-xs text-red-500">{errors.state_id}</p>}
-                  {campaign && (
-                    <p className="mt-1 text-xs text-surface-500">
-                      A campaign's state cannot be changed after creation.
-                    </p>
-                  )}
-                </div>
+                </div>}
 
                 <div className="sm:col-span-2">
                   <label htmlFor="description" className="block text-sm font-medium text-surface-900">Description</label>
@@ -159,27 +159,30 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
                   {errors.description && <p className="mt-1 text-xs text-red-500">{errors.description}</p>}
                 </div>
 
-                <div>
-                  <label htmlFor="submission_start_at" className="block text-sm font-medium text-surface-900">Submission Start Date/Time</label>
+                {!campaign && <div>
+                  <label htmlFor="submission_start_at" className="block text-sm font-medium text-surface-900">Submission Start Date</label>
                   <input
-                    type="datetime-local"
+                    type="date"
                     id="submission_start_at"
                     name="submission_start_at"
                     value={formData.submission_start_at || ''}
                     onChange={handleChange}
+                    min={localToday()}
                     className={`mt-2 block w-full rounded-lg border ${errors.submission_start_at ? 'border-red-500' : 'border-surface-300'} px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
                   />
                   {errors.submission_start_at && <p className="mt-1 text-xs text-red-500">{errors.submission_start_at}</p>}
-                </div>
+                  <p className="mt-1 text-xs text-surface-500">Select today or a future date.</p>
+                </div>}
                 
-                <div>
-                  <label htmlFor="submission_end_at" className="block text-sm font-medium text-surface-900">Submission End Date/Time</label>
+                <div className={campaign ? 'sm:col-span-2' : undefined}>
+                  <label htmlFor="submission_end_at" className="block text-sm font-medium text-surface-900">Submission End Date</label>
                   <input
-                    type="datetime-local"
+                    type="date"
                     id="submission_end_at"
                     name="submission_end_at"
                     value={formData.submission_end_at || ''}
                     onChange={handleChange}
+                    min={formData.submission_start_at || undefined}
                     className={`mt-2 block w-full rounded-lg border ${errors.submission_end_at ? 'border-red-500' : 'border-surface-300'} px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
                   />
                   {errors.submission_end_at && <p className="mt-1 text-xs text-red-500">{errors.submission_end_at}</p>}

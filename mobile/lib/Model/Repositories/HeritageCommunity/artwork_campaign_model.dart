@@ -3,7 +3,7 @@ class ArtworkCampaignModel {
   final String id;
   final String title;
   final String description;
-  final String status; // 'active' | 'completed' | 'inactive'
+  final String status; // 'active' | 'completed'
   final String stateId;
   final String stateName;
   final DateTime? submissionDeadline;
@@ -35,7 +35,7 @@ class ArtworkCampaignModel {
   String get statusLabel {
     switch (status) {
       case 'active':
-        return canSubmit ? 'Submissions Open' : 'Active Campaign';
+        return 'Active';
       case 'completed':
         return 'Campaign Ended';
       default:

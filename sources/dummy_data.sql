@@ -98,7 +98,7 @@ values (
     (
         'P0003',
         '326bbebb-c691-4c1b-9290-7953d240ee0d'::uuid,
-        'tourist',
+        'admin',
         'test',
         null,
         null,
@@ -873,8 +873,8 @@ values (
         'S0001',
         'Penang Heritage Tiffin Design Campaign 2026',
         'A completed campaign for a Penang-inspired heritage tiffin design.',
-        '2026-01-01 00:00:00+08',
-        '2026-03-31 23:59:59+08',
+        '2026-01-01 23:59:00+08',
+        '2026-03-31 23:59:00+08',
         'completed',
         'P0001'
     ),
@@ -883,8 +883,8 @@ values (
         'S0002',
         'Melaka Heritage Tiffin Design Campaign 2026',
         'A completed campaign for a Melaka-inspired heritage tiffin design.',
-        '2026-01-01 00:00:00+08',
-        '2026-03-31 23:59:59+08',
+        '2026-01-01 23:59:00+08',
+        '2026-03-31 23:59:00+08',
         'completed',
         'P0001'
     ),
@@ -893,8 +893,8 @@ values (
         'S0003',
         'Kelantan Heritage Tiffin Design Campaign 2026',
         'A completed campaign for a Kelantan-inspired heritage tiffin design.',
-        '2026-01-01 00:00:00+08',
-        '2026-03-31 23:59:59+08',
+        '2026-01-01 23:59:00+08',
+        '2026-03-31 23:59:00+08',
         'completed',
         'P0001'
     ),
@@ -903,8 +903,8 @@ values (
         'S0004',
         'Sarawak Heritage Tiffin Design Campaign 2026',
         'A completed campaign for a Sarawak-inspired heritage tiffin design.',
-        '2026-01-01 00:00:00+08',
-        '2026-03-31 23:59:59+08',
+        '2026-01-01 23:59:00+08',
+        '2026-03-31 23:59:00+08',
         'completed',
         'P0001'
     ),
@@ -913,8 +913,8 @@ values (
         'S0001',
         'Penang Food Stories Tiffin Design Campaign',
         'An active campaign inviting Penang-inspired food-story artwork.',
-        now() - interval '30 days',
-        now() + interval '60 days',
+        (current_date - 30) + time '23:59:00',
+        (current_date + 60) + time '23:59:00',
         'active',
         'P0001'
     ),
@@ -923,8 +923,8 @@ values (
         'S0002',
         'Melaka Food Stories Tiffin Design Campaign',
         'An active campaign inviting Melaka-inspired food-story artwork.',
-        now() - interval '30 days',
-        now() + interval '60 days',
+        (current_date - 30) + time '23:59:00',
+        (current_date + 60) + time '23:59:00',
         'active',
         'P0001'
     ),
@@ -933,8 +933,8 @@ values (
         'S0003',
         'Kelantan Food Stories Tiffin Design Campaign',
         'An active campaign inviting Kelantan-inspired food-story artwork.',
-        now() - interval '30 days',
-        now() + interval '60 days',
+        (current_date - 30) + time '23:59:00',
+        (current_date + 60) + time '23:59:00',
         'active',
         'P0001'
     ),
@@ -943,8 +943,8 @@ values (
         'S0004',
         'Sarawak Food Stories Tiffin Design Campaign',
         'An active campaign inviting Sarawak-inspired food-story artwork.',
-        now() - interval '30 days',
-        now() + interval '60 days',
+        (current_date - 30) + time '23:59:00',
+        (current_date + 60) + time '23:59:00',
         'active',
         'P0001'
     );
@@ -1653,6 +1653,14 @@ begin
         or (select count(*) from public.artwork_votes) <> 9
         or (select count(*) from public.artwork_campaign_winners) <> 4 then
         raise exception 'Seed verification failed: unexpected campaign subsystem row counts';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_campaigns
+        where status not in ('active', 'completed')
+    ) then
+        raise exception 'Seed verification failed: unexpected artwork campaign status';
     end if;
 
     if exists (

@@ -1,8 +1,12 @@
 import { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
-import { fetchCampaignWinners } from '../services/communityService';
+import { fetchCampaignTopVotedArtworks } from '../services/communityService';
 
-export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onViewWinner }) {
+const formatDate = (value) => new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit', month: '2-digit', year: 'numeric',
+}).format(new Date(value));
+
+export default function CampaignDetails({ campaign, isOpen, onClose, onEdit }) {
   const [winners, setWinners] = useState([]);
   const [isLoadingWinners, setIsLoadingWinners] = useState(false);
 
@@ -13,7 +17,7 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onV
     const loadWinners = async () => {
       try {
         setIsLoadingWinners(true);
-        const data = await fetchCampaignWinners(campaign.artwork_campaign_id);
+        const data = await fetchCampaignTopVotedArtworks(campaign.artwork_campaign_id);
         if (!cancelled) setWinners(data);
       } catch (err) {
         console.error('Failed to load winners:', err);
@@ -39,8 +43,8 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onV
 
   const getStatusDisplay = (status) => status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
 
-  const startDate = new Date(campaign.submission_start_at).toLocaleString();
-  const endDate = new Date(campaign.submission_end_at).toLocaleString();
+  const startDate = formatDate(campaign.submission_start_at);
+  const endDate = formatDate(campaign.submission_end_at);
 
   return (
     <Modal open={isOpen} onClose={onClose} title="Campaign Details" size="xl">
@@ -99,76 +103,23 @@ export default function CampaignDetails({ campaign, isOpen, onClose, onEdit, onV
                   <p className="text-sm text-surface-500 italic">Loading winners...</p>
                 ) : winners.length > 0 ? (
                   (() => {
-                    const winner = winners.find((candidate) => candidate.final_rank === 1) || winners[0];
-                    if (!winner) return (
-                      <div className="rounded-lg border border-surface-200 border-dashed p-6 text-center bg-surface-50">
-                        <p className="text-sm text-surface-500">No confirmed winners found for this campaign.</p>
-                      </div>
-                    );
-
-                    const submission = winner.artwork_voting_entries?.artwork_submissions;
-                    const session = winner.artwork_voting_entries?.artwork_voting_sessions;
-                    const artwork = winner.artworks;
-                    const resultDate = new Date(winner.announced_at).toLocaleString();
-
                     return (
-                      <div className="overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm">
-                        <div className="border-b border-surface-100 bg-surface-50 px-6 py-4 flex items-center justify-between">
-                          <h5 className="font-bold text-surface-900">Campaign Winner</h5>
-                          <span className="inline-flex rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-800 uppercase tracking-wide shadow-sm">Confirmed Winner</span>
-                        </div>
-                        <div className="p-6 sm:p-8">
-                          <div className="flex flex-col sm:flex-row gap-8">
-                            <div className="h-40 w-40 shrink-0 overflow-hidden rounded-xl bg-surface-100 border border-surface-200 shadow-sm">
-                              {submission?.artwork_file_url ? (
-                                <img src={submission.artwork_file_url} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <span className="flex h-full items-center justify-center text-xs text-surface-400">No Img</span>
-                              )}
-                            </div>
-                            <div className="flex-1 min-w-0 flex flex-col justify-between">
-                              <div>
-                                <h6 className="text-2xl font-bold text-surface-900 truncate">{submission?.artwork_title || 'Unknown'}</h6>
-                                <p className="text-base text-surface-500 mt-1">by <span className="text-surface-700 font-medium">{submission?.profiles?.display_name || 'Unknown'}</span></p>
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        {winners.map((winner) => {
+                          const submission = winner.artwork_submissions;
+                          return (
+                            <div key={winner.artwork_voting_entry_id} className="flex gap-4 rounded-xl border border-surface-200 bg-white p-4 shadow-sm">
+                              <div className="h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-surface-100">
+                                {submission?.artwork_file_url ? <img src={submission.artwork_file_url} alt={submission.artwork_title || 'Winning artwork'} className="h-full w-full object-cover" /> : <span className="flex h-full items-center justify-center text-xs text-surface-400">No image</span>}
                               </div>
-                              <div className="grid grid-cols-2 gap-x-6 gap-y-4 mt-6">
-                                <div>
-                                  <p className="text-[11px] font-bold text-surface-400 uppercase tracking-wider">Final Vote Count</p>
-                                  <p className="text-xl font-bold text-primary-600 mt-1">{winner.final_vote_count}</p>
-                                </div>
-                                <div>
-                                  <p className="text-[11px] font-bold text-surface-400 uppercase tracking-wider">Winning Session</p>
-                                  <p className="text-sm font-semibold text-surface-900 mt-1 uppercase">
-                                    {session?.session_type ? session.session_type.replace('_', ' ') : 'Standard'}
-                                  </p>
-                                </div>
-                                <div>
-                                  <p className="text-[11px] font-bold text-surface-400 uppercase tracking-wider">Result Date</p>
-                                  <p className="text-sm font-semibold text-surface-900 mt-1">{resultDate}</p>
-                                </div>
-                                <div>
-                                  <p className="text-[11px] font-bold text-surface-400 uppercase tracking-wider">Status</p>
-                                  <p className="text-sm font-semibold mt-1">
-                                     {artwork ? (
-                                       <span className="text-green-600">Official Artwork ({artwork.artwork_id})</span>
-                                     ) : (
-                                       <span className="text-red-600">Artwork record unavailable</span>
-                                     )}
-                                  </p>
-                                </div>
+                              <div className="min-w-0 self-center">
+                                <h5 className="truncate font-bold text-surface-900">{submission?.artwork_title || 'Untitled artwork'}</h5>
+                                <p className="mt-2 text-xs font-bold uppercase tracking-wider text-surface-400">Vote Count</p>
+                                <p className="text-xl font-bold text-primary-600">{winner.vote_count}</p>
                               </div>
                             </div>
-                          </div>
-                          
-                          <div className="mt-8 flex items-center justify-end gap-3 pt-6 border-t border-surface-100">
-                            <button
-                              onClick={() => onViewWinner(winner)}
-                              className="inline-flex items-center rounded-lg bg-surface-100 px-5 py-2.5 text-sm font-bold text-surface-700 hover:bg-surface-200 transition-colors"
-                            >
-                              View Full Details
-                            </button>
-                          </div>
-                        </div>
+                          );
+                        })}
                       </div>
                     );
                   })()

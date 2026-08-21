@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import CampaignsManager from '../features/community/CampaignsManager';
 import SubmissionsManager from '../features/community/SubmissionsManager';
-import VotingSessionsManager from '../features/community/VotingSessionsManager';
 
 export default function HeritageCommunityPage() {
   const [activeTab, setActiveTab] = useState('campaigns');
@@ -31,23 +30,12 @@ export default function HeritageCommunityPage() {
           >
             Review Submissions
           </button>
-          <button
-            onClick={() => setActiveTab('voting')}
-            className={`whitespace-nowrap pb-4 px-1 border-b-2 font-medium text-sm transition-colors ${
-              activeTab === 'voting'
-                ? 'border-primary-600 text-primary-600'
-                : 'border-transparent text-surface-500 hover:border-surface-300 hover:text-surface-700'
-            }`}
-          >
-            Voting Sessions
-          </button>
         </nav>
       </div>
 
       <div className="flex-1 overflow-auto bg-surface-50">
         {activeTab === 'campaigns' && <CampaignsManager />}
         {activeTab === 'submissions' && <SubmissionsManager />}
-        {activeTab === 'voting' && <VotingSessionsManager />}
       </div>
     </div>
   );

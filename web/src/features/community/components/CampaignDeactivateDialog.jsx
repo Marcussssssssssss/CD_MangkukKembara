@@ -4,7 +4,7 @@ export default function CampaignDeactivateDialog({ campaign, isOpen, onClose, on
   if (!campaign) return null;
 
   return (
-    <Modal open={isOpen} onClose={onClose} title="Deactivate Campaign">
+    <Modal open={isOpen} onClose={onClose} title="End Campaign Early">
       <div className="p-6">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
           <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">
@@ -14,12 +14,12 @@ export default function CampaignDeactivateDialog({ campaign, isOpen, onClose, on
         
         <div className="mt-3 text-center sm:mt-5">
           <h3 className="text-base font-semibold leading-6 text-surface-900">
-            Deactivate Campaign
+            End Campaign Early
           </h3>
           <div className="mt-2">
             <p className="text-sm text-surface-500">
-              Are you sure you want to deactivate <span className="font-medium text-surface-900">{campaign.campaign_title}</span>? 
-              Its status will change to Inactive, preventing new submissions and further campaign activity.
+              Are you sure you want to end <span className="font-medium text-surface-900">{campaign.campaign_title}</span> early?
+              Its status will change to Completed and its submission end date will be set to today.
             </p>
           </div>
         </div>
@@ -37,7 +37,7 @@ export default function CampaignDeactivateDialog({ campaign, isOpen, onClose, on
             className="inline-flex w-full justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:w-auto"
             onClick={() => onConfirm(campaign)}
           >
-            Deactivate
+            End Campaign
           </button>
         </div>
       </div>
