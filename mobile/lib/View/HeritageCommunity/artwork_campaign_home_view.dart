@@ -512,11 +512,7 @@ class _CampaignHeader extends StatelessWidget {
     final statusIcon = campaign.isCompleted
         ? Icons.event_busy_rounded
         : Icons.how_to_vote_rounded;
-    final statusTitle = campaign.isCompleted
-        ? 'Campaign Completed'
-        : campaign.canSubmit
-        ? 'Submissions Open'
-        : 'Active Campaign';
+    final statusTitle = campaign.isCompleted ? 'Campaign Completed' : 'Active';
     return GestureDetector(
       onTap: () => _showCampaignDetails(context),
       child: Container(
@@ -629,11 +625,7 @@ class _CampaignHeader extends StatelessWidget {
     final statusBackground = campaign.isCompleted
         ? AppColors.accentContainer
         : AppColors.successLight;
-    final statusLabel = campaign.isCompleted
-        ? 'Campaign Completed'
-        : campaign.canSubmit
-        ? 'Submissions Open'
-        : 'Active Campaign';
+    final statusLabel = campaign.isCompleted ? 'Campaign Completed' : 'Active';
     return showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(

@@ -1657,6 +1657,14 @@ begin
 
     if exists (
         select 1
+        from public.artwork_campaigns
+        where status not in ('active', 'completed')
+    ) then
+        raise exception 'Seed verification failed: unexpected artwork campaign status';
+    end if;
+
+    if exists (
+        select 1
         from public.artwork_submissions submission
         left join public.artwork_submission_photos photo
             on photo.artwork_submission_id = submission.artwork_submission_id

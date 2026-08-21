@@ -459,7 +459,7 @@ create table public.artwork_campaigns (
     submission_start_at timestamptz not null,
     submission_end_at   timestamptz not null,
     status              varchar(30) not null default 'active'
-                        check (status in ('active', 'completed', 'inactive')),
+                        check (status in ('active', 'completed')),
     created_by_profile_id varchar(5) not null references public.profiles(profile_id),
     created_at          timestamptz not null default now(),
 
