@@ -8,6 +8,7 @@ import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../ViewModel/HeritageCommunity/artwork_submission_view_model.dart';
+import 'heritage_community_style.dart';
 
 /// Guided artwork submission with the four views required for review.
 class ArtworkSubmissionView extends StatefulWidget {
@@ -47,8 +48,8 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
           return PopScope(
             canPop: !vm.isSubmitting,
             child: Scaffold(
-              backgroundColor: AppColors.background,
-              appBar: AppBar(title: const Text('Submit Artwork')),
+              backgroundColor: HeritageCommunityStyle.background,
+              appBar: heritageCommunityAppBar(title: 'Submit Artwork'),
               body: !auth.isLoggedIn
                   ? _LoginRequired(
                       onLogin: () => Navigator.pushNamed(ctx, AppRoutes.login),
@@ -71,6 +72,14 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          const HeritagePageBanner(
+            eyebrow: 'Artwork submission studio',
+            title: 'Share every side of your story',
+            subtitle:
+                'Guide reviewers through your idea, inspiration, and complete tiffin design.',
+            icon: Icons.palette_rounded,
+            margin: EdgeInsets.only(bottom: 18),
+          ),
           _SectionCard(
             step: '1',
             title: 'Tell us about your artwork',
@@ -337,8 +346,9 @@ class _SectionCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppColors.divider),
+        boxShadow: HeritageCommunityStyle.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -346,13 +356,22 @@ class _SectionCard extends StatelessWidget {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 15,
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [AppColors.accentLight, AppColors.accent],
+                  ),
+                  borderRadius: BorderRadius.circular(13),
+                ),
+                alignment: Alignment.center,
                 child: Text(
                   step,
-                  style: const TextStyle(fontWeight: FontWeight.w800),
+                  style: const TextStyle(
+                    color: AppColors.textOnAccent,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
               ),
               const SizedBox(width: 10),

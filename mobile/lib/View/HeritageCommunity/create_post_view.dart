@@ -9,6 +9,7 @@ import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../Model/Repositories/HeritageTreasureMap/vendor_model.dart';
 import '../HeritageTreasureMap/treasure_map_view.dart';
 import '../Widgets/rating_bar.dart';
+import 'heritage_community_style.dart';
 
 /// C4. Create Community Post Form.
 class CreatePostView extends StatefulWidget {
@@ -42,8 +43,8 @@ class _CreatePostViewState extends State<CreatePostView> {
       child: Consumer2<CreatePostViewModel, AuthViewModel>(
         builder: (ctx, vm, auth, _) {
           return Scaffold(
-            backgroundColor: AppColors.background,
-            appBar: AppBar(title: const Text('Share a Post')),
+            backgroundColor: HeritageCommunityStyle.background,
+            appBar: heritageCommunityAppBar(title: 'Share a Story'),
             body: !auth.isLoggedIn
                 ? Center(
                     child: Padding(
@@ -75,6 +76,8 @@ class _CreatePostViewState extends State<CreatePostView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          const _CreatePostIntro(),
+                          const SizedBox(height: 20),
                           // Vendor selector
                           _SectionLabel('Vendor *'),
                           GestureDetector(
@@ -83,8 +86,9 @@ class _CreatePostViewState extends State<CreatePostView> {
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
                                 color: AppColors.surface,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(18),
                                 border: Border.all(color: AppColors.divider),
+                                boxShadow: HeritageCommunityStyle.cardShadow,
                               ),
                               child: Row(
                                 children: [
@@ -386,13 +390,89 @@ class _SectionLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Text(
-        label,
-        style: const TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 13,
-          color: AppColors.textPrimary,
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 16,
+            decoration: BoxDecoration(
+              color: AppColors.accent,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
+              color: AppColors.textPrimary,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CreatePostIntro extends StatelessWidget {
+  const _CreatePostIntro();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [Color(0xFF416F43), Color(0xFF203F2A)],
         ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: HeritageCommunityStyle.cardShadow,
+      ),
+      child: const Row(
+        children: [
+          CircleAvatar(
+            radius: 23,
+            backgroundColor: Color(0x22FFFFFF),
+            child: Icon(Icons.edit_note_rounded, color: Colors.white, size: 27),
+          ),
+          SizedBox(width: 13),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'YOUR HERITAGE MOMENT',
+                  style: TextStyle(
+                    color: AppColors.accentLight,
+                    fontSize: 9,
+                    letterSpacing: 1.1,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Turn a meal into a story',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'Choose a place, add your rating, and share what made it memorable.',
+                  style: TextStyle(
+                    color: Color(0xDFFFFFFF),
+                    fontSize: 11,
+                    height: 1.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

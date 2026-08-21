@@ -11,6 +11,7 @@ import '../Widgets/loading_widget.dart';
 import '../Widgets/map_home_button.dart';
 import '../Widgets/post_card.dart';
 import 'artwork_campaign_home_view.dart';
+import 'heritage_community_style.dart';
 
 /// Map-inspired palette used only by the Community landing page.
 abstract final class _CommunityPageColors {
@@ -65,20 +66,12 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
       child: Consumer2<CommunityFeedViewModel, AuthViewModel>(
         builder: (ctx, vm, auth, _) => MapBackScope(
           child: Scaffold(
-            backgroundColor: _CommunityPageColors.background,
-            appBar: AppBar(
-              backgroundColor: _CommunityPageColors.background,
-              foregroundColor: _CommunityPageColors.darkGreen,
-              surfaceTintColor: Colors.transparent,
-              elevation: 0,
-              title: const Text(
-                'Heritage Community',
-                style: TextStyle(
-                  color: _CommunityPageColors.darkGreen,
-                  fontWeight: FontWeight.w800,
-                ),
+            backgroundColor: HeritageCommunityStyle.background,
+            appBar: heritageCommunityAppBar(
+              title: 'Heritage Community',
+              leading: const MapHomeButton(
+                color: _CommunityPageColors.darkGreen,
               ),
-              leading: const MapHomeButton(color: _CommunityPageColors.darkGreen),
             ),
             body: Column(
               children: [
@@ -239,74 +232,85 @@ class _CommunityTabs extends StatelessWidget {
     const labels = ['Heritage Community', 'Heritage Artwork Campaigns'];
     const icons = [Icons.forum_rounded, Icons.palette_rounded];
     return Material(
-      color: _CommunityPageColors.background,
-      elevation: 2,
-      child: Column(
-        children: [
-          Row(
-            children: List.generate(
-              labels.length,
-              (index) => Expanded(
-                child: InkWell(
-                  onTap: () => onSelected(index),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 13,
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          icons[index],
-                          size: 18,
-                          color: selectedIndex == index
-                              ? _CommunityPageColors.darkGreen
-                              : _CommunityPageColors.mediumGreen,
-                        ),
-                        const SizedBox(width: 6),
-                        Flexible(
-                          child: Text(
-                            labels[index],
-                            maxLines: 2,
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: selectedIndex == index
-                                  ? _CommunityPageColors.darkGreen
-                                  : _CommunityPageColors.mediumGreen,
-                              fontSize: 12,
-                              fontWeight: selectedIndex == index
-                                  ? FontWeight.w800
-                                  : FontWeight.w600,
+      color: HeritageCommunityStyle.background,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: _CommunityPageColors.border),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            Row(
+              children: List.generate(
+                labels.length,
+                (index) => Expanded(
+                  child: InkWell(
+                    onTap: () => onSelected(index),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 13,
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            icons[index],
+                            size: 18,
+                            color: selectedIndex == index
+                                ? _CommunityPageColors.darkGreen
+                                : _CommunityPageColors.mediumGreen,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              labels[index],
+                              maxLines: 2,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: selectedIndex == index
+                                    ? _CommunityPageColors.darkGreen
+                                    : _CommunityPageColors.mediumGreen,
+                                fontSize: 12,
+                                fontWeight: selectedIndex == index
+                                    ? FontWeight.w800
+                                    : FontWeight.w600,
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-          LayoutBuilder(
-            builder: (context, constraints) => Stack(
-              children: [
-                const Divider(height: 2),
-                AnimatedPositioned(
-                  duration: const Duration(milliseconds: 260),
-                  curve: Curves.easeInOutCubic,
-                  left: selectedIndex * constraints.maxWidth / 2,
-                  bottom: 0,
-                  child: Container(
-                    width: constraints.maxWidth / 2,
-                    height: 3,
-                    color: _CommunityPageColors.yellow,
+            LayoutBuilder(
+              builder: (context, constraints) => Stack(
+                children: [
+                  const Divider(height: 2),
+                  AnimatedPositioned(
+                    duration: const Duration(milliseconds: 260),
+                    curve: Curves.easeInOutCubic,
+                    left: selectedIndex * constraints.maxWidth / 2,
+                    bottom: 0,
+                    child: Container(
+                      width: constraints.maxWidth / 2,
+                      height: 3,
+                      decoration: BoxDecoration(
+                        color: _CommunityPageColors.yellow,
+                        borderRadius: BorderRadius.circular(3),
+                      ),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
