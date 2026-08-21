@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import Modal from '../../../components/Modal';
+import CampaignDateRange from './CampaignDateRange';
 
 const formatDateLocal = (dateStr) => {
   if (!dateStr) return '';
@@ -10,13 +11,18 @@ const formatDateLocal = (dateStr) => {
 };
 
 const localToday = () => formatDateLocal(new Date());
+const localTomorrow = () => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return formatDateLocal(tomorrow);
+};
 
 const initialFormData = (campaign) => ({
   campaign_title: campaign?.campaign_title || '',
   state_id: campaign?.state_id || '',
   description: campaign?.description || '',
   submission_start_at: campaign ? formatDateLocal(campaign.submission_start_at) : localToday(),
-  submission_end_at: formatDateLocal(campaign?.submission_end_at),
+  submission_end_at: campaign ? formatDateLocal(campaign.submission_end_at) : localTomorrow(),
   status: campaign?.status || 'active',
 });
 
@@ -31,6 +37,8 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
   const [formData, setFormData] = useState(() => initialFormData(campaign));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
+  const isExtendingCompletedCampaign = campaign?.status === 'completed'
+    && formData.submission_end_at !== formatDateLocal(campaign.submission_end_at);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -51,6 +59,14 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
     if (!formData.submission_end_at) newErrors.submission_end_at = 'Submission End is required.';
     if (!campaign && formData.submission_start_at < localToday()) {
       newErrors.submission_start_at = 'Submission Start cannot be before today.';
+    }
+    const originalEndDate = campaign ? formatDateLocal(campaign.submission_end_at) : null;
+    if (
+      campaign
+      && formData.submission_end_at !== originalEndDate
+      && formData.submission_end_at < localToday()
+    ) {
+      newErrors.submission_end_at = 'Submission End cannot be before today.';
     }
     
     if (formData.submission_start_at && formData.submission_end_at) {
@@ -94,7 +110,7 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
     <Modal 
       open={isOpen} 
       onClose={isSubmitting ? undefined : onClose} 
-      title={campaign ? 'Edit Campaign' : 'Add New Campaign'} 
+      title={campaign ? 'Edit Campaign' : 'Add New Campaign'}
       size="xl"
     >
       <form onSubmit={handleSubmit} className="flex flex-col">
@@ -102,6 +118,12 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
           {errors.submit && (
             <div className="mb-6 rounded-lg border border-red-500/20 bg-red-50 p-4 text-sm text-red-600">
               {errors.submit}
+            </div>
+          )}
+
+          {isExtendingCompletedCampaign && (
+            <div className="mb-6 rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-700">
+              Saving this new end date will extend and reactivate the campaign.
             </div>
           )}
 
@@ -159,33 +181,17 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
                   {errors.description && <p className="mt-1 text-xs text-red-500">{errors.description}</p>}
                 </div>
 
-                {!campaign && <div>
-                  <label htmlFor="submission_start_at" className="block text-sm font-medium text-surface-900">Submission Start Date</label>
-                  <input
-                    type="date"
-                    id="submission_start_at"
-                    name="submission_start_at"
-                    value={formData.submission_start_at || ''}
-                    onChange={handleChange}
-                    min={localToday()}
-                    className={`mt-2 block w-full rounded-lg border ${errors.submission_start_at ? 'border-red-500' : 'border-surface-300'} px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
+                <div className="sm:col-span-2">
+                  <CampaignDateRange
+                    startAt={formData.submission_start_at}
+                    endAt={formData.submission_end_at}
+                    title={campaign ? null : 'Selected Submission Period'}
+                    minimumDate={localToday()}
+                    onStartChange={!campaign ? (value) => setFormData(prev => ({ ...prev, submission_start_at: value })) : undefined}
+                    onEndChange={(value) => setFormData(prev => ({ ...prev, submission_end_at: value }))}
                   />
-                  {errors.submission_start_at && <p className="mt-1 text-xs text-red-500">{errors.submission_start_at}</p>}
-                  <p className="mt-1 text-xs text-surface-500">Select today or a future date.</p>
-                </div>}
-                
-                <div className={campaign ? 'sm:col-span-2' : undefined}>
-                  <label htmlFor="submission_end_at" className="block text-sm font-medium text-surface-900">Submission End Date</label>
-                  <input
-                    type="date"
-                    id="submission_end_at"
-                    name="submission_end_at"
-                    value={formData.submission_end_at || ''}
-                    onChange={handleChange}
-                    min={formData.submission_start_at || undefined}
-                    className={`mt-2 block w-full rounded-lg border ${errors.submission_end_at ? 'border-red-500' : 'border-surface-300'} px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
-                  />
-                  {errors.submission_end_at && <p className="mt-1 text-xs text-red-500">{errors.submission_end_at}</p>}
+                  {errors.submission_start_at && <p className="mt-2 text-xs text-red-500">{errors.submission_start_at}</p>}
+                  {errors.submission_end_at && <p className="mt-2 text-xs text-red-500">{errors.submission_end_at}</p>}
                 </div>
 
               </div>
@@ -216,7 +222,7 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
               </svg>
             )}
-            {isSubmitting ? 'Saving...' : (campaign ? 'Save Changes' : 'Create Campaign')}
+            {isSubmitting ? 'Saving...' : (isExtendingCompletedCampaign ? 'Save & Extend' : (campaign ? 'Save Changes' : 'Create Campaign'))}
           </button>
         </div>
       </form>

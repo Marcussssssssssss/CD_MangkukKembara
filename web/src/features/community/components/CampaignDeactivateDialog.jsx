@@ -19,7 +19,6 @@ export default function CampaignDeactivateDialog({ campaign, isOpen, onClose, on
           <div className="mt-2">
             <p className="text-sm text-surface-500">
               Are you sure you want to end <span className="font-medium text-surface-900">{campaign.campaign_title}</span> early?
-              Its status will change to Completed and its submission end date will be set to today.
             </p>
           </div>
         </div>

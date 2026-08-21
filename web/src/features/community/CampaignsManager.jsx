@@ -4,8 +4,14 @@ import CampaignForm from './components/CampaignForm';
 import CampaignDetails from './components/CampaignDetails';
 import WinnerDetails from './components/WinnerDetails';
 import CampaignDeactivateDialog from './components/CampaignDeactivateDialog';
-import { fetchCampaigns, fetchReferenceData, createCampaign, updateCampaign, endCampaign, extendCampaign } from './services/communityService';
+import { fetchCampaigns, fetchReferenceData, createCampaign, updateCampaign, endCampaign } from './services/communityService';
 import { useAuth } from '../../hooks/useAuth';
+
+const dateInputValue = (value) => {
+  const date = new Date(value);
+  const pad = number => String(number).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+};
 
 export default function CampaignsManager() {
   const { profile } = useAuth();
@@ -91,7 +97,14 @@ export default function CampaignsManager() {
 
   const handleSaveCampaign = async (campaignData) => {
     if (editingCampaign) {
-      const updated = await updateCampaign(editingCampaign.artwork_campaign_id, campaignData);
+      const originalEndDate = dateInputValue(editingCampaign.submission_end_at);
+      const endDateChanged = campaignData.submission_end_at !== originalEndDate;
+      const updated = await updateCampaign(editingCampaign.artwork_campaign_id, {
+        ...campaignData,
+        status: editingCampaign.status === 'completed' && endDateChanged
+          ? 'active'
+          : editingCampaign.status,
+      });
       setCampaigns((prev) =>
         prev.map((c) => (c.artwork_campaign_id === updated.artwork_campaign_id ? updated : c))
       );
@@ -128,19 +141,6 @@ export default function CampaignsManager() {
     }
   };
 
-  const handleExtend = async (campaign, newEndDate) => {
-    try {
-      const updated = await extendCampaign(campaign.artwork_campaign_id, newEndDate);
-      setCampaigns((prev) => prev.map((item) => (
-        item.artwork_campaign_id === updated.artwork_campaign_id ? updated : item
-      )));
-      showFeedback('Campaign end date extended successfully.');
-    } catch (err) {
-      showFeedback(err.message || 'Failed to extend campaign.', 'error');
-      throw err;
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -173,7 +173,6 @@ export default function CampaignsManager() {
         onView={handleView}
         onEdit={handleEdit}
         onDeactivate={handleDeactivate}
-        onExtend={handleExtend}
       />
 
       <CampaignDetails
@@ -205,6 +204,7 @@ export default function CampaignsManager() {
         onClose={handleCloseModals}
         onConfirm={handleConfirmDeactivate}
       />
+
     </div>
   );
 }

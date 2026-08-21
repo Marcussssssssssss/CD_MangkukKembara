@@ -119,6 +119,8 @@ export default function SubmissionsManager() {
         filterStatus={filterStatus}
         onFilterChange={setFilterStatus}
         onView={handleView}
+        onApprove={handleApprove}
+        onReject={handleReject}
       />
 
       <SubmissionDetails
