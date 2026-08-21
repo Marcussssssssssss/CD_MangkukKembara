@@ -13,7 +13,7 @@ import { useEffect, useRef, useCallback } from 'react';
  * @param {boolean} props.open     — Whether the modal is visible.
  * @param {() => void} props.onClose — Called when the modal requests to close.
  * @param {string}  [props.title]  — Optional header title.
- * @param {'sm'|'md'|'lg'|'xl'|'full'} [props.size] — Max-width preset.
+ * @param {'sm'|'confirm'|'md'|'lg'|'xl'|'full'} [props.size] — Max-width preset.
  * @param {import('react').ReactNode} props.children
  */
 export default function Modal({ open, onClose, title, size = 'md', children }) {
@@ -41,6 +41,7 @@ export default function Modal({ open, onClose, title, size = 'md', children }) {
 
   const sizeClasses = {
     sm: 'max-w-md',
+    confirm: 'max-w-lg',
     md: 'max-w-2xl',
     lg: 'max-w-4xl',
     xl: 'max-w-6xl',

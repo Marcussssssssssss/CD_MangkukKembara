@@ -96,7 +96,7 @@ export default function SubmissionDashboard({
 
       {/* Table Area */}
       <div className="overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div className="overflow-hidden">
           <table className="w-full text-left text-sm text-surface-600">
             <thead className="bg-surface-50 text-xs uppercase text-surface-500">
               <tr>
