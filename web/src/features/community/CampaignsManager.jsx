@@ -4,7 +4,7 @@ import CampaignForm from './components/CampaignForm';
 import CampaignDetails from './components/CampaignDetails';
 import WinnerDetails from './components/WinnerDetails';
 import CampaignDeactivateDialog from './components/CampaignDeactivateDialog';
-import { fetchCampaigns, fetchReferenceData, createCampaign, updateCampaign, deactivateCampaign } from './services/communityService';
+import { fetchCampaigns, fetchReferenceData, createCampaign, updateCampaign, endCampaign, extendCampaign } from './services/communityService';
 import { useAuth } from '../../hooks/useAuth';
 
 export default function CampaignsManager() {
@@ -113,7 +113,7 @@ export default function CampaignsManager() {
 
   const handleConfirmDeactivate = async (campaign) => {
     try {
-      const deactivated = await deactivateCampaign(campaign.artwork_campaign_id);
+      const deactivated = await endCampaign(campaign.artwork_campaign_id);
       setCampaigns((prev) =>
         prev.map((c) => (c.artwork_campaign_id === deactivated.artwork_campaign_id ? deactivated : c))
       );
@@ -121,10 +121,23 @@ export default function CampaignsManager() {
       if (viewingCampaign && viewingCampaign.artwork_campaign_id === deactivated.artwork_campaign_id) {
         setViewingCampaign(deactivated);
       }
-      showFeedback('Campaign has been successfully deactivated.');
+      showFeedback('Campaign ended successfully.');
       handleCloseModals();
     } catch (err) {
-      showFeedback(err.message || 'Failed to deactivate campaign.', 'error');
+      showFeedback(err.message || 'Failed to end campaign.', 'error');
+    }
+  };
+
+  const handleExtend = async (campaign, newEndDate) => {
+    try {
+      const updated = await extendCampaign(campaign.artwork_campaign_id, newEndDate);
+      setCampaigns((prev) => prev.map((item) => (
+        item.artwork_campaign_id === updated.artwork_campaign_id ? updated : item
+      )));
+      showFeedback('Campaign end date extended successfully.');
+    } catch (err) {
+      showFeedback(err.message || 'Failed to extend campaign.', 'error');
+      throw err;
     }
   };
 
@@ -160,6 +173,7 @@ export default function CampaignsManager() {
         onView={handleView}
         onEdit={handleEdit}
         onDeactivate={handleDeactivate}
+        onExtend={handleExtend}
       />
 
       <CampaignDetails

@@ -1,4 +1,9 @@
+import { useState } from 'react';
 import PageHeader from '../../../components/PageHeader';
+
+const formatDate = (value) => new Intl.DateTimeFormat('en-GB', {
+  day: '2-digit', month: '2-digit', year: 'numeric',
+}).format(new Date(value));
 
 export default function CampaignDashboard({
   campaigns,
@@ -8,11 +13,11 @@ export default function CampaignDashboard({
   onView,
   onEdit,
   onDeactivate,
+  onExtend,
 }) {
   const statusColors = {
     active: 'bg-blue-100 text-blue-700',
     completed: 'bg-green-100 text-green-700',
-    inactive: 'bg-red-100 text-red-700',
   };
 
   const getStatusDisplay = (status) => status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
@@ -59,7 +64,7 @@ export default function CampaignDashboard({
 
       {/* Table Area */}
       <div className="overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm">
-        <div className="overflow-x-auto">
+        <div>
           <table className="w-full text-left text-sm text-surface-600">
             <thead className="bg-surface-50 text-xs uppercase text-surface-500">
               <tr>
@@ -74,11 +79,15 @@ export default function CampaignDashboard({
             <tbody className="divide-y divide-surface-100">
               {campaigns.length > 0 ? (
                 campaigns.map((campaign) => {
-                  const startDate = new Date(campaign.submission_start_at).toLocaleDateString();
-                  const endDate = new Date(campaign.submission_end_at).toLocaleDateString();
+                  const startDate = formatDate(campaign.submission_start_at);
+                  const endDate = formatDate(campaign.submission_end_at);
 
                   return (
-                    <tr key={campaign.artwork_campaign_id} className="hover:bg-surface-50">
+                    <tr
+                      key={campaign.artwork_campaign_id}
+                      onClick={() => onView(campaign)}
+                      className="cursor-pointer transition-transform duration-150 hover:relative hover:z-10 hover:scale-[1.01] hover:bg-surface-50 hover:shadow-sm"
+                    >
                       <td className="px-6 py-4 font-medium text-surface-900">
                         {campaign.campaign_title}
                       </td>
@@ -104,27 +113,24 @@ export default function CampaignDashboard({
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex justify-end gap-3">
-                          <button
-                            onClick={() => onView(campaign)}
-                            className="text-primary-600 hover:text-primary-700 font-medium"
-                          >
-                            View
-                          </button>
                           {campaign.status === 'active' && (
                             <>
                               <button
-                                onClick={() => onEdit(campaign)}
+                                onClick={(event) => { event.stopPropagation(); onEdit(campaign); }}
                                 className="text-blue-600 hover:text-blue-700 font-medium"
                               >
                                 Edit
                               </button>
                               <button
-                                onClick={() => onDeactivate(campaign)}
+                                onClick={(event) => { event.stopPropagation(); onDeactivate(campaign); }}
                                 className="text-red-600 hover:text-red-700 font-medium"
                               >
-                                Deactivate
+                                End Early
                               </button>
                             </>
+                          )}
+                          {campaign.status === 'completed' && (
+                            <ExtendCampaignButton campaign={campaign} onExtend={onExtend} />
                           )}
                         </div>
                       </td>
@@ -150,6 +156,37 @@ export default function CampaignDashboard({
           </table>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ExtendCampaignButton({ campaign, onExtend }) {
+  const [isSelecting, setIsSelecting] = useState(false);
+  const [newEndDate, setNewEndDate] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [minDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const pad = (number) => String(number).padStart(2, '0');
+    return `${tomorrow.getFullYear()}-${pad(tomorrow.getMonth() + 1)}-${pad(tomorrow.getDate())}`;
+  });
+
+  if (!isSelecting) {
+    return (
+      <button
+        onClick={(event) => { event.stopPropagation(); setIsSelecting(true); }}
+        className="text-blue-600 hover:text-blue-700 font-medium"
+      >
+        Extend
+      </button>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2" onClick={(event) => event.stopPropagation()}>
+      <input type="date" min={minDate} value={newEndDate} onChange={(event) => setNewEndDate(event.target.value)} className="rounded border border-surface-300 px-2 py-1 text-xs" />
+      <button disabled={!newEndDate || isSaving} onClick={async () => { setIsSaving(true); try { await onExtend(campaign, newEndDate); setIsSelecting(false); } finally { setIsSaving(false); } }} className="font-medium text-green-600 disabled:opacity-50">Save</button>
+      <button onClick={() => setIsSelecting(false)} className="font-medium text-surface-500">Cancel</button>
     </div>
   );
 }

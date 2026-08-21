@@ -471,6 +471,27 @@ create table public.artwork_campaigns (
 create index ix_artwork_campaigns_state
 on public.artwork_campaigns (state_id);
 
+-- Keep campaign status consistent whenever a campaign row is created or
+-- changed. Time passing alone does not fire PostgreSQL triggers; a scheduled
+-- database job is required if rows must change without any write operation.
+create or replace function public.complete_expired_artwork_campaign()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+    if new.status = 'active' and new.submission_end_at < now() then
+        new.status := 'completed';
+    end if;
+
+    return new;
+end;
+$$;
+
+create trigger complete_expired_artwork_campaign_trigger
+before insert or update on public.artwork_campaigns
+for each row execute function public.complete_expired_artwork_campaign();
+
 create table public.artwork_submissions (
     artwork_submission_id varchar(6) primary key,
     artwork_campaign_id  varchar(6) not null references public.artwork_campaigns(artwork_campaign_id),
@@ -985,7 +1006,6 @@ set search_path = public, pg_temp
 as $$
 declare
     campaign_has_history boolean;
-    campaign_has_winner boolean;
 begin
     campaign_has_history :=
         exists (
@@ -1001,11 +1021,6 @@ begin
             where winner.artwork_campaign_id = old.artwork_campaign_id
         );
 
-    campaign_has_winner := exists (
-        select 1 from public.artwork_campaign_winners winner
-        where winner.artwork_campaign_id = old.artwork_campaign_id
-    );
-
     if tg_op = 'DELETE' then
         if campaign_has_history then
             raise exception 'A campaign with submissions, voting sessions or a winner cannot be deleted';
@@ -1017,31 +1032,6 @@ begin
     if campaign_has_history
        and new.state_id is distinct from old.state_id then
         raise exception 'Campaign state is immutable after participation begins';
-    end if;
-
-    if old.status = 'completed'
-       and new.status is distinct from old.status then
-        raise exception 'A completed campaign is terminal and cannot change status';
-    end if;
-
-    if campaign_has_winner and new.status = 'active' then
-        raise exception 'A campaign with a declared winner cannot be reopened';
-    end if;
-
-    if new.status <> 'active'
-       and exists (
-           select 1
-           from public.artwork_voting_sessions voting_session
-           where voting_session.artwork_campaign_id = old.artwork_campaign_id
-             and voting_session.status = 'active'
-       ) then
-        raise exception 'Close the active voting session before deactivating or completing its campaign';
-    end if;
-
-    if new.status = 'completed'
-       and old.status <> 'completed'
-       and not campaign_has_winner then
-        raise exception 'A campaign can only be completed after its winner is recorded';
     end if;
 
     return new;

@@ -6,7 +6,7 @@ import {
   deleteRows,
 } from '../../../services/supabase/api';
 
-const CAMPAIGN_STATUSES = new Set(['active', 'completed', 'inactive']);
+const CAMPAIGN_STATUSES = new Set(['active', 'completed']);
 
 const CAMPAIGN_SELECT = `
   *,
@@ -56,6 +56,13 @@ function toIsoTimestamp(value, fieldName) {
   return parsed.toISOString();
 }
 
+function campaignDateToIsoTimestamp(value, fieldName) {
+  const timestamp = /^\d{4}-\d{2}-\d{2}$/.test(value || '')
+    ? `${value}T23:59:00`
+    : value;
+  return toIsoTimestamp(timestamp, fieldName);
+}
+
 function campaignPayloadFrom(campaignData) {
   if (!campaignData?.state_id) {
     throw new Error('A state is required for the campaign.');
@@ -70,11 +77,11 @@ function campaignPayloadFrom(campaignData) {
     throw new Error(`Unsupported campaign status: ${status}.`);
   }
 
-  const submissionStartAt = toIsoTimestamp(
+  const submissionStartAt = campaignDateToIsoTimestamp(
     campaignData.submission_start_at,
     'Submission start',
   );
-  const submissionEndAt = toIsoTimestamp(
+  const submissionEndAt = campaignDateToIsoTimestamp(
     campaignData.submission_end_at,
     'Submission end',
   );
@@ -284,20 +291,61 @@ export async function updateCampaign(campaignId, campaignData) {
 }
 
 /**
- * Deactivate a campaign using the category-free schema's inactive status.
+ * End an active campaign immediately.
  */
-export async function deactivateCampaign(campaignId) {
+export async function endCampaign(campaignId) {
+  const endDate = new Date();
+  endDate.setHours(23, 59, 0, 0);
   const [updatedCampaign] = await updateRows(
     'artwork_campaigns',
-    { status: 'inactive' },
+    { submission_end_at: endDate.toISOString(), status: 'completed' },
     query => query.eq('artwork_campaign_id', campaignId),
   );
 
   if (!updatedCampaign) {
-    throw new Error('The campaign could not be deactivated or does not exist.');
+    throw new Error('The campaign could not be ended.');
   }
 
   return (await fetchCampaignById(campaignId)) || updatedCampaign;
+}
+
+export async function extendCampaign(campaignId, submissionEndAt) {
+  const newEndAt = campaignDateToIsoTimestamp(submissionEndAt, 'New submission end');
+  if (new Date(newEndAt) <= new Date()) {
+    throw new Error('The new end date must be in the future.');
+  }
+
+  const [updatedCampaign] = await updateRows(
+    'artwork_campaigns',
+    { submission_end_at: newEndAt, status: 'active' },
+    query => query.eq('artwork_campaign_id', campaignId),
+  );
+
+  if (!updatedCampaign) throw new Error('The campaign could not be extended.');
+  return (await fetchCampaignById(campaignId)) || updatedCampaign;
+}
+
+export async function fetchCampaignTopVotedArtworks(campaignId) {
+  const entries = await queryRows(
+    'artwork_voting_entries',
+    `
+      artwork_voting_entry_id,
+      vote_count,
+      artwork_voting_sessions!inner(artwork_campaign_id),
+      artwork_submissions!artwork_voting_entries_artwork_submission_id_fkey(
+        artwork_submission_id,
+        artwork_title,
+        artwork_file_url
+      )
+    `,
+    query => query
+      .eq('artwork_voting_sessions.artwork_campaign_id', campaignId)
+      .order('vote_count', { ascending: false }),
+  );
+
+  if (entries.length === 0) return [];
+  const highestVoteCount = entries[0].vote_count;
+  return entries.filter(entry => entry.vote_count === highestVoteCount);
 }
 
 /**
