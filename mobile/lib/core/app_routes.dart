@@ -146,7 +146,16 @@ abstract final class AppRoutes {
 
       // Module C
       case community:
-        return _build(const CommunityHomeView(), settings);
+        final args = settings.arguments is Map
+            ? settings.arguments as Map
+            : const {};
+        return _build(
+          CommunityHomeView(
+            vendorId: args['vendorId'] as String?,
+            vendorName: args['vendorName'] as String?,
+          ),
+          settings,
+        );
       case postDetail:
         return _build(
           PostDetailView(postId: settings.arguments as String? ?? ''),

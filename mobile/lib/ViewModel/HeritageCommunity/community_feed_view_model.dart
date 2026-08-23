@@ -7,7 +7,8 @@ enum CommunityFeedState { initial, loading, content, empty, error }
 
 class CommunityFeedViewModel extends ChangeNotifier {
   final HeritageCommunityRepository _repo;
-  CommunityFeedViewModel({HeritageCommunityRepository? repo})
+  final String? vendorId;
+  CommunityFeedViewModel({HeritageCommunityRepository? repo, this.vendorId})
     : _repo = repo ?? HeritageCommunityRepository();
 
   List<CommunityPostModel> _posts = [];
@@ -37,6 +38,7 @@ class CommunityFeedViewModel extends ChangeNotifier {
       _posts = await _repo.fetchPosts(
         query: _searchQuery.isEmpty ? null : _searchQuery,
         sort: _sort,
+        vendorId: vendorId,
       );
       _state = _posts.isEmpty
           ? CommunityFeedState.empty

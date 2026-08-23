@@ -25,7 +25,10 @@ abstract final class _CommunityPageColors {
 
 /// C1. Heritage Community and artwork campaigns home view.
 class CommunityHomeView extends StatefulWidget {
-  const CommunityHomeView({super.key});
+  final String? vendorId;
+  final String? vendorName;
+
+  const CommunityHomeView({super.key, this.vendorId, this.vendorName});
 
   @override
   State<CommunityHomeView> createState() => _CommunityHomeViewState();
@@ -39,7 +42,7 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
   @override
   void initState() {
     super.initState();
-    _vm = CommunityFeedViewModel();
+    _vm = CommunityFeedViewModel(vendorId: widget.vendorId);
     WidgetsBinding.instance.addPostFrameCallback((_) => _vm.loadPosts());
   }
 
@@ -68,7 +71,9 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
           child: Scaffold(
             backgroundColor: HeritageCommunityStyle.background,
             appBar: heritageCommunityAppBar(
-              title: 'Heritage Community',
+              title: widget.vendorName == null
+                  ? 'Heritage Community'
+                  : '${widget.vendorName} Reviews',
               leading: const MapHomeButton(
                 color: _CommunityPageColors.darkGreen,
               ),
@@ -173,11 +178,14 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
               : vm.isEmpty
               ? RefreshableStateView(
                   onRefresh: () => vm.loadPosts(showLoading: false),
-                  child: const EmptyStateWidget(
+                  child: EmptyStateWidget(
                     icon: Icons.forum_outlined,
-                    title: 'No posts yet',
-                    subtitle:
-                        'Be the first to share your heritage food experience.',
+                    title: widget.vendorId == null
+                        ? 'No posts yet'
+                        : 'No reviews yet',
+                    subtitle: widget.vendorId == null
+                        ? 'Be the first to share your heritage food experience.'
+                        : 'Be the first to review ${widget.vendorName ?? 'this vendor'}.',
                   ),
                 )
               : RefreshIndicator(

@@ -243,13 +243,11 @@ class _VendorDetailViewState extends State<VendorDetailView> {
                     OutlinedButton.icon(
                       icon: const Icon(Icons.rate_review_rounded),
                       label: const Text('View Reviews'),
-                      onPressed: () {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                          const SnackBar(
-                            content: Text('Vendor reviews coming soon'),
-                          ),
-                        );
-                      },
+                      onPressed: () => Navigator.pushNamed(
+                        ctx,
+                        AppRoutes.community,
+                        arguments: {'vendorId': v.id, 'vendorName': v.name},
+                      ),
                     ),
                     const SizedBox(height: 10),
                     OutlinedButton.icon(
