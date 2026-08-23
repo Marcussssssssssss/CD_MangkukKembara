@@ -4,12 +4,11 @@ export default function TiffinCard({ tiffin, onView, onEdit, onDeactivate, refer
     heritage_food_id,
     artwork_id,
     status,
-    cover_image_url,
-    heritage_tiffin_id,
   } = tiffin;
 
   const foodObj = referenceData?.foods?.find(f => f.heritage_food_id === heritage_food_id);
   const artObj = referenceData?.artworks?.find(a => a.artwork_id === artwork_id);
+  const artworkImageUrl = artObj?.image_url;
 
   const foodName = foodObj ? foodObj.food_name : 'Unknown Food';
   const artistName = artObj && artObj.profiles ? artObj.profiles.display_name : 'Unknown Artist';
@@ -28,9 +27,9 @@ export default function TiffinCard({ tiffin, onView, onEdit, onDeactivate, refer
       <div 
         className="relative h-48 w-full bg-surface-100"
       >
-        {cover_image_url ? (
+        {artworkImageUrl ? (
           <img 
-            src={cover_image_url} 
+            src={artworkImageUrl}
             alt={edition_name}
             className="h-full w-full object-cover"
           />

@@ -68,6 +68,30 @@ function resolveMimeType(file) {
   }
 }
 
+async function resolveFunctionError(error) {
+  const response = error?.context;
+  if (response && typeof response.clone === 'function') {
+    try {
+      const payload = await response.clone().json();
+      const detail = payload?.error || payload?.message || payload?.msg;
+      if (detail) return `Media upload failed: ${detail}`;
+    } catch {
+      try {
+        const detail = (await response.clone().text()).trim();
+        if (detail) return `Media upload failed: ${detail}`;
+      } catch {
+        // Fall through to the HTTP status or client error below.
+      }
+    }
+
+    if (response.status) {
+      return `Media upload failed (Edge Function HTTP ${response.status}).`;
+    }
+  }
+
+  return error?.message || 'Media upload failed.';
+}
+
 // ---------------------------------------------------------------------------
 // Core upload function
 // ---------------------------------------------------------------------------
@@ -140,10 +164,13 @@ export async function uploadMedia(file, { folder, maxBytes = SIZE_LIMITS.image }
   });
 
   if (error) {
-    throw new Error(error.message || 'Media upload failed.');
+    throw new Error(await resolveFunctionError(error));
   }
 
   // The Edge Function returns { secure_url, public_id, mime_type, bytes, sha256 }
+  if (!data?.secure_url) {
+    throw new Error('Media upload failed: the Edge Function returned no file URL.');
+  }
   return /** @type {CloudinaryUploadResult} */ (data);
 }
 

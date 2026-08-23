@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Modal from '../../../components/Modal';
 
 const DEFAULT_HOURS = Array.from({ length: 7 }, (_, i) => ({
@@ -8,74 +8,68 @@ const DEFAULT_HOURS = Array.from({ length: 7 }, (_, i) => ({
   is_closed: false
 }));
 
-export default function VendorForm({ vendor, isOpen, onClose, onSave, referenceData }) {
-  const [formData, setFormData] = useState({});
+function initialFormData(vendor, referenceData) {
+  return {
+    vendor_id: vendor?.vendor_id,
+    vendor_name: vendor?.vendor_name || '',
+    business_type: vendor?.business_type || 'restaurant',
+    description: vendor?.description || '',
+    contact_person: vendor?.contact_person || '',
+    contact_number: vendor?.contact_number || '',
+    email: vendor?.email || '',
+    address_line: vendor?.address_line || '',
+    latitude: vendor?.latitude ?? 0,
+    longitude: vendor?.longitude ?? 0,
+    state_id: vendor?.state_id || referenceData?.states?.[0]?.state_id || '',
+    participation_status: vendor?.participation_status || 'active',
+  };
+}
+
+function initialHours(vendor) {
+  if (!vendor?.vendor_operating_hours?.length) return DEFAULT_HOURS;
+  return DEFAULT_HOURS.map(defaultDay => {
+    const existing = vendor.vendor_operating_hours.find(
+      hours => hours.day_of_week === defaultDay.day_of_week
+    );
+    return existing ? { ...existing } : defaultDay;
+  });
+}
+
+export default function VendorForm(props) {
+  if (!props.isOpen || !props.referenceData) return null;
+  const formKey = props.vendor?.vendor_id || 'new-vendor';
+  return <VendorFormContent key={formKey} {...props} />;
+}
+
+function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
+  const [formData, setFormData] = useState(() => initialFormData(vendor, referenceData));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
   // Complex relation state
-  const [selectedFoods, setSelectedFoods] = useState([]);
-  const [selectedTiffins, setSelectedTiffins] = useState([]);
-  const [operatingHours, setOperatingHours] = useState(DEFAULT_HOURS);
+  const [selectedFoods, setSelectedFoods] = useState(
+    () => vendor?.vendor_foods?.map(vf => vf.heritage_food_id) || []
+  );
+  const [selectedTiffins, setSelectedTiffins] = useState(
+    () => (vendor?.vendor_tiffins || []).map(vt => ({
+      heritage_tiffin_id: vt.heritage_tiffin_id,
+    }))
+  );
+  const [operatingHours, setOperatingHours] = useState(() => initialHours(vendor));
 
-  useEffect(() => {
-    if (vendor) {
-      setFormData({
-        vendor_id: vendor.vendor_id,
-        vendor_name: vendor.vendor_name || '',
-        business_type: vendor.business_type || 'restaurant',
-        description: vendor.description || '',
-        contact_person: vendor.contact_person || '',
-        contact_number: vendor.contact_number || '',
-        email: vendor.email || '',
-        address_line: vendor.address_line || '',
-        latitude: vendor.latitude || 0,
-        longitude: vendor.longitude || 0,
-        state_id: vendor.state_id || (referenceData?.states?.[0]?.state_id || ''),
-        participation_status: vendor.participation_status || 'active',
-      });
-      setSelectedFoods(vendor.vendor_foods?.map(vf => vf.heritage_food_id) || []);
-      
-      const parsedTiffins = (vendor.vendor_tiffins || []).map(vt => ({
-        heritage_tiffin_id: vt.heritage_tiffin_id
-      }));
-      setSelectedTiffins(parsedTiffins);
-
-      // Handle Hours
-      if (vendor.vendor_operating_hours && vendor.vendor_operating_hours.length > 0) {
-        // Merge with defaults so every day is covered
-        const mergedHours = DEFAULT_HOURS.map(defaultDay => {
-          const existing = vendor.vendor_operating_hours.find(h => h.day_of_week === defaultDay.day_of_week);
-          return existing ? { ...existing } : defaultDay;
-        });
-        setOperatingHours(mergedHours);
-      } else {
-        setOperatingHours(DEFAULT_HOURS);
-      }
-
-    } else {
-      setFormData({
-        vendor_name: '',
-        business_type: 'restaurant',
-        description: '',
-        contact_person: '',
-        contact_number: '',
-        email: '',
-        address_line: '',
-        latitude: 0,
-        longitude: 0,
-        state_id: referenceData?.states?.[0]?.state_id || '',
-        participation_status: 'active',
-      });
-      setSelectedFoods([]);
-      setSelectedTiffins([]);
-      setOperatingHours(DEFAULT_HOURS);
-    }
-    setErrors({});
-  }, [vendor, referenceData]);
+  const foodsForState = referenceData.foods.filter(
+    food => food.state_id === formData.state_id
+  );
+  const tiffinsForState = referenceData.tiffins.filter(
+    tiffin => tiffin.state_id === formData.state_id
+  );
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+    if (name === 'state_id') {
+      setSelectedFoods([]);
+      setSelectedTiffins([]);
+    }
     setFormData(prev => ({ ...prev, [name]: value }));
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
@@ -372,7 +366,7 @@ export default function VendorForm({ vendor, isOpen, onClose, onSave, referenceD
             <div>
               <h4 className="text-base font-semibold text-surface-900 border-b border-surface-200 pb-2 mb-4">Heritage Foods Associated</h4>
               <div className="flex flex-wrap gap-3">
-                {referenceData?.foods?.map((food) => (
+                {foodsForState.map((food) => (
                   <label key={food.heritage_food_id} className="flex items-center gap-2 bg-surface-50 p-2 rounded-lg border border-surface-200 cursor-pointer hover:bg-surface-100">
                     <input 
                       type="checkbox" 
@@ -383,6 +377,9 @@ export default function VendorForm({ vendor, isOpen, onClose, onSave, referenceD
                     <span className="text-sm font-medium">{food.food_name}</span>
                   </label>
                 ))}
+                {foodsForState.length === 0 && (
+                  <p className="text-sm text-surface-500">No active heritage food is configured for this state.</p>
+                )}
               </div>
             </div>
 
@@ -390,7 +387,7 @@ export default function VendorForm({ vendor, isOpen, onClose, onSave, referenceD
             <div>
               <h4 className="text-base font-semibold text-surface-900 border-b border-surface-200 pb-2 mb-4">Available Tiffins</h4>
               <div className="space-y-4">
-                {referenceData?.tiffins?.map((tiffin) => {
+                {tiffinsForState.map((tiffin) => {
                   const isSelected = selectedTiffins.some(t => t.heritage_tiffin_id === tiffin.heritage_tiffin_id);
                   return (
                     <div key={tiffin.heritage_tiffin_id} className={`p-4 rounded-lg border ${isSelected ? 'border-primary-300 bg-primary-50/30' : 'border-surface-200 bg-surface-50'}`}>
@@ -408,6 +405,9 @@ export default function VendorForm({ vendor, isOpen, onClose, onSave, referenceD
                     </div>
                   );
                 })}
+                {tiffinsForState.length === 0 && (
+                  <p className="text-sm text-surface-500">No active Tiffin edition is available for this state.</p>
+                )}
               </div>
             </div>
 

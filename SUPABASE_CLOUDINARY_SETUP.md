@@ -99,7 +99,8 @@ The function at `supabase/functions/cloudinary-upload/index.ts`:
 
 - requires a valid Supabase user session;
 - accepts JPG, PNG, and WebP images;
-- limits profile images to 5 MB and other supported uploads to 10 MB;
+- accepts MP4 and WebM Heritage Tiffin videos from administrators;
+- limits profile images to 5 MB, other images to 10 MB, and heritage videos to 50 MB;
 - restricts uploads to the authenticated user's approved folders;
 - signs the Cloudinary upload on the server; and
 - returns the Cloudinary `secure_url` for storage in Supabase.

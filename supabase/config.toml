@@ -1,0 +1,4 @@
+project_id = "MangkukKembara"
+
+[functions.cloudinary-upload]
+verify_jwt = true

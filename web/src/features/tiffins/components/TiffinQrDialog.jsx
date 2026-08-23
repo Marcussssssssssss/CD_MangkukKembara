@@ -1,36 +1,45 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Modal from '../../../components/Modal';
 import QRCode from 'qrcode';
 
 export default function TiffinQrDialog({ qrData, tiffin, isOpen, onClose }) {
+  if (!qrData) return null;
+  return (
+    <TiffinQrDialogContent
+      key={`${qrData.code_value}-${isOpen}`}
+      qrData={qrData}
+      tiffin={tiffin}
+      isOpen={isOpen}
+      onClose={onClose}
+    />
+  );
+}
+
+function TiffinQrDialogContent({ qrData, tiffin, isOpen, onClose }) {
   const [qrImageUrl, setQrImageUrl] = useState(null);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(true);
   const [qrError, setQrError] = useState(null);
-  const canvasRef = useRef(null);
 
   useEffect(() => {
-    if (isOpen && qrData?.code_value) {
-      setIsGenerating(true);
-      setQrError(null);
-
-      QRCode.toDataURL(qrData.code_value, {
-        width: 300,
-        margin: 2,
-        color: { dark: '#1a1a2e', light: '#ffffff' },
-        errorCorrectionLevel: 'H',
+    let isMounted = true;
+    QRCode.toDataURL(qrData.code_value, {
+      width: 300,
+      margin: 2,
+      color: { dark: '#1a1a2e', light: '#ffffff' },
+      errorCorrectionLevel: 'H',
+    })
+      .then((url) => {
+        if (!isMounted) return;
+        setQrImageUrl(url);
+        setIsGenerating(false);
       })
-        .then((url) => {
-          setQrImageUrl(url);
-          setIsGenerating(false);
-        })
-        .catch(() => {
-          setQrError('Failed to render QR code image.');
-          setIsGenerating(false);
-        });
-    } else {
-      setQrImageUrl(null);
-    }
-  }, [isOpen, qrData]);
+      .catch(() => {
+        if (!isMounted) return;
+        setQrError('Failed to render QR code image.');
+        setIsGenerating(false);
+      });
+    return () => { isMounted = false; };
+  }, [qrData.code_value]);
 
   const handleDownload = () => {
     if (!qrImageUrl || !qrData) return;
@@ -42,8 +51,6 @@ export default function TiffinQrDialog({ qrData, tiffin, isOpen, onClose }) {
     link.click();
     document.body.removeChild(link);
   };
-
-  if (!qrData) return null;
 
   return (
     <Modal open={isOpen} onClose={onClose} title="QR Code Generated" size="sm">
@@ -85,7 +92,6 @@ export default function TiffinQrDialog({ qrData, tiffin, isOpen, onClose }) {
               src={qrImageUrl}
               alt={`QR code for ${qrData.code_value}`}
               className="h-[200px] w-[200px]"
-              ref={canvasRef}
             />
           ) : null}
         </div>

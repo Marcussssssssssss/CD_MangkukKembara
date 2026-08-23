@@ -229,13 +229,37 @@ export async function fetchCampaigns() {
  * Fetch reference data needed for campaign forms.
  */
 export async function fetchReferenceData() {
-  const states = await queryRows(
-    'states',
-    '*',
-    query => query.eq('is_active', true).order('state_name'),
-  );
+  const [states, foods] = await Promise.all([
+    queryRows(
+      'states',
+      '*',
+      query => query.eq('is_active', true).order('state_name'),
+    ),
+    queryRows(
+      'heritage_foods',
+      'state_id',
+      query => query.eq('is_active', true),
+    ),
+  ]);
+  const foodStateIds = new Set(foods.map(food => food.state_id));
 
-  return { states };
+  return {
+    states: states.map(state => ({
+      ...state,
+      has_heritage_food: foodStateIds.has(state.state_id),
+    })),
+  };
+}
+
+async function assertStateHasHeritageFood(stateId) {
+  const foods = await queryRows(
+    'heritage_foods',
+    'heritage_food_id',
+    query => query.eq('state_id', stateId).eq('is_active', true).limit(1),
+  );
+  if (foods.length === 0) {
+    throw new Error('This state has no active Heritage Food. Add one before creating a campaign.');
+  }
 }
 
 /**
@@ -245,6 +269,7 @@ export async function createCampaign(campaignData, profileId) {
   if (!profileId) {
     throw new Error('An administrator profile is required to create a campaign.');
   }
+  await assertStateHasHeritageFood(campaignData.state_id);
 
   const [createdCampaign] = await insertRows('artwork_campaigns', [{
     ...campaignPayloadFrom(campaignData),
@@ -265,6 +290,7 @@ export async function createCampaign(campaignData, profileId) {
  * Update a state-specific campaign without creating or synchronising categories.
  */
 export async function updateCampaign(campaignId, campaignData) {
+  await assertStateHasHeritageFood(campaignData.state_id);
   const [updatedCampaign] = await updateRows(
     'artwork_campaigns',
     campaignPayloadFrom(campaignData),

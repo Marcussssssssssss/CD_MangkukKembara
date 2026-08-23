@@ -63,12 +63,28 @@ export default function TiffinsManager() {
   const filteredTiffins = useMemo(() => {
     if (!searchQuery) return tiffins;
     const lowerQuery = searchQuery.toLowerCase();
-    return tiffins.filter(
-      (t) =>
-        t.edition_name.toLowerCase().includes(lowerQuery) ||
-        (t.description && t.description.toLowerCase().includes(lowerQuery))
+    const artworkById = new Map(
+      (referenceData?.artworks || []).map(artwork => [artwork.artwork_id, artwork])
     );
-  }, [tiffins, searchQuery]);
+    const stateById = new Map(
+      (referenceData?.states || []).map(state => [state.state_id, state])
+    );
+    const foodById = new Map(
+      (referenceData?.foods || []).map(food => [food.heritage_food_id, food])
+    );
+
+    return tiffins.filter((tiffin) => {
+      const artwork = artworkById.get(tiffin.artwork_id);
+      const searchableText = [
+        tiffin.edition_name,
+        artwork?.title,
+        artwork?.profiles?.display_name,
+        stateById.get(tiffin.state_id)?.state_name,
+        foodById.get(tiffin.heritage_food_id)?.food_name,
+      ].filter(Boolean).join(' ').toLowerCase();
+      return searchableText.includes(lowerQuery);
+    });
+  }, [tiffins, searchQuery, referenceData]);
 
   // --- Handlers ---
   const handleCreate = () => setIsCreating(true);
@@ -91,42 +107,57 @@ export default function TiffinsManager() {
 
   const handleCloseQrDialog = () => setQrResult(null);
 
+  const syncArtworkAssignment = (tiffinId, artworkId) => {
+    setReferenceData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        artworks: prev.artworks.map((artwork) => ({
+          ...artwork,
+          assigned_tiffin_id: artwork.artwork_id === artworkId
+            ? tiffinId
+            : artwork.assigned_tiffin_id === tiffinId
+              ? null
+              : artwork.assigned_tiffin_id,
+        })),
+      };
+    });
+  };
+
   // --- Save Operations ---
   const handleSaveTiffin = async (tiffinData, files) => {
-    try {
-      if (editingTiffin) {
-        const updated = await updateTiffin(tiffinData.heritage_tiffin_id, tiffinData, files);
-        setTiffins((prev) => 
-          prev.map((t) => (t.heritage_tiffin_id === updated.heritage_tiffin_id ? updated : t))
-        );
-        showFeedback('Tiffin edition updated successfully.');
-        handleCloseModals();
-      } else {
-        const created = await createTiffin(tiffinData, files);
-        setTiffins((prev) => [created, ...prev]);
-        handleCloseModals();
+    if (editingTiffin) {
+      const updated = await updateTiffin(tiffinData.heritage_tiffin_id, tiffinData, files);
+      setTiffins((prev) =>
+        prev.map((t) => (t.heritage_tiffin_id === updated.heritage_tiffin_id ? updated : t))
+      );
+      syncArtworkAssignment(updated.heritage_tiffin_id, updated.artwork_id);
+      showFeedback('Tiffin edition updated successfully.');
+      handleCloseModals();
+    } else {
+      const created = await createTiffin(tiffinData, files);
+      setTiffins((prev) => [created, ...prev]);
+      syncArtworkAssignment(created.heritage_tiffin_id, created.artwork_id);
+      handleCloseModals();
 
-        // Attempt QR code generation after successful tiffin creation
-        try {
-          const qr = await generateTiffinQrCode(created.heritage_tiffin_id);
-          // Update the tiffin in local state with its new QR
-          setTiffins((prev) =>
-            prev.map((t) =>
-              t.heritage_tiffin_id === created.heritage_tiffin_id
-                ? { ...t, tiffin_qr_codes: [{ code_value: qr.code_value, is_active: qr.is_active }] }
-                : t
-            )
-          );
-          setQrResult({ qrData: qr, tiffin: created });
-        } catch (qrErr) {
-          showFeedback(
-            `Tiffin created but QR generation failed: ${qrErr.message || 'Unknown error'}. You can retry from Tiffin Details.`,
-            'error'
-          );
-        }
+      // Attempt QR code generation after successful tiffin creation
+      try {
+        const qr = await generateTiffinQrCode(created.heritage_tiffin_id);
+        // Update the tiffin in local state with its new QR
+        setTiffins((prev) =>
+          prev.map((t) =>
+            t.heritage_tiffin_id === created.heritage_tiffin_id
+              ? { ...t, tiffin_qr_codes: [{ tiffin_qr_code_id: qr.tiffin_qr_code_id, code_value: qr.code_value, is_active: qr.is_active }] }
+              : t
+          )
+        );
+        setQrResult({ qrData: qr, tiffin: created });
+      } catch (qrErr) {
+        showFeedback(
+          `Tiffin created but QR generation failed: ${qrErr.message || 'Unknown error'}. You can retry from Tiffin Details.`,
+          'error'
+        );
       }
-    } catch (err) {
-      throw err;
     }
   };
 

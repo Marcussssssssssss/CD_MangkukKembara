@@ -3,35 +3,36 @@ import Modal from '../../../components/Modal';
 import QRCode from 'qrcode';
 
 export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGenerateQr, referenceData }) {
-  const [qrImageUrl, setQrImageUrl] = useState(null);
-  const [isGeneratingQr, setIsGeneratingQr] = useState(false);
-  const [qrError, setQrError] = useState(null);
+  const [qrRender, setQrRender] = useState({ codeValue: null, imageUrl: null, error: null });
   const canvasRef = useRef(null);
 
   const qrCode = tiffin?.tiffin_qr_codes?.length > 0 ? tiffin.tiffin_qr_codes[0] : null;
 
   useEffect(() => {
-    if (qrCode?.code_value) {
-      setIsGeneratingQr(true);
-      setQrError(null);
-      QRCode.toDataURL(qrCode.code_value, {
-        width: 200,
-        margin: 2,
-        color: { dark: '#1a1a2e', light: '#ffffff' },
-        errorCorrectionLevel: 'H',
-      })
-      .then(url => {
-        setQrImageUrl(url);
-        setIsGeneratingQr(false);
-      })
-      .catch(() => {
-        setQrError('Failed to render QR code image.');
-        setIsGeneratingQr(false);
-      });
-    } else {
-      setQrImageUrl(null);
-    }
+    if (!qrCode?.code_value) return undefined;
+
+    let cancelled = false;
+    QRCode.toDataURL(qrCode.code_value, {
+      width: 200,
+      margin: 2,
+      color: { dark: '#1a1a2e', light: '#ffffff' },
+      errorCorrectionLevel: 'H',
+    })
+    .then(imageUrl => {
+      if (!cancelled) setQrRender({ codeValue: qrCode.code_value, imageUrl, error: null });
+    })
+    .catch(() => {
+      if (!cancelled) setQrRender({ codeValue: qrCode.code_value, imageUrl: null, error: 'Failed to render QR code image.' });
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [qrCode]);
+
+  const qrImageUrl = qrRender.codeValue === qrCode?.code_value ? qrRender.imageUrl : null;
+  const qrError = qrRender.codeValue === qrCode?.code_value ? qrRender.error : null;
+  const isGeneratingQr = !!qrCode?.code_value && qrRender.codeValue !== qrCode.code_value;
 
   if (!tiffin || !referenceData) return null;
 
@@ -42,6 +43,8 @@ export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGener
   const foodName = foodObj ? foodObj.food_name : 'Unknown Food';
   const artistName = artObj && artObj.profiles ? artObj.profiles.display_name : 'Unknown Artist';
   const stateName = stateObj ? stateObj.state_name : 'Unknown State';
+  const sourceSubmission = artObj?.source_submission;
+  const video = (tiffin.heritage_media || []).find(media => media.media_type === 'video');
 
   const statusColors = {
     active: 'bg-green-100 text-green-700',
@@ -70,9 +73,9 @@ export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGener
           <div 
             className="aspect-square w-full bg-surface-100 md:aspect-[3/4] md:rounded-bl-xl"
           >
-            {tiffin.cover_image_url ? (
+            {artObj?.image_url ? (
               <img 
-                src={tiffin.cover_image_url} 
+                src={artObj.image_url}
                 alt={tiffin.edition_name}
                 className="h-full w-full object-cover md:rounded-bl-xl"
               />
@@ -94,9 +97,21 @@ export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGener
           </div>
 
           <div className="mt-6 space-y-6">
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">Description</h4>
-              <p className="mt-1 text-sm text-surface-700">{tiffin.description || 'No description provided.'}</p>
+            <div className="rounded-xl border border-surface-200 bg-surface-50 p-4">
+              <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">Artwork Information</h4>
+              <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                <Detail label="Artwork Title" value={artObj?.title} />
+                <Detail label="Creator" value={artistName} />
+                <div className="sm:col-span-2">
+                  <Detail label="Design Description" value={sourceSubmission?.design_description} />
+                </div>
+                <div className="sm:col-span-2">
+                  <Detail label="Cultural Inspiration" value={sourceSubmission?.cultural_inspiration} />
+                </div>
+                <Detail label="Layer 1 Meaning" value={sourceSubmission?.layer_1_meaning} />
+                <Detail label="Layer 2 Meaning" value={sourceSubmission?.layer_2_meaning} />
+                <Detail label="Layer 3 Meaning" value={sourceSubmission?.layer_3_meaning} />
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
@@ -109,18 +124,9 @@ export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGener
                 <p className="mt-1 text-sm text-surface-900">{stateName}</p>
               </div>
               <div>
-                <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">Artist</h4>
-                <p className="mt-1 text-sm text-surface-900">{artistName}</p>
-              </div>
-              <div>
                 <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">Release Year</h4>
                 <p className="mt-1 text-sm text-surface-900">{tiffin.release_year || 'N/A'}</p>
               </div>
-            </div>
-
-            <div>
-              <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400">Cultural Significance</h4>
-              <p className="mt-1 text-sm text-surface-700">{tiffin.cultural_significance || 'N/A'}</p>
             </div>
 
             {story && (
@@ -130,6 +136,17 @@ export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGener
                 </h4>
                 <p className="text-sm font-semibold text-surface-900 mb-1">{story.title}</p>
                 <p className="text-sm text-surface-700">{story.story_body}</p>
+              </div>
+            )}
+
+            {video && (
+              <div className="rounded-lg border border-surface-200 bg-surface-50 p-4">
+                <h4 className="mb-3 text-xs font-medium uppercase tracking-wider text-surface-400">Heritage Video</h4>
+                <video controls preload="metadata" className="max-h-80 w-full rounded-lg bg-black">
+                  <source src={video.media_url} />
+                  Your browser does not support embedded video playback.
+                </video>
+                <p className="mt-2 text-sm font-medium text-surface-900">{video.title}</p>
               </div>
             )}
 
@@ -227,5 +244,14 @@ export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGener
         </div>
       </div>
     </Modal>
+  );
+}
+
+function Detail({ label, value }) {
+  return (
+    <div>
+      <h5 className="text-[11px] font-semibold uppercase tracking-wider text-surface-400">{label}</h5>
+      <p className="mt-1 whitespace-pre-wrap text-sm text-surface-700">{value || 'Not provided.'}</p>
+    </div>
   );
 }
