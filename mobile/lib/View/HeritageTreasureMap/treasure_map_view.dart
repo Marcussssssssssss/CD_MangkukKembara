@@ -13,9 +13,27 @@ import '../Widgets/loading_widget.dart';
 import '../Widgets/empty_state_widget.dart';
 import '../Widgets/error_state_widget.dart';
 
+/// Visual tokens used exclusively by the treasure-map home screen.
+/// Keeping these local prevents the refreshed map design from altering the
+/// existing heritage theme used by the rest of the app.
+abstract final class _MapPageColors {
+  static const Color background = Color(0xFFFFFFFF);
+  static const Color softBackground = Color(0xFFF5F7F3);
+  static const Color searchField = Color(0xFFEEF3EC);
+  static const Color border = Color(0xFFCCD6C8);
+  static const Color darkGreen = Color(0xFF335C31);
+  static const Color mediumGreen = Color(0xFF61885B);
+  static const Color yellow = Color(0xFFF9B10E);
+  static const Color selectedTab = Color(0xFFFEF5E4);
+  static const Color text = Color(0xFF283427);
+  static const Color hint = Color(0xFF929992);
+}
+
 /// A1. Heritage Treasure Map View — the application home screen.
 class TreasureMapView extends StatefulWidget {
-  const TreasureMapView({super.key});
+  final bool selectionMode;
+
+  const TreasureMapView({super.key, this.selectionMode = false});
 
   @override
   State<TreasureMapView> createState() => _TreasureMapViewState();
@@ -44,13 +62,16 @@ class _TreasureMapViewState extends State<TreasureMapView> {
       value: _vm,
       child: Consumer<TreasureMapViewModel>(
         builder: (ctx, vm, _) => Scaffold(
-          backgroundColor: AppColors.background,
+          backgroundColor: _MapPageColors.background,
+          appBar: widget.selectionMode
+              ? AppBar(title: const Text('Choose a Vendor'))
+              : null,
           body: Stack(
             children: [
               Column(
                 children: [
                   _buildHeader(ctx, vm),
-                  _buildFilters(ctx, vm),
+                  if (!widget.selectionMode) _buildFilters(ctx, vm),
                   Expanded(child: _buildBody(ctx, vm)),
                 ],
               ),
@@ -59,6 +80,10 @@ class _TreasureMapViewState extends State<TreasureMapView> {
                 _VendorPreviewSheet(
                   vendor: vm.previewVendor!,
                   onDismiss: vm.clearVendorPreview,
+                  onSelect: widget.selectionMode
+                      ? () => Navigator.pop(ctx, vm.previewVendor)
+                      : null,
+                  bottom: widget.selectionMode ? 0 : 64,
                 ),
               if (vm.previewPasarMalam != null)
                 _PasarMalamPreviewSheet(
@@ -69,10 +94,21 @@ class _TreasureMapViewState extends State<TreasureMapView> {
                   onRetry: vm.retryPasarMalamVendors,
                   onRefresh: vm.refreshPasarMalamVendors,
                   onDismiss: vm.clearPasarMalamPreview,
+                  onSelectVendor: widget.selectionMode
+                      ? (vendor) => Navigator.pop(ctx, vendor)
+                      : null,
+                  bottom: widget.selectionMode ? 0 : 64,
                 ),
             ],
           ),
-          bottomNavigationBar: const AppBottomNav(selectedIndex: -1),
+          bottomNavigationBar: widget.selectionMode
+              ? null
+              : const AppBottomNav(
+                  backgroundColor: _MapPageColors.background,
+                  selectedColor: _MapPageColors.yellow,
+                  unselectedColor: _MapPageColors.mediumGreen,
+                  selectedBackgroundColor: _MapPageColors.selectedTab,
+                ),
         ),
       ),
     );
@@ -80,85 +116,106 @@ class _TreasureMapViewState extends State<TreasureMapView> {
 
   Widget _buildHeader(BuildContext ctx, TreasureMapViewModel vm) {
     return Container(
-      color: AppColors.primary,
+      color: _MapPageColors.background,
       child: SafeArea(
         bottom: false,
         child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          padding: EdgeInsets.fromLTRB(
+            16,
+            widget.selectionMode ? 0 : 8,
+            16,
+            12,
+          ),
           child: Column(
             children: [
-              // Logo row
-              Row(
-                children: [
-                  Expanded(
-                    child: Semantics(
-                      image: true,
-                      label:
-                          '${AppConstants.appName}, ${AppConstants.appTagline}',
-                      child: SizedBox(
-                        height: 58,
-                        child: Image.asset(
-                          'asset/image/logo_light.png',
+              if (!widget.selectionMode) ...[
+                // Logo row
+                Row(
+                  children: [
+                    Expanded(
+                      child: Semantics(
+                        image: true,
+                        label:
+                            '${AppConstants.appName}, ${AppConstants.appTagline}',
+                        child: Align(
                           alignment: Alignment.centerLeft,
-                          fit: BoxFit.contain,
-                          filterQuality: FilterQuality.high,
-                          errorBuilder: (_, _, _) => const Align(
-                            alignment: Alignment.centerLeft,
-                            child: Text(
-                              AppConstants.appName,
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
+                          child: SizedBox(
+                            width: 180,
+                            height: 58,
+                            child: ClipRect(
+                              child: OverflowBox(
+                                minWidth: 180,
+                                maxWidth: 180,
+                                minHeight: 112,
+                                maxHeight: 112,
+                                child: Image.asset(
+                                  'asset/image/mangkuk_kembara_logo_green.png',
+                                  width: 180,
+                                  height: 112,
+                                  fit: BoxFit.fill,
+                                  filterQuality: FilterQuality.high,
+                                  errorBuilder: (_, _, _) => const Align(
+                                    alignment: Alignment.centerLeft,
+                                    child: Text(
+                                      AppConstants.appName,
+                                      style: TextStyle(
+                                        color: _MapPageColors.darkGreen,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
                           ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 12),
-                  // Map/List toggle
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withAlpha(30),
-                      borderRadius: BorderRadius.circular(8),
+                    const SizedBox(width: 12),
+                    // Map/List toggle
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _MapPageColors.softBackground,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: _MapPageColors.border),
+                      ),
+                      child: Row(
+                        children: [
+                          _ToggleButton(
+                            icon: Icons.map_rounded,
+                            selected: vm.viewMode == MapViewMode.map,
+                            onTap: () => vm.setViewMode(MapViewMode.map),
+                          ),
+                          _ToggleButton(
+                            icon: Icons.list_rounded,
+                            selected: vm.viewMode == MapViewMode.list,
+                            onTap: () => vm.setViewMode(MapViewMode.list),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        _ToggleButton(
-                          icon: Icons.map_rounded,
-                          selected: vm.viewMode == MapViewMode.map,
-                          onTap: () => vm.setViewMode(MapViewMode.map),
-                        ),
-                        _ToggleButton(
-                          icon: Icons.list_rounded,
-                          selected: vm.viewMode == MapViewMode.list,
-                          onTap: () => vm.setViewMode(MapViewMode.list),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
+                  ],
+                ),
+                const SizedBox(height: 12),
+              ],
 
               // Search bar
               TextField(
                 controller: _searchController,
-                style: const TextStyle(color: Colors.white),
+                style: const TextStyle(color: _MapPageColors.text),
                 decoration: InputDecoration(
                   hintText: 'Search vendors, foods, states...',
-                  hintStyle: TextStyle(color: Colors.white.withAlpha(160)),
+                  hintStyle: const TextStyle(color: _MapPageColors.hint),
                   prefixIcon: const Icon(
                     Icons.search_rounded,
-                    color: Colors.white70,
+                    color: _MapPageColors.darkGreen,
                   ),
                   suffixIcon: _searchController.text.isNotEmpty
                       ? IconButton(
                           icon: const Icon(
                             Icons.clear_rounded,
-                            color: Colors.white70,
+                            color: _MapPageColors.darkGreen,
                           ),
                           onPressed: () {
                             _searchController.clear();
@@ -167,33 +224,35 @@ class _TreasureMapViewState extends State<TreasureMapView> {
                         )
                       : null,
                   filled: true,
-                  fillColor: Colors.white.withAlpha(25),
+                  fillColor: _MapPageColors.searchField,
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 12,
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    borderSide: const BorderSide(color: _MapPageColors.border),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
+                    borderSide: const BorderSide(color: _MapPageColors.border),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: const BorderSide(
-                      color: AppColors.accent,
+                      color: _MapPageColors.darkGreen,
                       width: 1.5,
                     ),
                   ),
                 ),
                 onChanged: vm.setSearchQuery,
-                onSubmitted: (q) => Navigator.pushNamed(
-                  ctx,
-                  AppRoutes.vendorSearch,
-                  arguments: q,
-                ),
+                onSubmitted: widget.selectionMode
+                    ? null
+                    : (q) => Navigator.pushNamed(
+                        ctx,
+                        AppRoutes.vendorSearch,
+                        arguments: q,
+                      ),
               ),
             ],
           ),
@@ -204,7 +263,7 @@ class _TreasureMapViewState extends State<TreasureMapView> {
 
   Widget _buildFilters(BuildContext ctx, TreasureMapViewModel vm) {
     return Container(
-      color: AppColors.primaryDark,
+      color: _MapPageColors.background,
       padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
       child: Row(
         children: [
@@ -212,7 +271,7 @@ class _TreasureMapViewState extends State<TreasureMapView> {
             padding: EdgeInsets.only(top: 18, right: 10),
             child: Icon(
               Icons.filter_alt_rounded,
-              color: AppColors.accent,
+              color: _MapPageColors.yellow,
               size: 22,
             ),
           ),
@@ -330,11 +389,13 @@ class _TreasureMapViewState extends State<TreasureMapView> {
             ...vm.vendors.map(
               (vendor) => VendorCard(
                 vendor: vendor,
-                onTap: () => Navigator.pushNamed(
-                  ctx,
-                  AppRoutes.vendorDetail,
-                  arguments: vendor.id,
-                ),
+                onTap: () => widget.selectionMode
+                    ? Navigator.pop(ctx, vendor)
+                    : Navigator.pushNamed(
+                        ctx,
+                        AppRoutes.vendorDetail,
+                        arguments: vendor.id,
+                      ),
               ),
             ),
           ],
@@ -348,6 +409,7 @@ class _TreasureMapViewState extends State<TreasureMapView> {
       vendors: vm.vendors,
       pasarMalam: vm.pasarMalam,
       showCurrentLocation: vm.canShowCurrentLocation,
+      showPlaceSummary: !widget.selectionMode,
       onVendorTap: vm.showVendorPreview,
       onPasarMalamTap: vm.showPasarMalamPreview,
     );
@@ -359,6 +421,7 @@ class _VendorGoogleMap extends StatefulWidget {
   final List<VendorModel> vendors;
   final List<PasarMalamModel> pasarMalam;
   final bool showCurrentLocation;
+  final bool showPlaceSummary;
   final void Function(VendorModel) onVendorTap;
   final void Function(PasarMalamModel) onPasarMalamTap;
 
@@ -366,6 +429,7 @@ class _VendorGoogleMap extends StatefulWidget {
     required this.vendors,
     required this.pasarMalam,
     required this.showCurrentLocation,
+    this.showPlaceSummary = true,
     required this.onVendorTap,
     required this.onPasarMalamTap,
   });
@@ -414,22 +478,73 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        GoogleMap(
-          initialCameraPosition: _malaysia,
-          markers: _markers,
-          myLocationButtonEnabled: widget.showCurrentLocation,
-          myLocationEnabled: widget.showCurrentLocation,
-          compassEnabled: true,
-          buildingsEnabled: true,
-          mapToolbarEnabled: false,
-          zoomControlsEnabled: false,
-          onMapCreated: (controller) {
-            _controller = controller;
-            WidgetsBinding.instance.addPostFrameCallback(
-              (_) => _fitVisiblePlaces(),
-            );
-          },
+        ColorFiltered(
+          // Calibrated from the reference's ocean tones: raise the imagery's
+          // brightness without adding a grey-white veil over the land.
+          colorFilter: const ColorFilter.matrix(<double>[
+            1.42,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1.47,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1.36,
+            0,
+            0,
+            0,
+            0,
+            0,
+            1,
+            0,
+          ]),
+          child: GoogleMap(
+            initialCameraPosition: _malaysia,
+            mapType: MapType.hybrid,
+            markers: _markers,
+            myLocationButtonEnabled: widget.showCurrentLocation,
+            myLocationEnabled: widget.showCurrentLocation,
+            compassEnabled: true,
+            buildingsEnabled: true,
+            mapToolbarEnabled: false,
+            zoomControlsEnabled: false,
+            onMapCreated: (controller) {
+              _controller = controller;
+              WidgetsBinding.instance.addPostFrameCallback(
+                (_) => _fitVisiblePlaces(),
+              );
+            },
+          ),
         ),
+        if (widget.showPlaceSummary)
+          Positioned(
+            top: 12,
+            right: 12,
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withAlpha(30), blurRadius: 6),
+                ],
+              ),
+              child: Text(
+                '${widget.vendors.length} places · '
+                '${widget.pasarMalam.length} markets',
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ),
       ],
     );
   }
@@ -518,6 +633,8 @@ class _PasarMalamPreviewSheet extends StatelessWidget {
   final Future<void> Function() onRetry;
   final Future<void> Function() onRefresh;
   final VoidCallback onDismiss;
+  final ValueChanged<VendorModel>? onSelectVendor;
+  final double bottom;
 
   const _PasarMalamPreviewSheet({
     required this.market,
@@ -527,6 +644,8 @@ class _PasarMalamPreviewSheet extends StatelessWidget {
     required this.onRetry,
     required this.onRefresh,
     required this.onDismiss,
+    this.onSelectVendor,
+    this.bottom = 64,
   });
 
   @override
@@ -534,7 +653,7 @@ class _PasarMalamPreviewSheet extends StatelessWidget {
     return Positioned(
       left: 0,
       right: 0,
-      bottom: 64,
+      bottom: bottom,
       child: TweenAnimationBuilder<double>(
         tween: Tween(begin: 0, end: 1),
         duration: const Duration(milliseconds: 260),
@@ -675,14 +794,18 @@ class _PasarMalamPreviewSheet extends StatelessWidget {
                                 subtitle: Text(
                                   vendor.heritageFoods.take(2).join(', '),
                                 ),
-                                trailing: const Icon(
-                                  Icons.chevron_right_rounded,
+                                trailing: Icon(
+                                  onSelectVendor == null
+                                      ? Icons.chevron_right_rounded
+                                      : Icons.check_circle_outline_rounded,
                                 ),
-                                onTap: () => Navigator.pushNamed(
-                                  context,
-                                  AppRoutes.vendorDetail,
-                                  arguments: vendor.id,
-                                ),
+                                onTap: () => onSelectVendor != null
+                                    ? onSelectVendor!(vendor)
+                                    : Navigator.pushNamed(
+                                        context,
+                                        AppRoutes.vendorDetail,
+                                        arguments: vendor.id,
+                                      ),
                               );
                             },
                           ),
@@ -720,7 +843,7 @@ class _LabeledFilterDropdown extends StatelessWidget {
           child: Text(
             label,
             style: const TextStyle(
-              color: Colors.white,
+              color: _MapPageColors.darkGreen,
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
@@ -730,9 +853,9 @@ class _LabeledFilterDropdown extends StatelessWidget {
           height: 42,
           padding: const EdgeInsets.symmetric(horizontal: 10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: _MapPageColors.background,
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.accent, width: 1.2),
+            border: Border.all(color: _MapPageColors.mediumGreen, width: 1.2),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -740,14 +863,14 @@ class _LabeledFilterDropdown extends StatelessWidget {
               isExpanded: true,
               icon: const Icon(
                 Icons.keyboard_arrow_down_rounded,
-                color: AppColors.primary,
+                color: _MapPageColors.mediumGreen,
               ),
               style: const TextStyle(
-                color: AppColors.textPrimary,
+                color: _MapPageColors.text,
                 fontSize: 12,
                 fontWeight: FontWeight.w700,
               ),
-              dropdownColor: Colors.white,
+              dropdownColor: _MapPageColors.background,
               items: values
                   .map(
                     (item) => DropdownMenuItem<String>(
@@ -788,14 +911,10 @@ class _ToggleButton extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
-          color: selected ? AppColors.accent : Colors.transparent,
+          color: selected ? _MapPageColors.yellow : Colors.transparent,
           borderRadius: BorderRadius.circular(6),
         ),
-        child: Icon(
-          icon,
-          size: 18,
-          color: selected ? AppColors.textPrimary : Colors.white70,
-        ),
+        child: Icon(icon, size: 18, color: _MapPageColors.darkGreen),
       ),
     );
   }
@@ -805,8 +924,15 @@ class _ToggleButton extends StatelessWidget {
 class _VendorPreviewSheet extends StatelessWidget {
   final VendorModel vendor;
   final VoidCallback onDismiss;
+  final VoidCallback? onSelect;
+  final double bottom;
 
-  const _VendorPreviewSheet({required this.vendor, required this.onDismiss});
+  const _VendorPreviewSheet({
+    required this.vendor,
+    required this.onDismiss,
+    this.onSelect,
+    this.bottom = 64,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -814,7 +940,7 @@ class _VendorPreviewSheet extends StatelessWidget {
     return Positioned(
       left: 0,
       right: 0,
-      bottom: 64, // above bottom nav
+      bottom: bottom,
       child: GestureDetector(
         onTap: () {},
         child: Container(
@@ -898,36 +1024,51 @@ class _VendorPreviewSheet extends StatelessWidget {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        icon: const Icon(Icons.directions_rounded, size: 16),
-                        label: const Text('Navigate'),
-                        onPressed: () => Navigator.pushNamed(
-                          context,
-                          AppRoutes.routeNavigation,
-                          arguments: vendor.id,
+                child: onSelect != null
+                    ? SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.check_rounded, size: 18),
+                          label: const Text('Select this vendor'),
+                          onPressed: onSelect,
                         ),
+                      )
+                    : Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton.icon(
+                              icon: const Icon(
+                                Icons.directions_rounded,
+                                size: 16,
+                              ),
+                              label: const Text('Navigate'),
+                              onPressed: () => Navigator.pushNamed(
+                                context,
+                                AppRoutes.routeNavigation,
+                                arguments: vendor.id,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: ElevatedButton.icon(
+                              icon: const Icon(
+                                Icons.info_outline_rounded,
+                                size: 16,
+                              ),
+                              label: const Text('Details'),
+                              onPressed: () {
+                                onDismiss();
+                                Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.vendorDetail,
+                                  arguments: vendor.id,
+                                );
+                              },
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.info_outline_rounded, size: 16),
-                        label: const Text('Details'),
-                        onPressed: () {
-                          onDismiss();
-                          Navigator.pushNamed(
-                            context,
-                            AppRoutes.vendorDetail,
-                            arguments: vendor.id,
-                          );
-                        },
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
