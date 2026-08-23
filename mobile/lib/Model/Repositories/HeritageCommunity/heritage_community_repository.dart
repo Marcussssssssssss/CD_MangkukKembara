@@ -23,6 +23,7 @@ class HeritageCommunityRepository {
   Future<List<CommunityPostModel>> fetchPosts({
     String? query,
     String? sort,
+    String? vendorId,
     int page = 1,
   }) async {
     var request = _api.client
@@ -33,6 +34,9 @@ class HeritageCommunityRepository {
       community_post_photos(photo_url, sort_order)
     ''')
         .eq('status', 'published');
+    if (vendorId != null && vendorId.isNotEmpty) {
+      request = request.eq('vendor_id', vendorId);
+    }
     if (query != null && query.trim().isNotEmpty) {
       final escaped = query.trim().replaceAll(',', r'\,');
       request = request.or(

@@ -248,17 +248,29 @@ class _VendorDetailViewState extends State<VendorDetailView> {
               // Action buttons
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.directions_rounded),
-                    label: const Text('Get Directions'),
-                    onPressed: () => Navigator.pushNamed(
-                      ctx,
-                      AppRoutes.routeNavigation,
-                      arguments: v.id,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.rate_review_rounded),
+                      label: const Text('View Reviews'),
+                      onPressed: () => Navigator.pushNamed(
+                        ctx,
+                        AppRoutes.community,
+                        arguments: {'vendorId': v.id, 'vendorName': v.name},
+                      ),
                     ),
-                  ),
+                    const SizedBox(height: 10),
+                    OutlinedButton.icon(
+                      icon: const Icon(Icons.directions_rounded),
+                      label: const Text('Get Directions'),
+                      onPressed: () => Navigator.pushNamed(
+                        ctx,
+                        AppRoutes.routeNavigation,
+                        arguments: v.id,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 20),

@@ -76,8 +76,6 @@ class _CreatePostViewState extends State<CreatePostView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const _CreatePostIntro(),
-                          const SizedBox(height: 20),
                           // Vendor selector
                           _SectionLabel('Vendor *'),
                           GestureDetector(
@@ -407,69 +405,6 @@ class _SectionLabel extends StatelessWidget {
               fontWeight: FontWeight.w800,
               fontSize: 13,
               color: AppColors.textPrimary,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CreatePostIntro extends StatelessWidget {
-  const _CreatePostIntro();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF416F43), Color(0xFF203F2A)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: HeritageCommunityStyle.cardShadow,
-      ),
-      child: const Row(
-        children: [
-          CircleAvatar(
-            radius: 23,
-            backgroundColor: Color(0x22FFFFFF),
-            child: Icon(Icons.edit_note_rounded, color: Colors.white, size: 27),
-          ),
-          SizedBox(width: 13),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'YOUR HERITAGE MOMENT',
-                  style: TextStyle(
-                    color: AppColors.accentLight,
-                    fontSize: 9,
-                    letterSpacing: 1.1,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                SizedBox(height: 4),
-                Text(
-                  'Turn a meal into a story',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                SizedBox(height: 3),
-                Text(
-                  'Choose a place, add your rating, and share what made it memorable.',
-                  style: TextStyle(
-                    color: Color(0xDFFFFFFF),
-                    fontSize: 11,
-                    height: 1.35,
-                  ),
-                ),
-              ],
             ),
           ),
         ],
