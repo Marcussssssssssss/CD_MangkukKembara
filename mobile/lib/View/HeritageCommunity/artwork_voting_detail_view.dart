@@ -182,9 +182,10 @@ class _ArtworkIntro extends StatelessWidget {
         gradient: const LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Color(0xFF416F43), Color(0xFF203F2A)],
+          colors: [Color(0xFFEAF2E6), Color(0xFFD6E5D1)],
         ),
         borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.primary, width: 1.5),
         boxShadow: const [
           BoxShadow(
             color: Color(0x1F335C31),
@@ -201,7 +202,7 @@ class _ArtworkIntro extends StatelessWidget {
             child: Icon(
               Icons.palette_rounded,
               size: 126,
-              color: Color(0x16FFFFFF),
+              color: Color(0x16335C31),
             ),
           ),
           Column(
@@ -210,7 +211,7 @@ class _ArtworkIntro extends StatelessWidget {
               const Text(
                 'FEATURED ARTWORK',
                 style: TextStyle(
-                  color: AppColors.accentLight,
+                  color: AppColors.primary,
                   fontSize: 10,
                   letterSpacing: 1.5,
                   fontWeight: FontWeight.w900,
@@ -220,7 +221,7 @@ class _ArtworkIntro extends StatelessWidget {
               Text(
                 entry.artworkTitle,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.white,
+                  color: AppColors.textPrimary,
                   fontWeight: FontWeight.w900,
                   height: 1.12,
                 ),
@@ -230,11 +231,11 @@ class _ArtworkIntro extends StatelessWidget {
                 children: [
                   const CircleAvatar(
                     radius: 14,
-                    backgroundColor: Color(0x26FFFFFF),
+                    backgroundColor: Color(0x52335C31),
                     child: Icon(
                       Icons.brush_rounded,
                       size: 14,
-                      color: Colors.white,
+                      color: AppColors.primary,
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -244,7 +245,7 @@ class _ArtworkIntro extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        color: Color(0xEFFFFFFF),
+                        color: AppColors.textSecondary,
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -286,19 +287,19 @@ class _ArtworkStat extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
-        color: const Color(0x24FFFFFF),
+        color: const Color(0x8AFFFFFF),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0x42FFFFFF)),
+        border: Border.all(color: AppColors.primaryContainer),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 14, color: AppColors.accentLight),
+          Icon(icon, size: 14, color: AppColors.primary),
           const SizedBox(width: 5),
           Text(
             label,
             style: const TextStyle(
-              color: Colors.white,
+              color: AppColors.textPrimary,
               fontSize: 12,
               fontWeight: FontWeight.w800,
             ),
