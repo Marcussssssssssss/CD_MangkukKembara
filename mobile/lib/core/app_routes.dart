@@ -153,6 +153,8 @@ abstract final class AppRoutes {
           CommunityHomeView(
             vendorId: args['vendorId'] as String?,
             vendorName: args['vendorName'] as String?,
+            vendorAverageRating: (args['vendorAverageRating'] as num?)
+                ?.toDouble(),
           ),
           settings,
         );
@@ -162,7 +164,16 @@ abstract final class AppRoutes {
           settings,
         );
       case createPost:
-        return _build(const CreatePostView(), settings);
+        final args = settings.arguments is Map
+            ? settings.arguments as Map
+            : const {};
+        return _build(
+          CreatePostView(
+            initialVendorId: args['vendorId'] as String?,
+            initialVendorName: args['vendorName'] as String?,
+          ),
+          settings,
+        );
       case artworkCampaign:
         return _build(const ArtworkCampaignHomeView(), settings);
       case campaignDetail:

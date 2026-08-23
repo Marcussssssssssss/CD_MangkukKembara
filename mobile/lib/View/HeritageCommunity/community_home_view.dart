@@ -10,6 +10,7 @@ import '../Widgets/error_state_widget.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/map_home_button.dart';
 import '../Widgets/post_card.dart';
+import '../Widgets/rating_bar.dart';
 import 'artwork_campaign_home_view.dart';
 import 'heritage_community_style.dart';
 
@@ -27,8 +28,14 @@ abstract final class _CommunityPageColors {
 class CommunityHomeView extends StatefulWidget {
   final String? vendorId;
   final String? vendorName;
+  final double? vendorAverageRating;
 
-  const CommunityHomeView({super.key, this.vendorId, this.vendorName});
+  const CommunityHomeView({
+    super.key,
+    this.vendorId,
+    this.vendorName,
+    this.vendorAverageRating,
+  });
 
   @override
   State<CommunityHomeView> createState() => _CommunityHomeViewState();
@@ -42,7 +49,10 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
   @override
   void initState() {
     super.initState();
-    _vm = CommunityFeedViewModel(vendorId: widget.vendorId);
+    _vm = CommunityFeedViewModel(
+      vendorId: widget.vendorId,
+      initialVendorAverageRating: widget.vendorAverageRating,
+    );
     WidgetsBinding.instance.addPostFrameCallback((_) => _vm.loadPosts());
   }
 
@@ -78,28 +88,38 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
                 color: _CommunityPageColors.darkGreen,
               ),
             ),
-            body: Column(
-              children: [
-                _CommunityTabs(
-                  selectedIndex: _selectedTab,
-                  onSelected: _selectTab,
-                ),
-                Expanded(
-                  child: PageView(
-                    controller: _pageController,
-                    onPageChanged: (index) {
-                      if (_selectedTab != index) {
-                        setState(() => _selectedTab = index);
-                      }
-                    },
+            body: widget.vendorId != null
+                ? Column(
                     children: [
-                      _buildCommunityPage(ctx, vm, auth),
-                      const ArtworkCampaignPanel(),
+                      _VendorRatingHeader(
+                        vendorName: widget.vendorName ?? 'Vendor',
+                        averageRating: vm.vendorAverageRating,
+                      ),
+                      Expanded(child: _buildCommunityPage(ctx, vm, auth)),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      _CommunityTabs(
+                        selectedIndex: _selectedTab,
+                        onSelected: _selectTab,
+                      ),
+                      Expanded(
+                        child: PageView(
+                          controller: _pageController,
+                          onPageChanged: (index) {
+                            if (_selectedTab != index) {
+                              setState(() => _selectedTab = index);
+                            }
+                          },
+                          children: [
+                            _buildCommunityPage(ctx, vm, auth),
+                            const ArtworkCampaignPanel(),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
-                ),
-              ],
-            ),
             floatingActionButton: _selectedTab == 0
                 ? FloatingActionButton.extended(
                     onPressed: () async {
@@ -108,7 +128,16 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
                         return;
                       }
                       if (ctx.mounted) {
-                        await Navigator.pushNamed(ctx, AppRoutes.createPost);
+                        await Navigator.pushNamed(
+                          ctx,
+                          AppRoutes.createPost,
+                          arguments: widget.vendorId == null
+                              ? null
+                              : {
+                                  'vendorId': widget.vendorId,
+                                  'vendorName': widget.vendorName,
+                                },
+                        );
                         if (ctx.mounted) {
                           await vm.loadPosts(showLoading: false);
                         }
@@ -225,6 +254,86 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
                 ),
         ),
       ],
+    );
+  }
+}
+
+class _VendorRatingHeader extends StatelessWidget {
+  final String vendorName;
+  final double averageRating;
+
+  const _VendorRatingHeader({
+    required this.vendorName,
+    required this.averageRating,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return HeritageSectionCard(
+      margin: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+      child: Row(
+        children: [
+          Container(
+            width: 48,
+            height: 48,
+            decoration: BoxDecoration(
+              color: _CommunityPageColors.selectedTab,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: const Icon(
+              Icons.storefront_rounded,
+              color: _CommunityPageColors.darkGreen,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  vendorName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: _CommunityPageColors.darkGreen,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                RatingBar(
+                  rating: averageRating,
+                  size: 20,
+                  showLabel: false,
+                  filledColor: _CommunityPageColors.yellow,
+                  labelColor: _CommunityPageColors.darkGreen,
+                ),
+              ],
+            ),
+          ),
+          Column(
+            children: [
+              Text(
+                averageRating.toStringAsFixed(1),
+                style: const TextStyle(
+                  color: _CommunityPageColors.darkGreen,
+                  fontSize: 24,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const Text(
+                'Average',
+                style: TextStyle(
+                  color: _CommunityPageColors.mediumGreen,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }

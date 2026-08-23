@@ -61,7 +61,7 @@ class TreasureMapRepository {
             );
       }).toList();
     }
-    return vendors;
+    return _withRatingSummaries(vendors);
   }
 
   Future<List<PasarMalamModel>> fetchPasarMalam({
@@ -122,7 +122,7 @@ class TreasureMapRepository {
           .order('vendor_name'),
     );
     final now = DateTime.now();
-    return rows.map((raw) {
+    final vendors = rows.map((raw) {
       final json = Map<String, dynamic>.from(raw);
       json['_is_open'] = _isOpenNow(
         (json['vendor_operating_hours'] as List<dynamic>? ?? const [])
@@ -132,6 +132,7 @@ class TreasureMapRepository {
       );
       return VendorModel.fromJson(json);
     }).toList();
+    return _withRatingSummaries(vendors);
   }
 
   Future<List<String>> fetchStateNames() async {
@@ -178,7 +179,61 @@ class TreasureMapRepository {
           .toList(),
       DateTime.now(),
     );
-    return VendorModel.fromJson(json);
+    final vendor = VendorModel.fromJson(json);
+    return (await _withRatingSummaries([vendor])).single;
+  }
+
+  /// Calculates ratings from published community reviews instead of relying
+  /// on the denormalized vendor columns, which may be stale.
+  Future<({double averageRating, int reviewCount})> fetchVendorRatingSummary(
+    String vendorId,
+  ) async {
+    final summaries = await _fetchRatingSummaries([vendorId]);
+    return summaries[vendorId] ?? (averageRating: 0.0, reviewCount: 0);
+  }
+
+  Future<List<VendorModel>> _withRatingSummaries(
+    List<VendorModel> vendors,
+  ) async {
+    if (vendors.isEmpty) return vendors;
+    final summaries = await _fetchRatingSummaries(
+      vendors.map((vendor) => vendor.id).toList(),
+    );
+    return vendors.map((vendor) {
+      final summary = summaries[vendor.id];
+      return vendor.copyWith(
+        averageRating: summary?.averageRating ?? 0,
+        reviewCount: summary?.reviewCount ?? 0,
+      );
+    }).toList();
+  }
+
+  Future<Map<String, ({double averageRating, int reviewCount})>>
+  _fetchRatingSummaries(List<String> vendorIds) async {
+    if (vendorIds.isEmpty) return {};
+    final rows = await _api.guard(
+      () => _api.client
+          .from('community_posts')
+          .select('vendor_id, rating')
+          .inFilter('vendor_id', vendorIds)
+          .eq('status', 'published'),
+    );
+    final ratings = <String, List<double>>{};
+    for (final row in rows) {
+      final vendorId = row['vendor_id'] as String;
+      ratings
+          .putIfAbsent(vendorId, () => [])
+          .add((row['rating'] as num).toDouble());
+    }
+    return {
+      for (final entry in ratings.entries)
+        entry.key: (
+          averageRating:
+              entry.value.reduce((sum, rating) => sum + rating) /
+              entry.value.length,
+          reviewCount: entry.value.length,
+        ),
+    };
   }
 
   Future<List<OperatingHourModel>> fetchOperatingHours(String vendorId) async {

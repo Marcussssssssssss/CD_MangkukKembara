@@ -1,15 +1,23 @@
 import 'package:flutter/material.dart';
 import '../../Model/Repositories/HeritageCommunity/heritage_community_repository.dart';
 import '../../Model/Repositories/HeritageCommunity/community_post_model.dart';
+import '../../Model/Repositories/HeritageTreasureMap/treasure_map_repository.dart';
 
 /// View model for the Heritage Community home and search views.
 enum CommunityFeedState { initial, loading, content, empty, error }
 
 class CommunityFeedViewModel extends ChangeNotifier {
   final HeritageCommunityRepository _repo;
+  final TreasureMapRepository _treasureMapRepo;
   final String? vendorId;
-  CommunityFeedViewModel({HeritageCommunityRepository? repo, this.vendorId})
-    : _repo = repo ?? HeritageCommunityRepository();
+  CommunityFeedViewModel({
+    HeritageCommunityRepository? repo,
+    TreasureMapRepository? treasureMapRepo,
+    this.vendorId,
+    double? initialVendorAverageRating,
+  }) : _repo = repo ?? HeritageCommunityRepository(),
+       _treasureMapRepo = treasureMapRepo ?? TreasureMapRepository(),
+       _vendorAverageRating = initialVendorAverageRating ?? 0;
 
   List<CommunityPostModel> _posts = [];
   CommunityFeedState _state = CommunityFeedState.initial;
@@ -17,6 +25,7 @@ class CommunityFeedViewModel extends ChangeNotifier {
   String _searchQuery = '';
   String _sort = 'Popular';
   int _loadRevision = 0;
+  double _vendorAverageRating;
 
   List<CommunityPostModel> get posts => _posts;
   CommunityFeedState get state => _state;
@@ -26,6 +35,7 @@ class CommunityFeedViewModel extends ChangeNotifier {
   String get searchQuery => _searchQuery;
   String get sort => _sort;
   bool get isEmpty => _state == CommunityFeedState.empty;
+  double get vendorAverageRating => _vendorAverageRating;
 
   Future<void> loadPosts({bool showLoading = true}) async {
     _loadRevision++;
@@ -40,6 +50,12 @@ class CommunityFeedViewModel extends ChangeNotifier {
         sort: _sort,
         vendorId: vendorId,
       );
+      if (vendorId != null) {
+        final summary = await _treasureMapRepo.fetchVendorRatingSummary(
+          vendorId!,
+        );
+        _vendorAverageRating = summary.averageRating;
+      }
       _state = _posts.isEmpty
           ? CommunityFeedState.empty
           : CommunityFeedState.content;

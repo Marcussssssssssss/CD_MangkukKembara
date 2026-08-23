@@ -257,7 +257,11 @@ class _VendorDetailViewState extends State<VendorDetailView> {
                       onPressed: () => Navigator.pushNamed(
                         ctx,
                         AppRoutes.community,
-                        arguments: {'vendorId': v.id, 'vendorName': v.name},
+                        arguments: {
+                          'vendorId': v.id,
+                          'vendorName': v.name,
+                          'vendorAverageRating': v.averageRating,
+                        },
                       ),
                     ),
                     const SizedBox(height: 10),
