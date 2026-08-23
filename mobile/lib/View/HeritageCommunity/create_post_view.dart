@@ -13,7 +13,14 @@ import 'heritage_community_style.dart';
 
 /// C4. Create Community Post Form.
 class CreatePostView extends StatefulWidget {
-  const CreatePostView({super.key});
+  final String? initialVendorId;
+  final String? initialVendorName;
+
+  const CreatePostView({
+    super.key,
+    this.initialVendorId,
+    this.initialVendorName,
+  });
 
   @override
   State<CreatePostView> createState() => _CreatePostViewState();
@@ -28,6 +35,12 @@ class _CreatePostViewState extends State<CreatePostView> {
   void initState() {
     super.initState();
     _vm = CreatePostViewModel();
+    if (widget.initialVendorId != null) {
+      _vm.selectVendor(
+        widget.initialVendorId!,
+        widget.initialVendorName ?? 'Selected vendor',
+      );
+    }
   }
 
   @override
@@ -79,7 +92,9 @@ class _CreatePostViewState extends State<CreatePostView> {
                           // Vendor selector
                           _SectionLabel('Vendor *'),
                           GestureDetector(
-                            onTap: () => _selectVendorFromMap(ctx, vm),
+                            onTap: widget.initialVendorId == null
+                                ? () => _selectVendorFromMap(ctx, vm)
+                                : null,
                             child: Container(
                               padding: const EdgeInsets.all(14),
                               decoration: BoxDecoration(
@@ -106,8 +121,10 @@ class _CreatePostViewState extends State<CreatePostView> {
                                       ),
                                     ),
                                   ),
-                                  const Icon(
-                                    Icons.chevron_right_rounded,
+                                  Icon(
+                                    widget.initialVendorId == null
+                                        ? Icons.chevron_right_rounded
+                                        : Icons.lock_outline_rounded,
                                     color: AppColors.primary,
                                   ),
                                 ],

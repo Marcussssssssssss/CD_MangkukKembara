@@ -91,7 +91,11 @@ class VendorModel {
   @override
   String toString() => 'VendorModel(id: $id, name: $name)';
 
-  VendorModel copyWith({double? distanceKm}) => VendorModel(
+  VendorModel copyWith({
+    double? distanceKm,
+    double? averageRating,
+    int? reviewCount,
+  }) => VendorModel(
     id: id,
     name: name,
     description: description,
@@ -105,8 +109,8 @@ class VendorModel {
     pasarMalamId: pasarMalamId,
     latitude: latitude,
     longitude: longitude,
-    averageRating: averageRating,
-    reviewCount: reviewCount,
+    averageRating: averageRating ?? this.averageRating,
+    reviewCount: reviewCount ?? this.reviewCount,
     isOpen: isOpen,
     foodCategories: foodCategories,
     heritageFoods: heritageFoods,
