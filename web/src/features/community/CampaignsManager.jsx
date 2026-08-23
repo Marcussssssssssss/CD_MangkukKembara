@@ -101,13 +101,14 @@ export default function CampaignsManager() {
 
   const handleSaveCampaign = async (campaignData) => {
     if (editingCampaign) {
-      const originalEndDate = dateInputValue(editingCampaign.submission_end_at);
-      const endDateChanged = campaignData.submission_end_at !== originalEndDate;
+      // An early-ended campaign may already have today's calendar date stored,
+      // but at an earlier time. Saving today must still extend it to 23:59 and
+      // reactivate it even though the YYYY-MM-DD value appears unchanged.
+      const shouldReactivate = editingCampaign.status === 'completed'
+        && campaignData.submission_end_at >= dateInputValue(new Date());
       const updated = await updateCampaign(editingCampaign.artwork_campaign_id, {
         ...campaignData,
-        status: editingCampaign.status === 'completed' && endDateChanged
-          ? 'active'
-          : editingCampaign.status,
+        status: shouldReactivate ? 'active' : editingCampaign.status,
       });
       setCampaigns((prev) =>
         prev.map((c) => (c.artwork_campaign_id === updated.artwork_campaign_id ? updated : c))

@@ -9,6 +9,10 @@
 
 begin;
 
+-- Supabase Cron uses pg_cron. The scheduled job is installed near the end of
+-- this script after all campaign functions and triggers have been created.
+create extension if not exists pg_cron;
+
 -- ============================================================================
 -- 1. DROP OLD OBJECTS
 -- Drop child tables before parent tables.
@@ -480,8 +484,13 @@ language plpgsql
 set search_path = public, pg_temp
 as $$
 begin
-    if new.status = 'active' and new.submission_end_at < now() then
+    if new.submission_end_at <= now() then
         new.status := 'completed';
+    else
+        -- A future deadline always means the campaign is still active. The
+        -- admin End Early action stores its actual completion time, so it is
+        -- not mistaken for a campaign that runs until 23:59 today.
+        new.status := 'active';
     end if;
 
     return new;
@@ -1722,9 +1731,11 @@ for each row execute function public.validate_artwork_campaign_winner();
 
 -- Record a confirmed winner when a campaign transitions to completed outside
 -- finalize_artwork_voting_session (for example, through an admin status update).
--- A tied or unfinished result is deliberately left unconfirmed so that a
--- tie-break session can be completed first. The unique constraints make this
--- safe to run again, while the normal finalization function remains supported.
+-- Completing a campaign early also closes its terminal voting session so that
+-- its result can be validated and recorded in the same transaction. A tied or
+-- empty result is deliberately left unconfirmed. The unique constraints make
+-- this safe to run again, while the normal finalization function remains
+-- supported.
 create or replace function public.record_completed_campaign_winner()
 returns trigger
 language plpgsql
@@ -1757,13 +1768,13 @@ begin
         return new;
     end if;
 
-    -- Use the closed terminal session. A tie-break, when present, is therefore
-    -- selected instead of its parent session.
+    -- Use the terminal session. A tie-break, when present, is therefore selected
+    -- instead of its parent session. Do not require it to be closed here: an
+    -- administrator may end a campaign while its voting session is still active.
     select voting_session.artwork_voting_session_id
     into selected_session_id
     from public.artwork_voting_sessions voting_session
     where voting_session.artwork_campaign_id = new.artwork_campaign_id
-      and voting_session.status = 'closed'
       and not exists (
           select 1
           from public.artwork_voting_sessions child_session
@@ -1776,6 +1787,14 @@ begin
     if selected_session_id is null then
         return new;
     end if;
+
+    -- Winner validation requires a closed session. Closing scheduled/active
+    -- sessions is an allowed terminal transition and also prevents more votes
+    -- from being accepted after an early campaign completion.
+    update public.artwork_voting_sessions
+    set status = 'closed'
+    where artwork_voting_session_id = selected_session_id
+      and status <> 'closed';
 
     update public.artwork_voting_entries entry
     set vote_count = (
@@ -1932,6 +1951,56 @@ after update of status on public.artwork_campaigns
 for each row
 when (new.status = 'completed' and old.status is distinct from new.status)
 execute function public.record_completed_campaign_winner();
+
+-- Extending a completed campaign reopens it by changing its status back to
+-- active. Its previously announced result is no longer final, so remove the
+-- campaign-winner record. The promoted artwork is retained because it may
+-- already be referenced elsewhere and can be reused if the same entry wins
+-- when the campaign is completed again.
+create or replace function public.remove_reopened_campaign_winner()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+    delete from public.artwork_campaign_winners winner
+    where winner.artwork_campaign_id = new.artwork_campaign_id;
+
+    return new;
+end;
+$$;
+
+create trigger remove_reopened_campaign_winner_trigger
+after update of status on public.artwork_campaigns
+for each row
+when (old.status = 'completed' and new.status = 'active')
+execute function public.remove_reopened_campaign_winner();
+
+-- Complete every campaign whose submission deadline has passed. This function
+-- is intentionally separate from the row trigger because elapsed time does not
+-- fire PostgreSQL triggers. Updating status here invokes the winner trigger
+-- above for each newly completed campaign.
+create or replace function public.complete_expired_artwork_campaigns()
+returns integer
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    completed_count integer;
+begin
+    update public.artwork_campaigns
+    set status = 'completed'
+    where status = 'active'
+      and submission_end_at <= now();
+
+    get diagnostics completed_count = row_count;
+    return completed_count;
+end;
+$$;
+
+revoke all on function public.complete_expired_artwork_campaigns() from public;
 
 create or replace function public.sync_artwork_voting_entry_vote_count()
 returns trigger
@@ -2526,7 +2595,8 @@ begin
     returning artwork_campaign_winner_id into created_winner_id;
 
     update public.artwork_campaigns
-    set status = 'completed'
+    set submission_end_at = least(submission_end_at, now()),
+        status = 'completed'
     where artwork_campaign_id = selected_campaign_id;
 
     return created_winner_id;
@@ -3066,6 +3136,28 @@ begin
     ) then
         raise exception 'Profile backfill failed: one or more Auth users are orphaned';
     end if;
+end;
+$$;
+
+-- Recreate one idempotent daily schedule. pg_cron expressions use UTC on
+-- Supabase, so 16:05 UTC runs at 00:05 in Malaysia (UTC+08).
+do $$
+declare
+    existing_job_id bigint;
+begin
+    for existing_job_id in
+        select jobid
+        from cron.job
+        where jobname = 'complete-expired-artwork-campaigns-daily'
+    loop
+        perform cron.unschedule(existing_job_id);
+    end loop;
+
+    perform cron.schedule(
+        'complete-expired-artwork-campaigns-daily',
+        '5 16 * * *',
+        'select public.complete_expired_artwork_campaigns();'
+    );
 end;
 $$;
 

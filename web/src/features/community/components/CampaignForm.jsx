@@ -38,7 +38,7 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
   const isExtendingCompletedCampaign = campaign?.status === 'completed'
-    && formData.submission_end_at !== formatDateLocal(campaign.submission_end_at);
+    && formData.submission_end_at >= localToday();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -70,8 +70,10 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
     }
     
     if (formData.submission_start_at && formData.submission_end_at) {
-      if (new Date(formData.submission_end_at) <= new Date(formData.submission_start_at)) {
-        newErrors.submission_end_at = 'Submission End must be after Submission Start.';
+      // Campaign dates are saved as 00:00 for the start and 23:59 for the end,
+      // so a same-day campaign is valid and remains open for the whole day.
+      if (formData.submission_end_at < formData.submission_start_at) {
+        newErrors.submission_end_at = 'Submission End cannot be before Submission Start.';
       }
     }
 
