@@ -374,7 +374,7 @@ class _CreatePostViewState extends State<CreatePostView> {
     final vendor = await Navigator.push<VendorModel>(
       context,
       MaterialPageRoute(
-        builder: (_) => const TreasureMapView(selectionMode: true),
+        builder: (_) => const TreasureMapView(),
         settings: const RouteSettings(name: 'vendor-map-selection'),
       ),
     );
