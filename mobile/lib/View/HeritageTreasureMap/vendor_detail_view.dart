@@ -81,6 +81,17 @@ class _VendorDetailViewState extends State<VendorDetailView> {
                   )
                 : const _VendorCoverPlaceholder(),
           ),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.directions_rounded),
+              tooltip: 'Navigate to vendor',
+              onPressed: () => Navigator.pushNamed(
+                ctx,
+                AppRoutes.routeNavigation,
+                arguments: v.id,
+              ),
+            ),
+          ],
         ),
         SliverToBoxAdapter(
           child: Column(
@@ -237,31 +248,17 @@ class _VendorDetailViewState extends State<VendorDetailView> {
               // Action buttons
               Padding(
                 padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.rate_review_rounded),
-                      label: const Text('View Reviews'),
-                      onPressed: () {
-                        ScaffoldMessenger.of(ctx).showSnackBar(
-                          const SnackBar(
-                            content: Text('Vendor reviews coming soon'),
-                          ),
-                        );
-                      },
+                child: SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.directions_rounded),
+                    label: const Text('Get Directions'),
+                    onPressed: () => Navigator.pushNamed(
+                      ctx,
+                      AppRoutes.routeNavigation,
+                      arguments: v.id,
                     ),
-                    const SizedBox(height: 10),
-                    OutlinedButton.icon(
-                      icon: const Icon(Icons.directions_rounded),
-                      label: const Text('Get Directions'),
-                      onPressed: () => Navigator.pushNamed(
-                        ctx,
-                        AppRoutes.routeNavigation,
-                        arguments: v.id,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ),
               const SizedBox(height: 20),
