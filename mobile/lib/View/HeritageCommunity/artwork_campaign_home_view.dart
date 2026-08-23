@@ -565,6 +565,10 @@ class _CampaignHeader extends StatelessWidget {
             ),
           ],
         ),
+        foregroundDecoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.primary, width: 1.5),
+        ),
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
@@ -581,7 +585,7 @@ class _CampaignHeader extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF416F43), Color(0xFF203F2A)],
+                    colors: [Color(0xFFEAF2E6), Color(0xFFD6E5D1)],
                   ),
                 ),
               ),
@@ -600,7 +604,7 @@ class _CampaignHeader extends StatelessWidget {
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
-                            color: Color(0xFFFDF8EC),
+                            color: AppColors.textPrimary,
                             fontSize: 22,
                             height: 1.15,
                             fontWeight: FontWeight.w900,
@@ -610,7 +614,7 @@ class _CampaignHeader extends StatelessWidget {
                       const SizedBox(width: 12),
                       const Icon(
                         Icons.info_outline_rounded,
-                        color: Color(0xCCFFFFFF),
+                        color: AppColors.primary,
                         size: 22,
                       ),
                     ],
@@ -622,23 +626,19 @@ class _CampaignHeader extends StatelessWidget {
                       vertical: 5,
                     ),
                     decoration: BoxDecoration(
-                      color: const Color(0x26FFFFFF),
+                      color: const Color(0x8AFFFFFF),
                       borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0x55FFFFFF)),
+                      border: Border.all(color: AppColors.primaryContainer),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          statusIcon,
-                          size: 14,
-                          color: const Color(0xFFFDF8EC),
-                        ),
+                        Icon(statusIcon, size: 14, color: AppColors.primary),
                         const SizedBox(width: 6),
                         Text(
                           statusTitle,
                           style: const TextStyle(
-                            color: Color(0xFFFDF8EC),
+                            color: AppColors.textPrimary,
                             fontSize: 11,
                             fontWeight: FontWeight.w800,
                           ),
