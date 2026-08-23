@@ -54,6 +54,10 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
     const newErrors = {};
     if (!formData.campaign_title?.trim()) newErrors.campaign_title = 'Campaign Title is required.';
     if (!formData.state_id) newErrors.state_id = 'State is required.';
+    const selectedState = stateOptions.find(state => state.state_id === formData.state_id);
+    if (selectedState && !selectedState.has_heritage_food) {
+      newErrors.state_id = 'This state needs an active Heritage Food before a campaign can be created.';
+    }
     if (!formData.description?.trim()) newErrors.description = 'Description is required.';
     if (!formData.submission_start_at) newErrors.submission_start_at = 'Submission Start is required.';
     if (!formData.submission_end_at) newErrors.submission_end_at = 'Submission End is required.';
@@ -160,8 +164,13 @@ function CampaignFormContent({ campaign, isOpen, onClose, onSave, referenceData 
                   >
                     <option value="">Select a state</option>
                     {stateOptions.map((state) => (
-                      <option key={state.state_id} value={state.state_id}>
+                      <option
+                        key={state.state_id}
+                        value={state.state_id}
+                        disabled={!state.has_heritage_food}
+                      >
                         {state.state_name}{state.state_code ? ` (${state.state_code})` : ''}
+                        {!state.has_heritage_food ? ' — no heritage food configured' : ''}
                       </option>
                     ))}
                   </select>

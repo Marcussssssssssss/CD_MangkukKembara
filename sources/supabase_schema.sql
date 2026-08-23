@@ -52,6 +52,14 @@ drop table if exists public.states cascade;
 drop table if exists public.profiles cascade;
 
 drop sequence if exists public.profile_number_seq cascade;
+drop sequence if exists public.heritage_tiffin_number_seq cascade;
+drop sequence if exists public.heritage_story_number_seq cascade;
+drop sequence if exists public.heritage_media_number_seq cascade;
+drop sequence if exists public.tiffin_qr_code_number_seq cascade;
+drop sequence if exists public.heritage_tiffin_id_seq cascade;
+drop sequence if exists public.heritage_story_id_seq cascade;
+drop sequence if exists public.heritage_media_id_seq cascade;
+drop sequence if exists public.tiffin_qr_code_id_seq cascade;
 drop sequence if exists public.user_tiffin_collection_number_seq cascade;
 drop sequence if exists public.community_post_number_seq cascade;
 drop sequence if exists public.community_post_photo_number_seq cascade;
@@ -70,6 +78,7 @@ drop function if exists public.create_artwork_submission(varchar, varchar, text,
 drop function if exists public.cast_artwork_vote(varchar) cascade;
 drop function if exists public.create_tie_break_session(varchar, timestamptz, timestamptz) cascade;
 drop function if exists public.finalize_artwork_voting_session(varchar) cascade;
+drop function if exists public.validate_heritage_tiffin_relationships() cascade;
 drop trigger if exists on_auth_user_created on auth.users;
 
 -- ============================================================================
@@ -80,6 +89,10 @@ drop trigger if exists on_auth_user_created on auth.users;
 
 -- P0001-P0999 are reserved for deterministic seed/demo profiles.
 create sequence public.profile_number_seq start 1000;
+create sequence public.heritage_tiffin_number_seq start 1000;
+create sequence public.heritage_story_number_seq start 1000;
+create sequence public.heritage_media_number_seq start 1000;
+create sequence public.tiffin_qr_code_number_seq start 1000;
 
 create table public.profiles (
     profile_id         varchar(5) primary key,
@@ -223,11 +236,12 @@ create table public.artworks (
 );
 
 create table public.heritage_tiffins (
-    heritage_tiffin_id  varchar(6) primary key,
+    heritage_tiffin_id  varchar(6) primary key default
+                        ('HT' || lpad(nextval('public.heritage_tiffin_number_seq')::text, 4, '0')),
     edition_name        varchar(150) not null unique,
     state_id            varchar(5) not null references public.states(state_id),
     heritage_food_id    varchar(6) not null references public.heritage_foods(heritage_food_id),
-    artwork_id          varchar(5) not null references public.artworks(artwork_id),
+    artwork_id          varchar(5) not null unique references public.artworks(artwork_id),
     description         text,
     cultural_significance text,
     cover_image_url     text,
@@ -242,8 +256,9 @@ create table public.heritage_tiffins (
 );
 
 create table public.heritage_stories (
-    heritage_story_id  varchar(6) primary key,
-    heritage_tiffin_id varchar(6) not null references public.heritage_tiffins(heritage_tiffin_id) on delete cascade,
+    heritage_story_id  varchar(6) primary key default
+                       ('HS' || lpad(nextval('public.heritage_story_number_seq')::text, 4, '0')),
+    heritage_tiffin_id varchar(6) not null unique references public.heritage_tiffins(heritage_tiffin_id) on delete cascade,
     title               varchar(180) not null,
     story_body          text not null,
     image_url           text,
@@ -255,7 +270,8 @@ create table public.heritage_stories (
 );
 
 create table public.heritage_media (
-    heritage_media_id  varchar(6) primary key,
+    heritage_media_id  varchar(6) primary key default
+                       ('HM' || lpad(nextval('public.heritage_media_number_seq')::text, 4, '0')),
     heritage_tiffin_id varchar(6) not null references public.heritage_tiffins(heritage_tiffin_id) on delete cascade,
     media_type         varchar(20) not null
                        check (media_type in ('image', 'video', 'audio')),
@@ -271,9 +287,14 @@ create table public.heritage_media (
         check (heritage_media_id ~ '^HM[0-9]{4}$')
 );
 
+create unique index uq_heritage_media_tiffin_video
+on public.heritage_media (heritage_tiffin_id)
+where media_type = 'video';
+
 create table public.tiffin_qr_codes (
-    tiffin_qr_code_id  varchar(7) primary key,
-    heritage_tiffin_id varchar(6) not null references public.heritage_tiffins(heritage_tiffin_id) on delete cascade,
+    tiffin_qr_code_id  varchar(7) primary key default
+                       ('TQC' || lpad(nextval('public.tiffin_qr_code_number_seq')::text, 4, '0')),
+    heritage_tiffin_id varchar(6) not null unique references public.heritage_tiffins(heritage_tiffin_id) on delete cascade,
     code_value         text not null unique,
     is_active          boolean not null default true,
     generated_at       timestamptz not null default now(),
@@ -864,6 +885,56 @@ $$;
 
 revoke all on function public.is_current_profile_admin() from public;
 grant execute on function public.is_current_profile_admin() to authenticated;
+
+-- A Tiffin inherits its state from the selected winning Artwork. Its featured
+-- food must belong to that same state. Deferred validation also allows the
+-- deterministic seed transaction to insert winners after its Tiffin rows.
+create or replace function public.validate_heritage_tiffin_relationships()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+declare
+    campaign_state_id varchar(5);
+    food_state_id varchar(5);
+begin
+    select campaign.state_id
+    into campaign_state_id
+    from public.artworks artwork
+    join public.artwork_campaign_winners winner
+      on winner.artwork_id = artwork.artwork_id
+    join public.artwork_campaigns campaign
+      on campaign.artwork_campaign_id = winner.artwork_campaign_id
+    where artwork.artwork_id = new.artwork_id
+      and artwork.status = 'published';
+
+    if campaign_state_id is null then
+        raise exception 'Artwork must be a published campaign winner.';
+    end if;
+
+    if new.state_id <> campaign_state_id then
+        raise exception 'Tiffin state must match the winning Artwork campaign state.';
+    end if;
+
+    select state_id
+    into food_state_id
+    from public.heritage_foods
+    where heritage_food_id = new.heritage_food_id
+      and is_active = true;
+
+    if food_state_id is null or food_state_id <> campaign_state_id then
+        raise exception 'Featured Heritage Food must be active and belong to the campaign state.';
+    end if;
+
+    return new;
+end;
+$$;
+
+create constraint trigger validate_heritage_tiffin_relationships
+after insert or update on public.heritage_tiffins
+deferrable initially deferred
+for each row execute function public.validate_heritage_tiffin_relationships();
 
 create or replace function public.is_valid_reply_parent(
     requested_parent_id varchar(6),
@@ -2592,6 +2663,11 @@ for select to anon, authenticated using (status = 'published');
 create policy heritage_tiffins_public_read on public.heritage_tiffins
 for select to anon, authenticated using (status = 'active');
 
+create policy heritage_tiffins_admin_manage on public.heritage_tiffins
+for all to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
+
 create policy heritage_stories_public_read on public.heritage_stories
 for select to anon, authenticated
 using (
@@ -2602,6 +2678,11 @@ using (
           and tiffins.status = 'active'
     )
 );
+
+create policy heritage_stories_admin_manage on public.heritage_stories
+for all to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
 
 create policy heritage_media_public_read on public.heritage_media
 for select to anon, authenticated
@@ -2614,12 +2695,22 @@ using (
     )
 );
 
+create policy heritage_media_admin_manage on public.heritage_media
+for all to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
+
 create policy tiffin_qr_authenticated_read on public.tiffin_qr_codes
 for select to authenticated
 using (
     is_active = true
     and (expires_at is null or expires_at > now())
 );
+
+create policy tiffin_qr_admin_manage on public.tiffin_qr_codes
+for all to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
 
 create policy collection_own_read on public.user_tiffin_collection
 for select to authenticated
@@ -3012,6 +3103,16 @@ to anon, authenticated;
 
 grant select on public.tiffin_qr_codes, public.user_tiffin_collection,
     public.community_post_likes, public.artwork_votes
+to authenticated;
+
+grant insert, update, delete on public.heritage_tiffins,
+    public.heritage_stories, public.heritage_media,
+    public.tiffin_qr_codes
+to authenticated;
+
+grant usage, select on sequence public.heritage_tiffin_number_seq,
+    public.heritage_story_number_seq, public.heritage_media_number_seq,
+    public.tiffin_qr_code_number_seq
 to authenticated;
 
 grant insert on public.user_tiffin_collection, public.community_posts,

@@ -42,6 +42,10 @@ public.food_categories,
 public.states,
 public.profiles cascade;
 alter sequence public.profile_number_seq restart with 1000;
+alter sequence public.heritage_tiffin_number_seq restart with 1000;
+alter sequence public.heritage_story_number_seq restart with 1000;
+alter sequence public.heritage_media_number_seq restart with 1000;
+alter sequence public.tiffin_qr_code_number_seq restart with 1000;
 alter sequence public.user_tiffin_collection_number_seq restart with 1000;
 alter sequence public.community_post_number_seq restart with 1000;
 alter sequence public.community_post_photo_number_seq restart with 1000;
@@ -146,7 +150,19 @@ values (
         'SWK',
         'Sarawak',
         'A Borneo state with diverse indigenous food traditions.'
-    );
+    ),
+    ('S0005', 'JHR', 'Johor', null),
+    ('S0006', 'KDH', 'Kedah', null),
+    ('S0007', 'NSN', 'Negeri Sembilan', null),
+    ('S0008', 'PHG', 'Pahang', null),
+    ('S0009', 'PRK', 'Perak', null),
+    ('S0010', 'PLS', 'Perlis', null),
+    ('S0011', 'SBH', 'Sabah', null),
+    ('S0012', 'SGR', 'Selangor', null),
+    ('S0013', 'TRG', 'Terengganu', null),
+    ('S0014', 'KUL', 'Kuala Lumpur', null),
+    ('S0015', 'LBN', 'Labuan', null),
+    ('S0016', 'PJY', 'Putrajaya', null);
 insert into public.food_categories (
         food_category_id,
         category_name,
@@ -166,6 +182,11 @@ values (
         'FC0003',
         'Traditional Specialities',
         'Regional dishes prepared using local customs.'
+    ),
+    (
+        'FC0004',
+        'Traditional Desserts',
+        'Traditional Malaysian sweets, puddings, and desserts.'
     );
 insert into public.heritage_foods (
         heritage_food_id,
@@ -211,7 +232,18 @@ values (
         'Rice vermicelli served in an aromatic Sarawak-style broth.',
         'A well-known representation of Sarawak food identity.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1786290629/Sarawak_Laksa_yyvjsc.jpg'
-    );
+    ),
+    ('HF0005', 'FC0002', 'S0005', 'Laksa Johor', null, null, null),
+    ('HF0006', 'FC0002', 'S0006', 'Laksa Kuala Kedah', null, null, null),
+    ('HF0007', 'FC0003', 'S0007', 'Masak Lemak Cili Api', null, null, null),
+    ('HF0008', 'FC0003', 'S0008', 'Patin Masak Tempoyak', null, null, null),
+    ('HF0009', 'FC0002', 'S0009', 'Ipoh Sar Hor Fun', null, null, null),
+    ('HF0010', 'FC0002', 'S0010', 'Laksa Perlis', null, null, null),
+    ('HF0011', 'FC0003', 'S0011', 'Hinava', null, null, null),
+    ('HF0012', 'FC0003', 'S0012', 'Satay Kajang', null, null, null),
+    ('HF0013', 'FC0001', 'S0013', 'Nasi Dagang', null, null, null),
+    ('HF0014', 'FC0002', 'S0014', 'Kuala Lumpur Hokkien Mee', null, null, null),
+    ('HF0015', 'FC0004', 'S0015', 'Labuan Coconut Pudding', null, null, null);
 -- ============================================================================
 -- 4. ARTWORKS AND HERITAGE TIFFINS
 -- profile_id identifies the tourist/profile who created the artwork.

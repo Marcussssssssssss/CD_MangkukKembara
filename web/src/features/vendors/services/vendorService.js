@@ -56,10 +56,42 @@ export async function fetchReferenceData() {
   return { states, foods, tiffins };
 }
 
+async function assertVendorSelectionsMatchState(formData) {
+  const selectedFoodIds = formData.selected_foods || [];
+  const selectedTiffinIds = (formData.selected_tiffins || [])
+    .map(tiffin => tiffin.heritage_tiffin_id);
+  const [foods, tiffins] = await Promise.all([
+    selectedFoodIds.length
+      ? queryRows('heritage_foods', 'heritage_food_id, state_id', query => (
+        query.in('heritage_food_id', selectedFoodIds).eq('is_active', true)
+      ))
+      : [],
+    selectedTiffinIds.length
+      ? queryRows('heritage_tiffins', 'heritage_tiffin_id, state_id', query => (
+        query.in('heritage_tiffin_id', selectedTiffinIds).neq('status', 'inactive')
+      ))
+      : [],
+  ]);
+
+  if (
+    foods.length !== selectedFoodIds.length
+    || foods.some(food => food.state_id !== formData.state_id)
+  ) {
+    throw new Error('Every selected Heritage Food must belong to the Vendor state.');
+  }
+  if (
+    tiffins.length !== selectedTiffinIds.length
+    || tiffins.some(tiffin => tiffin.state_id !== formData.state_id)
+  ) {
+    throw new Error('Every selected Tiffin must belong to the Vendor state.');
+  }
+}
+
 /**
  * Create a new Vendor with its relations.
  */
 export async function createVendor(formData) {
+  await assertVendorSelectionsMatchState(formData);
   const vendorId = await getNextId('vendors', 'vendor_id', 'V');
 
   // 1. Insert Vendor
@@ -84,14 +116,6 @@ export async function createVendor(formData) {
 
   // 2. Insert Operating Hours
   if (formData.operating_hours && formData.operating_hours.length > 0) {
-    const hoursPayload = await Promise.all(formData.operating_hours.map(async (oh) => ({
-      vendor_operating_hours_id: await getNextId('vendor_operating_hours', 'vendor_operating_hours_id', 'VOH'),
-      vendor_id: vendorId,
-      day_of_week: oh.day_of_week,
-      opening_time: oh.is_closed ? null : oh.opening_time,
-      closing_time: oh.is_closed ? null : oh.closing_time,
-      is_closed: oh.is_closed
-    })));
     // In a real high concurrency environment, getting next ID iteratively like this could collide. 
     // Usually UUIDs are better, but we are adhering to the exact schema VOH0000 format.
     // To prevent collision in this loop, we generate them sequentially or use a fixed counter.
@@ -141,6 +165,7 @@ export async function createVendor(formData) {
  * Update an existing Vendor.
  */
 export async function updateVendor(vendorId, formData) {
+  await assertVendorSelectionsMatchState(formData);
   // 1. Update Vendor Basic Info
   const vendorPayload = {
     vendor_name: formData.vendor_name,

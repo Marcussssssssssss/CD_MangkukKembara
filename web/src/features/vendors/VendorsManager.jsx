@@ -36,26 +36,28 @@ export default function VendorsManager() {
     setTimeout(() => setFeedbackMessage(null), 5000);
   };
 
-  // --- Data Fetching ---
-  const loadData = async () => {
-    try {
-      setIsLoading(true);
-      const [vendorData, refData] = await Promise.all([
-        fetchVendors(),
-        fetchReferenceData()
-      ]);
-      setVendors(vendorData);
-      setReferenceData(refData);
-    } catch (err) {
-      setError(err.message || 'Failed to load vendor data.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadData();
+    let isMounted = true;
+    Promise.all([fetchVendors(), fetchReferenceData()])
+      .then(([vendorData, refData]) => {
+        if (!isMounted) return;
+        setVendors(vendorData);
+        setReferenceData(refData);
+      })
+      .catch((err) => {
+        if (isMounted) setError(err.message || 'Failed to load vendor data.');
+      })
+      .finally(() => {
+        if (isMounted) setIsLoading(false);
+      });
+    return () => { isMounted = false; };
   }, []);
+
+  const reloadData = async () => {
+    const [vendorData, refData] = await Promise.all([fetchVendors(), fetchReferenceData()]);
+    setVendors(vendorData);
+    setReferenceData(refData);
+  };
 
   // --- Derived State ---
   const filteredVendors = useMemo(() => {
@@ -89,20 +91,15 @@ export default function VendorsManager() {
 
   // --- Save Operations ---
   const handleSaveVendor = async (vendorData) => {
-    try {
-      if (editingVendor) {
-        await updateVendor(vendorData.vendor_id, vendorData);
-        showFeedback('Vendor updated successfully.');
-      } else {
-        await createVendor(vendorData);
-        showFeedback('New vendor created.');
-      }
-      handleCloseModals();
-      await loadData(); // Reload all to get generated joined data nicely
-    } catch (err) {
-      // Re-throw to the form so it displays the error
-      throw err;
+    if (editingVendor) {
+      await updateVendor(vendorData.vendor_id, vendorData);
+      showFeedback('Vendor updated successfully.');
+    } else {
+      await createVendor(vendorData);
+      showFeedback('New vendor created.');
     }
+    handleCloseModals();
+    await reloadData();
   };
 
   const handleConfirmDeactivate = async (id) => {

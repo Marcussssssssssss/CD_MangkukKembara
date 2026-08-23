@@ -1,5 +1,5 @@
 import { supabase, queryRows, insertRows, updateRows } from '../../../services/supabase/api';
-import { uploadTiffinImage, uploadHeritageVideo } from '../../../services/cloudinary/upload';
+import { uploadHeritageVideo } from '../../../services/cloudinary/upload';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -33,61 +33,71 @@ async function enrichArtworksWithPublicProfiles(artworks) {
   }));
 }
 
-/**
- * Helper to generate the next HT0000 ID format.
- */
-async function getNextTiffinId() {
-  const { data, error } = await supabase
-    .from('heritage_tiffins')
-    .select('heritage_tiffin_id')
-    .order('heritage_tiffin_id', { ascending: false })
-    .limit(1);
-
-  if (error) throw error;
-
-  let nextNum = 1;
-  if (data && data.length > 0 && data[0].heritage_tiffin_id) {
-    const numPart = data[0].heritage_tiffin_id.replace('HT', '');
-    nextNum = parseInt(numPart, 10) + 1;
-  }
-  
-  return `HT${String(nextNum).padStart(4, '0')}`;
+function relationRow(relation) {
+  if (Array.isArray(relation)) return relation[0] || null;
+  return relation || null;
 }
 
-async function getNextStoryId() {
-  const { data, error } = await supabase
-    .from('heritage_stories')
-    .select('heritage_story_id')
-    .order('heritage_story_id', { ascending: false })
-    .limit(1);
-
-  if (error) throw error;
-
-  let nextNum = 1;
-  if (data && data.length > 0 && data[0].heritage_story_id) {
-    const numPart = data[0].heritage_story_id.replace('HS', '');
-    nextNum = parseInt(numPart, 10) + 1;
-  }
-  
-  return `HS${String(nextNum).padStart(4, '0')}`;
+function relationRows(relation) {
+  if (Array.isArray(relation)) return relation;
+  return relation ? [relation] : [];
 }
 
-async function getNextMediaId() {
-  const { data, error } = await supabase
-    .from('heritage_media')
-    .select('heritage_media_id')
-    .order('heritage_media_id', { ascending: false })
-    .limit(1);
+async function assertArtworkAvailable(artworkId, currentTiffinId = null) {
+  const assignments = await queryRows(
+    'heritage_tiffins',
+    'heritage_tiffin_id',
+    query => {
+      const artworkQuery = query.eq('artwork_id', artworkId);
+      return currentTiffinId
+        ? artworkQuery.neq('heritage_tiffin_id', currentTiffinId)
+        : artworkQuery;
+    }
+  );
 
-  if (error) throw error;
-
-  let nextNum = 1;
-  if (data && data.length > 0 && data[0].heritage_media_id) {
-    const numPart = data[0].heritage_media_id.replace('HM', '');
-    nextNum = parseInt(numPart, 10) + 1;
+  if (assignments.length > 0) {
+    throw new Error('This Artwork is already assigned to another Heritage Tiffin.');
   }
-  
-  return `HM${String(nextNum).padStart(4, '0')}`;
+}
+
+async function assertTiffinRelationships(formData, currentTiffinId = null) {
+  if (!formData.artwork_id) throw new Error('Select a published winning Artwork.');
+
+  const artworks = await queryRows(
+    'artworks',
+    `
+      artwork_id,
+      status,
+      artwork_campaign_winners!inner(
+        artwork_campaigns!artwork_campaign_winners_artwork_campaign_id_fkey(state_id)
+      )
+    `,
+    query => query.eq('artwork_id', formData.artwork_id).eq('status', 'published')
+  );
+  const artwork = artworks[0];
+  const campaignStateId = relationRow(
+    relationRow(artwork?.artwork_campaign_winners)?.artwork_campaigns
+  )?.state_id;
+
+  if (!artwork || !campaignStateId) {
+    throw new Error('The selected Artwork is not a published campaign winner.');
+  }
+  if (formData.state_id !== campaignStateId) {
+    throw new Error('The Tiffin state must match the selected Artwork campaign.');
+  }
+
+  const foods = await queryRows(
+    'heritage_foods',
+    'heritage_food_id, state_id, is_active',
+    query => query
+      .eq('heritage_food_id', formData.heritage_food_id)
+      .eq('is_active', true)
+  );
+  if (!foods[0] || foods[0].state_id !== campaignStateId) {
+    throw new Error('Select an active Heritage Food from the Artwork campaign state.');
+  }
+
+  await assertArtworkAvailable(formData.artwork_id, currentTiffinId);
 }
 
 // ---------------------------------------------------------------------------
@@ -100,11 +110,18 @@ async function getNextMediaId() {
 export async function fetchTiffins() {
   const data = await queryRows(
     'heritage_tiffins',
-    '*, heritage_stories(*), heritage_media(*), tiffin_qr_codes(code_value, is_active)',
+    '*, heritage_stories(*), heritage_media(*), tiffin_qr_codes(tiffin_qr_code_id, code_value, is_active)',
     q => q.order('created_at', { ascending: false })
   );
-  
-  return data;
+
+  return data.map(tiffin => ({
+    ...tiffin,
+    heritage_stories: [...(tiffin.heritage_stories || [])]
+      .sort((a, b) => a.sort_order - b.sort_order),
+    heritage_media: [...(tiffin.heritage_media || [])]
+      .filter(media => media.media_type === 'video')
+      .sort((a, b) => a.sort_order - b.sort_order),
+  }));
 }
 
 /**
@@ -114,10 +131,37 @@ export async function fetchReferenceData() {
   const [states, foods, artworkRows] = await Promise.all([
     queryRows('states', '*', q => q.eq('is_active', true).order('state_name')),
     queryRows('heritage_foods', '*', q => q.eq('is_active', true).order('food_name')),
-    queryRows('artworks', '*', q => q.neq('status', 'inactive').order('title'))
+    queryRows(
+      'artworks',
+      `
+        *,
+        artwork_submissions!fk_artwork_source_submission(
+          artwork_submission_id,
+          design_description,
+          cultural_inspiration,
+          layer_1_meaning,
+          layer_2_meaning,
+          layer_3_meaning
+        ),
+        artwork_campaign_winners!inner(
+          artwork_campaign_winner_id,
+          artwork_campaigns!artwork_campaign_winners_artwork_campaign_id_fkey(state_id)
+        ),
+        heritage_tiffins(heritage_tiffin_id)
+      `,
+      q => q.eq('status', 'published').order('title')
+    )
   ]);
 
-  const artworks = await enrichArtworksWithPublicProfiles(artworkRows);
+  const normalizedArtworks = artworkRows.map(artwork => ({
+    ...artwork,
+    source_submission: relationRow(artwork.artwork_submissions),
+    campaign_state_id: relationRow(
+      relationRow(artwork.artwork_campaign_winners)?.artwork_campaigns
+    )?.state_id || null,
+    assigned_tiffin_id: relationRows(artwork.heritage_tiffins)[0]?.heritage_tiffin_id || null,
+  }));
+  const artworks = await enrichArtworksWithPublicProfiles(normalizedArtworks);
 
   return { states, foods, artworks };
 }
@@ -126,99 +170,100 @@ export async function fetchReferenceData() {
  * Create a new Tiffin with optional media.
  */
 export async function createTiffin(formData, files) {
-  // 1. Upload cover image
-  let coverImageUrl = null;
-  if (files.coverImage) {
-    const result = await uploadTiffinImage(files.coverImage);
-    coverImageUrl = result.secure_url;
-  }
+  await assertTiffinRelationships(formData);
 
-  // 2. Generate IDs
-  const tiffinId = await getNextTiffinId();
-  const storyId = await getNextStoryId();
-
-  // 3. Insert Tiffin
+  // 2. Insert Tiffin. Its display image comes from the linked Artwork.
   const tiffinPayload = {
-    heritage_tiffin_id: tiffinId,
     edition_name: formData.edition_name,
     state_id: formData.state_id,
     heritage_food_id: formData.heritage_food_id,
     artwork_id: formData.artwork_id,
-    description: formData.description,
-    cultural_significance: formData.cultural_significance,
     release_year: formData.release_year,
     status: formData.status,
-    cover_image_url: coverImageUrl,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
   };
 
-  const [insertedTiffin] = await insertRows('heritage_tiffins', [tiffinPayload]);
+  let insertedTiffin = null;
+  try {
+    [insertedTiffin] = await insertRows('heritage_tiffins', [tiffinPayload]);
+    const tiffinId = insertedTiffin.heritage_tiffin_id;
 
-  // 4. Insert Story
-  const storyPayload = {
-    heritage_story_id: storyId,
-    heritage_tiffin_id: tiffinId,
-    title: formData.heritage_story.title,
-    story_body: formData.heritage_story.story_body,
-    is_published: true,
-    sort_order: 1
-  };
-
-  const [insertedStory] = await insertRows('heritage_stories', [storyPayload]);
-
-  // 5. Upload heritage story video and insert heritage_media record
-  let insertedMedia = null;
-  if (files.heritageVideo) {
-    const videoResult = await uploadHeritageVideo(files.heritageVideo);
-    const mediaId = await getNextMediaId();
-
-    const mediaPayload = {
-      heritage_media_id: mediaId,
+    // 3. Insert Story
+    const storyPayload = {
       heritage_tiffin_id: tiffinId,
-      media_type: 'video',
-      title: formData.heritage_story.title || 'Heritage Story Video',
-      media_url: videoResult.secure_url,
-      thumbnail_url: null,
-      caption: null,
-      duration_seconds: null,
-      sort_order: 1,
+      title: formData.heritage_story.title,
+      story_body: formData.heritage_story.story_body,
       is_published: true,
+      sort_order: 1
     };
 
-    const [res] = await insertRows('heritage_media', [mediaPayload]);
-    insertedMedia = res;
-  }
+    const [insertedStory] = await insertRows('heritage_stories', [storyPayload]);
 
-  return {
-    ...insertedTiffin,
-    heritage_stories: [insertedStory],
-    heritage_media: insertedMedia ? [insertedMedia] : [],
-  };
+    // 4. Upload heritage story video and insert heritage_media record
+    let insertedMedia = null;
+    if (files?.heritageVideo) {
+      const videoResult = await uploadHeritageVideo(files.heritageVideo);
+      const mediaPayload = {
+        heritage_tiffin_id: tiffinId,
+        media_type: 'video',
+        title: formData.heritage_story.title || 'Heritage Story Video',
+        media_url: videoResult.secure_url,
+        thumbnail_url: null,
+        caption: null,
+        duration_seconds: null,
+        sort_order: 1,
+        is_published: true,
+      };
+
+      const [res] = await insertRows('heritage_media', [mediaPayload]);
+      insertedMedia = res;
+    }
+
+    return {
+      ...insertedTiffin,
+      heritage_stories: [insertedStory],
+      heritage_media: insertedMedia ? [insertedMedia] : [],
+    };
+  } catch (error) {
+    // This operation spans database rows and an external media service. If a
+    // later step fails, remove the newly inserted parent; child rows cascade.
+    if (insertedTiffin) {
+      const tiffinId = insertedTiffin.heritage_tiffin_id;
+      const { error: rollbackError } = await supabase
+        .from('heritage_tiffins')
+        .delete()
+        .eq('heritage_tiffin_id', tiffinId);
+      if (rollbackError) {
+        throw new Error(
+          `${error.message || 'Tiffin creation failed.'} A partial Tiffin (${tiffinId}) may remain and should be reviewed.`,
+          { cause: error }
+        );
+      }
+    }
+    throw error;
+  }
 }
 
 /**
  * Update an existing Tiffin with optional media replacement.
  */
 export async function updateTiffin(tiffinId, formData, files) {
-  // 1. Upload Media if new file exists
-  let coverImageUrl = formData.cover_image_url;
-  if (files.coverImage) {
-    const result = await uploadTiffinImage(files.coverImage);
-    coverImageUrl = result.secure_url;
-  }
+  await assertTiffinRelationships(formData, tiffinId);
 
-  // 2. Update Tiffin
+  // Upload first. A Cloudinary failure must not leave partially updated DB rows.
+  const uploadedVideo = files?.heritageVideo
+    ? await uploadHeritageVideo(files.heritageVideo)
+    : null;
+
+  // 1. Update Tiffin. Its display image comes from the linked Artwork.
   const tiffinPayload = {
     edition_name: formData.edition_name,
     state_id: formData.state_id,
     heritage_food_id: formData.heritage_food_id,
     artwork_id: formData.artwork_id,
-    description: formData.description,
-    cultural_significance: formData.cultural_significance,
     release_year: formData.release_year,
     status: formData.status,
-    cover_image_url: coverImageUrl,
     updated_at: new Date().toISOString(),
   };
 
@@ -228,8 +273,8 @@ export async function updateTiffin(tiffinId, formData, files) {
     q => q.eq('heritage_tiffin_id', tiffinId)
   );
 
-  // 3. Update Story
-  let updatedStory = null;
+  // 2. Update Story
+  let updatedStory;
   const existingStory = formData.heritage_stories && formData.heritage_stories.length > 0 
     ? formData.heritage_stories[0] 
     : null;
@@ -246,9 +291,7 @@ export async function updateTiffin(tiffinId, formData, files) {
     );
     updatedStory = res;
   } else {
-    const storyId = await getNextStoryId();
     const storyPayload = {
-      heritage_story_id: storyId,
       heritage_tiffin_id: tiffinId,
       title: formData.heritage_story.title,
       story_body: formData.heritage_story.story_body,
@@ -259,18 +302,15 @@ export async function updateTiffin(tiffinId, formData, files) {
     updatedStory = res;
   }
 
-  // 4. Upload heritage story video if a new file is provided
+  // 3. Replace the single heritage story video if a new file is provided.
   let mediaResult = null;
-  if (files.heritageVideo) {
-    const videoResult = await uploadHeritageVideo(files.heritageVideo);
-    const mediaId = await getNextMediaId();
-
+  if (uploadedVideo) {
+    const existingVideo = (formData.heritage_media || [])
+      .find(media => media.media_type === 'video');
     const mediaPayload = {
-      heritage_media_id: mediaId,
-      heritage_tiffin_id: tiffinId,
       media_type: 'video',
       title: formData.heritage_story.title || 'Heritage Story Video',
-      media_url: videoResult.secure_url,
+      media_url: uploadedVideo.secure_url,
       thumbnail_url: null,
       caption: null,
       duration_seconds: null,
@@ -278,14 +318,27 @@ export async function updateTiffin(tiffinId, formData, files) {
       is_published: true,
     };
 
-    const [res] = await insertRows('heritage_media', [mediaPayload]);
-    mediaResult = res;
+    if (existingVideo) {
+      const [updatedMedia] = await updateRows(
+        'heritage_media',
+        mediaPayload,
+        q => q.eq('heritage_media_id', existingVideo.heritage_media_id)
+      );
+      mediaResult = updatedMedia;
+    } else {
+      const [insertedMedia] = await insertRows('heritage_media', [{
+        ...mediaPayload,
+        heritage_tiffin_id: tiffinId,
+      }]);
+      mediaResult = insertedMedia;
+    }
   }
 
   return {
     ...updatedTiffin,
     heritage_stories: updatedStory ? [updatedStory] : [],
     heritage_media: mediaResult ? [mediaResult] : (formData.heritage_media || []),
+    tiffin_qr_codes: formData.tiffin_qr_codes || [],
   };
 }
 
@@ -304,24 +357,6 @@ export async function deactivateTiffin(tiffinId) {
 // ---------------------------------------------------------------------------
 // QR Code Generation
 // ---------------------------------------------------------------------------
-
-async function getNextQrCodeId() {
-  const { data, error } = await supabase
-    .from('tiffin_qr_codes')
-    .select('tiffin_qr_code_id')
-    .order('tiffin_qr_code_id', { ascending: false })
-    .limit(1);
-
-  if (error) throw error;
-
-  let nextNum = 1;
-  if (data && data.length > 0 && data[0].tiffin_qr_code_id) {
-    const numPart = data[0].tiffin_qr_code_id.replace('TQC', '');
-    nextNum = parseInt(numPart, 10) + 1;
-  }
-
-  return `TQC${String(nextNum).padStart(4, '0')}`;
-}
 
 /**
  * Generate and store a QR code record for a Heritage Tiffin.
@@ -345,12 +380,10 @@ export async function generateTiffinQrCode(tiffinId) {
     return existing[0];
   }
 
-  const qrCodeId = await getNextQrCodeId();
   const year = new Date().getFullYear();
   const codeValue = `MKK-${tiffinId}-${year}`;
 
   const payload = {
-    tiffin_qr_code_id: qrCodeId,
     heritage_tiffin_id: tiffinId,
     code_value: codeValue,
     is_active: true,

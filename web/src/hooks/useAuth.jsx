@@ -1,4 +1,5 @@
-import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '../services/supabase/client';
 
 // ---------------------------------------------------------------------------
@@ -24,6 +25,7 @@ export function AuthProvider({ children }) {
   const [profile, setProfile] = useState(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [loading, setLoading] = useState(true);
+  const currentUserIdRef = useRef(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -45,7 +47,7 @@ export function AuthProvider({ children }) {
             setIsAdmin(false);
           }
         }
-      } catch (err) {
+      } catch {
         if (isMounted) {
           setProfile(null);
           setIsAdmin(false);
@@ -58,6 +60,7 @@ export function AuthProvider({ children }) {
       .getSession()
       .then(async ({ data: { session: currentSession } }) => {
         if (!isMounted) return;
+        currentUserIdRef.current = currentSession?.user?.id ?? null;
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
         if (currentSession?.user) {
@@ -76,11 +79,18 @@ export function AuthProvider({ children }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, updatedSession) => {
       if (!isMounted) return;
+      const nextUserId = updatedSession?.user?.id ?? null;
+      const accountChanged = currentUserIdRef.current !== nextUserId;
+      currentUserIdRef.current = nextUserId;
+
+      // Supabase can emit SIGNED_IN again when an already authenticated tab
+      // regains focus. Only show the full-page loading guard for an actual
+      // account change; otherwise it unmounts the active page and loses forms.
+      if (event === 'SIGNED_IN' && accountChanged) setLoading(true);
       setSession(updatedSession);
       setUser(updatedSession?.user ?? null);
       
       if (updatedSession?.user) {
-        if (event === 'SIGNED_IN') setLoading(true);
         await fetchProfile(updatedSession.user.id);
       } else {
         setProfile(null);
