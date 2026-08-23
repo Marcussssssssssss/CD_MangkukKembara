@@ -46,9 +46,9 @@ function toIsoTimestamp(value, fieldName) {
   return parsed.toISOString();
 }
 
-function campaignDateToIsoTimestamp(value, fieldName, time = '23:59:00') {
+function campaignDateToIsoTimestamp(value, fieldName, time = '23:59:59.999') {
   const timestamp = /^\d{4}-\d{2}-\d{2}$/.test(value || '')
-    ? `${value}T${time}`
+    ? `${value}T${time}+08:00`
     : value;
   return toIsoTimestamp(timestamp, fieldName);
 }
@@ -308,8 +308,10 @@ export async function updateCampaign(campaignId, campaignData) {
  * End an active campaign immediately.
  */
 export async function endCampaign(campaignId) {
+  // An early completion ends at the current instant. Date-picker values use
+  // 23:59:59 instead, allowing a campaign ending today to remain active until
+  // the end of the day.
   const endDate = new Date();
-  endDate.setHours(23, 59, 0, 0);
   const [updatedCampaign] = await updateRows(
     'artwork_campaigns',
     { submission_end_at: endDate.toISOString(), status: 'completed' },
