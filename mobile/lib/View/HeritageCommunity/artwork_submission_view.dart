@@ -72,14 +72,6 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          const HeritagePageBanner(
-            eyebrow: 'Artwork submission studio',
-            title: 'Share every side of your story',
-            subtitle:
-                'Guide reviewers through your idea, inspiration, and complete tiffin design.',
-            icon: Icons.palette_rounded,
-            margin: EdgeInsets.only(bottom: 18),
-          ),
           _SectionCard(
             step: '1',
             title: 'Tell us about your artwork',
