@@ -10,11 +10,11 @@ const formatDateTime = (value) => new Intl.DateTimeFormat('en-GB', {
   hour: '2-digit', minute: '2-digit', hour12: false,
 }).format(new Date(value));
 
-function SortableHeader({ column, sort, onSort, children }) {
+function SortableHeader({ column, sort, onSort, children, className = '' }) {
   const active = sort.column === column;
   const ariaSort = !active ? 'none' : sort.direction === 'asc' ? 'ascending' : 'descending';
   return (
-    <th scope="col" aria-sort={ariaSort} className="p-0 font-semibold">
+    <th scope="col" aria-sort={ariaSort} className={`p-0 font-semibold ${className}`}>
       <button type="button" onClick={() => onSort(column)} className="flex w-full items-center gap-1.5 px-6 py-4 text-left uppercase hover:bg-surface-100 hover:text-primary-600">
         {children}
         <span className={active ? 'text-primary-600' : 'text-surface-300'} aria-hidden="true">{active ? (sort.direction === 'asc' ? '↑' : '↓') : '↕'}</span>
@@ -118,17 +118,17 @@ export default function CampaignDashboard({
 
       {/* Table Area */}
       <div className="overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm">
-        <div>
+        <div className="overflow-x-auto">
           <table className="w-full text-left text-sm text-surface-600">
             <thead className="bg-surface-50 text-xs uppercase text-surface-500">
               <tr>
-                <SortableHeader column="title" sort={sort} onSort={changeSort}>Campaign Title</SortableHeader>
-                <SortableHeader column="state" sort={sort} onSort={changeSort}>State</SortableHeader>
-                <SortableHeader column="description" sort={sort} onSort={changeSort}>Description Summary</SortableHeader>
-                <SortableHeader column="submission" sort={sort} onSort={changeSort}>Submission Period</SortableHeader>
-                <SortableHeader column="status" sort={sort} onSort={changeSort}>Status</SortableHeader>
-                <SortableHeader column="created" sort={sort} onSort={changeSort}>Created Date/Time</SortableHeader>
-                <th scope="col" className="px-6 py-4 font-semibold text-right">Actions</th>
+                <SortableHeader column="title" sort={sort} onSort={changeSort} className="w-64 min-w-48 whitespace-nowrap">Campaign Title</SortableHeader>
+                <SortableHeader column="state" sort={sort} onSort={changeSort} className="w-px whitespace-nowrap">State</SortableHeader>
+                <SortableHeader column="description" sort={sort} onSort={changeSort} className="w-px whitespace-nowrap">Description Summary</SortableHeader>
+                <SortableHeader column="submission" sort={sort} onSort={changeSort} className="w-px whitespace-nowrap">Submission Period</SortableHeader>
+                <SortableHeader column="status" sort={sort} onSort={changeSort} className="w-px whitespace-nowrap">Status</SortableHeader>
+                <SortableHeader column="created" sort={sort} onSort={changeSort} className="w-px whitespace-nowrap">Created Date/Time</SortableHeader>
+                <th scope="col" className="w-px whitespace-nowrap px-6 py-4 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-100">
@@ -143,8 +143,10 @@ export default function CampaignDashboard({
                       onClick={() => onView(campaign)}
                       className="cursor-pointer transition-transform duration-150 hover:relative hover:z-10 hover:scale-[1.01] hover:bg-surface-50 hover:shadow-sm"
                     >
-                      <td className="px-6 py-4 font-medium text-surface-900">
-                        {campaign.campaign_title}
+                      <td className="w-64 min-w-48 px-6 py-4 font-medium text-surface-900">
+                        <div className="line-clamp-2 break-words">
+                          {campaign.campaign_title}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium text-surface-900">
@@ -154,14 +156,14 @@ export default function CampaignDashboard({
                           <div className="mt-1 text-xs text-surface-500">{campaign.states.state_code}</div>
                         )}
                       </td>
-                      <td className="px-6 py-4 max-w-xs truncate">
+                      <td className="w-px max-w-48 truncate whitespace-nowrap px-6 py-4">
                         {campaign.description || 'No description'}
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="w-px whitespace-nowrap px-6 py-4">
                         <div className="text-surface-900">{startDate}</div>
                         <div className="text-xs text-surface-500">to {endDate}</div>
                       </td>
-                      <td className="px-6 py-4">
+                      <td className="w-px whitespace-nowrap px-6 py-4">
                         <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[campaign.status] || 'bg-surface-100 text-surface-700'}`}>
                           {getStatusDisplay(campaign.status)}
                         </span>
@@ -169,7 +171,7 @@ export default function CampaignDashboard({
                       <td className="px-6 py-4 whitespace-nowrap text-surface-700">
                         {formatDateTime(campaign.created_at)}
                       </td>
-                      <td className="relative px-6 py-4 text-right">
+                      <td className="relative w-px whitespace-nowrap px-6 py-4 text-right">
                         <div className="ml-auto grid w-36 grid-cols-2 items-center gap-3">
                           {campaign.status === 'active' && (
                             <>
