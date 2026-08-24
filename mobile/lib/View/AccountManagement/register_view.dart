@@ -21,13 +21,9 @@ class _RegisterViewState extends State<RegisterView> {
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
   final _confirmCtrl = TextEditingController();
-  final _countryCtrl = TextEditingController();
-  final _cityCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
   bool _obscureConfirm = true;
-  DateTime? _dateOfBirth;
-  String? _gender;
 
   @override
   void initState() {
@@ -41,8 +37,6 @@ class _RegisterViewState extends State<RegisterView> {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     _confirmCtrl.dispose();
-    _countryCtrl.dispose();
-    _cityCtrl.dispose();
     super.dispose();
   }
 
@@ -65,12 +59,6 @@ class _RegisterViewState extends State<RegisterView> {
       displayName: _nameCtrl.text.trim(),
       email: _emailCtrl.text.trim(),
       password: _passwordCtrl.text,
-      country: _countryCtrl.text.trim().isEmpty
-          ? null
-          : _countryCtrl.text.trim(),
-      city: _cityCtrl.text.trim().isEmpty ? null : _cityCtrl.text.trim(),
-      dateOfBirth: _dateOfBirth,
-      gender: _gender,
     );
     if (ok && mounted) await _showVerificationDialog(context, vm);
   }
@@ -131,14 +119,14 @@ class _RegisterViewState extends State<RegisterView> {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.stretch,
                             children: [
-                              const SizedBox(height: 46),
+                              const SizedBox(height: 30),
                               Center(
                                 child: Image.asset(
                                   'asset/image/mangkuk_kembara_logo_white.png',
                                   width: 250,
                                 ),
                               ),
-                              const SizedBox(height: 4),
+                              const SizedBox(height: 0),
                               Text(
                                 'Create Account',
                                 textAlign: TextAlign.center,
@@ -264,62 +252,6 @@ class _RegisterViewState extends State<RegisterView> {
                                               : null,
                                         ),
                                         const SizedBox(height: 12),
-                                        _HeritageField(
-                                          controller: _countryCtrl,
-                                          hint: 'Country code (optional)',
-                                          icon: Icons.flag_outlined,
-                                          action: TextInputAction.next,
-                                          maxLength: 2,
-                                          textCapitalization:
-                                              TextCapitalization.characters,
-                                          validator: (value) =>
-                                              value != null &&
-                                                  value.isNotEmpty &&
-                                                  value.trim().length != 2
-                                              ? 'Use a two-letter country code'
-                                              : null,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        _HeritageField(
-                                          controller: _cityCtrl,
-                                          hint: 'City (optional)',
-                                          icon: Icons.location_city_rounded,
-                                          action: TextInputAction.next,
-                                          validator: (_) => null,
-                                        ),
-                                        const SizedBox(height: 12),
-                                        _DateOfBirthField(
-                                          value: _dateOfBirth,
-                                          onTap: () async {
-                                            final now = DateTime.now();
-                                            final selected =
-                                                await showDatePicker(
-                                                  context: context,
-                                                  firstDate: DateTime(
-                                                    now.year - 120,
-                                                  ),
-                                                  lastDate: DateTime(
-                                                    now.year - 13,
-                                                    now.month,
-                                                    now.day,
-                                                  ),
-                                                  initialDate:
-                                                      _dateOfBirth ??
-                                                      DateTime(now.year - 18),
-                                                );
-                                            if (selected != null && mounted) {
-                                              setState(
-                                                () => _dateOfBirth = selected,
-                                              );
-                                            }
-                                          },
-                                        ),
-                                        const SizedBox(height: 12),
-                                        _GenderField(
-                                          value: _gender,
-                                          onChanged: (value) =>
-                                              setState(() => _gender = value),
-                                        ),
                                         if (vm.errorMessage
                                             case final message?) ...[
                                           const SizedBox(height: 12),
@@ -616,131 +548,6 @@ class _VisibilityButton extends StatelessWidget {
     onPressed: onPressed,
     icon: Icon(
       obscure ? Icons.visibility_outlined : Icons.visibility_off_outlined,
-    ),
-  );
-}
-
-class _DateOfBirthField extends StatelessWidget {
-  const _DateOfBirthField({required this.value, required this.onTap});
-
-  final DateTime? value;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => _HeritageSelectField(
-    icon: Icons.cake_outlined,
-    label: value == null
-        ? 'Date of birth (optional)'
-        : '${value!.day}/${value!.month}/${value!.year}',
-    onTap: onTap,
-  );
-}
-
-class _GenderField extends StatelessWidget {
-  const _GenderField({required this.value, required this.onChanged});
-
-  final String? value;
-  final ValueChanged<String?> onChanged;
-
-  @override
-  Widget build(BuildContext context) => Container(
-    height: 46,
-    padding: const EdgeInsets.only(left: 12, right: 8),
-    decoration: BoxDecoration(
-      color: const Color(0xBD004B4D),
-      border: Border.all(color: const Color(0xD9FFC95C), width: 1.4),
-      borderRadius: BorderRadius.circular(17),
-    ),
-    child: DropdownButtonHideUnderline(
-      child: DropdownButton<String>(
-        value: value,
-        isExpanded: true,
-        iconEnabledColor: const Color(0xFFFFD47B),
-        dropdownColor: const Color(0xFF075A5A),
-        style: GoogleFonts.dmSans(
-          color: const Color(0xFFFFF8EC),
-          fontSize: 15,
-          fontWeight: FontWeight.w600,
-        ),
-        hint: Row(
-          children: [
-            const Icon(Icons.person_outline_rounded, color: Color(0xFFFFD47B)),
-            const SizedBox(width: 12),
-            Text(
-              'Gender (optional)',
-              style: GoogleFonts.dmSans(
-                color: const Color(0xBFF5F2E5),
-                fontSize: 15,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-        items: const [
-          DropdownMenuItem(value: 'male', child: Text('Male')),
-          DropdownMenuItem(value: 'female', child: Text('Female')),
-          DropdownMenuItem(value: 'non_binary', child: Text('Non-binary')),
-          DropdownMenuItem(
-            value: 'prefer_not_to_say',
-            child: Text('Prefer not to say'),
-          ),
-          DropdownMenuItem(value: 'other', child: Text('Other')),
-        ],
-        onChanged: onChanged,
-      ),
-    ),
-  );
-}
-
-class _HeritageSelectField extends StatelessWidget {
-  const _HeritageSelectField({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) => Material(
-    color: Colors.transparent,
-    borderRadius: BorderRadius.circular(17),
-    child: InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(17),
-      child: Container(
-        height: 46,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: const Color(0xBD004B4D),
-          border: Border.all(color: const Color(0xD9FFC95C), width: 1.4),
-          borderRadius: BorderRadius.circular(17),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, color: const Color(0xFFFFD47B)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                label,
-                overflow: TextOverflow.ellipsis,
-                style: GoogleFonts.dmSans(
-                  color: const Color(0xBFF5F2E5),
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ),
-            const Icon(
-              Icons.calendar_today_outlined,
-              color: Color(0xFFFFD47B),
-              size: 19,
-            ),
-          ],
-        ),
-      ),
     ),
   );
 }

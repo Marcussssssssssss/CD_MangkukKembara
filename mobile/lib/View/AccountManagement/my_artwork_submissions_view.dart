@@ -89,11 +89,24 @@ class _SubmissionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) => GestureDetector(
     behavior: HitTestBehavior.opaque,
-    onTap: () => Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        builder: (_) => _ArtworkSubmissionDetailPage(submission: submission),
-      ),
-    ),
+    onTap: () {
+      final votingEntryId = submission.votingEntryId;
+      if (votingEntryId != null) {
+        Navigator.of(context).pushNamed(
+          AppRoutes.artworkVotingDetail,
+          arguments: votingEntryId,
+        );
+        return;
+      }
+
+      // Pending or rejected work has not been published to the campaign's
+      // Artwork Story experience, so retain its private submission detail.
+      Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          builder: (_) => _ArtworkSubmissionDetailPage(submission: submission),
+        ),
+      );
+    },
     child: Container(
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(12),

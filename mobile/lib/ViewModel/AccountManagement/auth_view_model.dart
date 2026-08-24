@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import '../../core/app_exception.dart';
 import '../../Model/Repositories/AccountManagement/account_repository.dart';
 import '../../Model/Repositories/AccountManagement/auth_user_model.dart';
 import '../../Model/Repositories/AccountManagement/profile_model.dart';
@@ -32,7 +33,11 @@ class AuthViewModel extends ChangeNotifier {
 
   bool get isLoggedIn => _isLoggedIn;
   bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
+  /// Error text intended for presentation. This second safeguard prevents an
+  /// asynchronous auth-state update from exposing raw backend errors.
+  String? get errorMessage => _errorMessage == null
+      ? null
+      : _friendlyLoginError(_errorMessage!);
   AuthUserModel? get currentUser => _currentUser;
   ProfileModel? get profile => _profile;
   bool get isInitialized => _isInitialized;
@@ -50,8 +55,7 @@ class AuthViewModel extends ChangeNotifier {
       _isLoggedIn = true;
       notifyListeners();
       return true;
-    } catch (e) {
-      final message = e.toString().replaceFirst('Exception: ', '');
+    } catch (error) {
       try {
         await _repo.logout();
       } catch (_) {
@@ -60,7 +64,7 @@ class AuthViewModel extends ChangeNotifier {
       _currentUser = null;
       _profile = null;
       _isLoggedIn = false;
-      _errorMessage = message;
+      _errorMessage = _friendlyLoginError(error);
       notifyListeners();
       return false;
     } finally {
@@ -79,7 +83,7 @@ class AuthViewModel extends ChangeNotifier {
         _isLoggedIn = true;
         _errorMessage = null;
       } catch (error) {
-        _errorMessage = error.toString();
+        _errorMessage = _friendlyLoginError(error);
         _currentUser = null;
         try {
           await _repo.logout();
@@ -121,6 +125,34 @@ class AuthViewModel extends ChangeNotifier {
 
   void _clearError() {
     _errorMessage = null;
+  }
+
+  /// Keeps implementation details (such as HTTP, socket, and DNS errors) out
+  /// of the login interface while preserving errors the app intentionally
+  /// exposes to its users.
+  String _friendlyLoginError(Object error) {
+    if (error is AppException) return error.message;
+
+    // Values already produced by this view model are safe to show. Keeping
+    // them intact also makes the getter above safe for asynchronous updates.
+    if (error is String &&
+        !error.toLowerCase().contains('exception') &&
+        !error.toLowerCase().contains('socket') &&
+        !error.toLowerCase().contains('host lookup')) {
+      return error;
+    }
+
+    final details = error.toString().toLowerCase();
+    if (details.contains('socket') ||
+        details.contains('network') ||
+        details.contains('host lookup') ||
+        details.contains('failed host lookup') ||
+        details.contains('connection refused') ||
+        details.contains('timed out')) {
+      return 'We could not connect to the service. Check your internet connection and try again.';
+    }
+
+    return 'We could not sign you in right now. Please try again.';
   }
 
   @override

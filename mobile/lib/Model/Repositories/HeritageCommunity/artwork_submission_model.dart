@@ -11,6 +11,9 @@ class ArtworkSubmissionModel {
   final String? layer2Meaning;
   final String? layer3Meaning;
   final String? reviewStatus; // 'pending' | 'approved' | 'rejected'
+  /// The published campaign entry, when this submission is available in the
+  /// artwork-voting experience.
+  final String? votingEntryId;
   final DateTime submittedAt;
   final String campaignName;
 
@@ -26,6 +29,7 @@ class ArtworkSubmissionModel {
     this.layer2Meaning,
     this.layer3Meaning,
     this.reviewStatus = 'pending',
+    this.votingEntryId,
     required this.submittedAt,
     required this.campaignName,
   });
@@ -49,6 +53,9 @@ class ArtworkSubmissionModel {
   }) {
     final photos = (json['artwork_submission_photos'] as List<dynamic>? ?? [])
         .whereType<Map<String, dynamic>>();
+    final votingEntries =
+        (json['artwork_voting_entries'] as List<dynamic>? ?? [])
+            .whereType<Map<String, dynamic>>();
     return ArtworkSubmissionModel(
       id: json['artwork_submission_id'] as String,
       campaignId: json['artwork_campaign_id'] as String,
@@ -67,6 +74,8 @@ class ArtworkSubmissionModel {
       reviewStatus: switch (json['review_status']) {
         final value => value as String?,
       },
+      votingEntryId:
+          votingEntries.firstOrNull?['artwork_voting_entry_id'] as String?,
       submittedAt: DateTime.parse(json['submitted_at'] as String),
       campaignName: campaignName,
     );
