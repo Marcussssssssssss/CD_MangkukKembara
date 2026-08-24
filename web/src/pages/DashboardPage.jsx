@@ -58,7 +58,6 @@ export default function DashboardPage() {
     <div className="p-6 sm:p-8">
       <PageHeader
         title="Dashboard"
-        description="Welcome to the MangkukKembara admin panel."
       />
 
       {/* Module cards */}

@@ -4,8 +4,10 @@ import CampaignForm from './components/CampaignForm';
 import CampaignDetails from './components/CampaignDetails';
 import WinnerDetails from './components/WinnerDetails';
 import CampaignDeactivateDialog from './components/CampaignDeactivateDialog';
+import NotificationCenter from '../../components/NotificationCenter';
 import { fetchCampaigns, fetchReferenceData, createCampaign, updateCampaign, endCampaign } from './services/communityService';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotifier } from '../../hooks/useNotifier';
 
 const dateInputValue = (value) => {
   const date = new Date(value);
@@ -30,15 +32,12 @@ export default function CampaignsManager() {
   const [viewingWinner, setViewingWinner] = useState(null);
   const [deactivatingCampaign, setDeactivatingCampaign] = useState(null);
 
-  // Notifications
-  const [feedbackMessage, setFeedbackMessage] = useState(null);
-  const [feedbackType, setFeedbackType] = useState('success');
-
-  const showFeedback = (msg, type = 'success') => {
-    setFeedbackMessage(msg);
-    setFeedbackType(type);
-    setTimeout(() => setFeedbackMessage(null), 5000);
-  };
+  const {
+    notifications,
+    success: notifySuccess,
+    failure: notifyFailure,
+    dismiss: dismissNotification,
+  } = useNotifier();
 
   // --- Data Fetching ---
   useEffect(() => {
@@ -100,28 +99,35 @@ export default function CampaignsManager() {
   };
 
   const handleSaveCampaign = async (campaignData) => {
-    if (editingCampaign) {
-      // An early-ended campaign may already have today's calendar date stored,
-      // but at an earlier time. Saving today must still extend it to 23:59 and
-      // reactivate it even though the YYYY-MM-DD value appears unchanged.
-      const shouldReactivate = editingCampaign.status === 'completed'
-        && campaignData.submission_end_at >= dateInputValue(new Date());
-      const updated = await updateCampaign(editingCampaign.artwork_campaign_id, {
-        ...campaignData,
-        status: shouldReactivate ? 'active' : editingCampaign.status,
-      });
-      setCampaigns((prev) =>
-        prev.map((c) => (c.artwork_campaign_id === updated.artwork_campaign_id ? updated : c))
-      );
-      showFeedback('Campaign updated successfully.');
-    } else {
-      if (!profile || !profile.profile_id) {
-        throw new Error("Unable to determine your profile ID for campaign creation.");
+    const isEditing = Boolean(editingCampaign);
+
+    try {
+      if (isEditing) {
+        // An early-ended campaign may already have today's calendar date stored,
+        // but at an earlier time. Saving today must still extend it to 23:59 and
+        // reactivate it even though the YYYY-MM-DD value appears unchanged.
+        const shouldReactivate = editingCampaign.status === 'completed'
+          && campaignData.submission_end_at >= dateInputValue(new Date());
+        const updated = await updateCampaign(editingCampaign.artwork_campaign_id, {
+          ...campaignData,
+          status: shouldReactivate ? 'active' : editingCampaign.status,
+        });
+        setCampaigns((prev) =>
+          prev.map((c) => (c.artwork_campaign_id === updated.artwork_campaign_id ? updated : c))
+        );
+      } else {
+        if (!profile || !profile.profile_id) {
+          throw new Error('Unable to determine your profile ID for campaign creation.');
+        }
+        const created = await createCampaign(campaignData, profile.profile_id);
+        setCampaigns((prev) => [created, ...prev]);
       }
-      const created = await createCampaign(campaignData, profile.profile_id);
-      setCampaigns((prev) => [created, ...prev]);
-      showFeedback('New campaign created successfully.');
+    } catch (err) {
+      notifyFailure(err.message || `The campaign could not be ${isEditing ? 'updated' : 'created'}.`);
+      throw err;
     }
+
+    notifySuccess(`Campaign ${isEditing ? 'updated' : 'created'} successfully.`);
     handleCloseModals();
   };
 
@@ -139,10 +145,10 @@ export default function CampaignsManager() {
       if (viewingCampaign && viewingCampaign.artwork_campaign_id === deactivated.artwork_campaign_id) {
         setViewingCampaign(deactivated);
       }
-      showFeedback('Campaign ended successfully.');
+      notifySuccess('Campaign ended successfully.');
       handleCloseModals();
     } catch (err) {
-      showFeedback(err.message || 'Failed to end campaign.', 'error');
+      notifyFailure(err.message || 'The campaign could not be ended.');
     }
   };
 
@@ -164,11 +170,7 @@ export default function CampaignsManager() {
 
   return (
     <div className="relative">
-      {feedbackMessage && (
-        <div className={`fixed bottom-4 right-4 z-50 rounded-lg px-4 py-2 text-sm text-white shadow-lg animate-in fade-in slide-in-from-bottom-2 ${feedbackType === 'error' ? 'bg-red-600' : 'bg-surface-900'}`}>
-          {feedbackMessage}
-        </div>
-      )}
+      <NotificationCenter notifications={notifications} onDismiss={dismissNotification} />
 
       <CampaignDashboard
         campaigns={filteredCampaigns}

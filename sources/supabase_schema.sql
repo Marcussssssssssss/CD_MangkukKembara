@@ -410,7 +410,7 @@ create table public.vendor_tiffins (
     vendor_id           varchar(5) not null references public.vendors(vendor_id) on delete cascade,
     heritage_tiffin_id  varchar(6) not null references public.heritage_tiffins(heritage_tiffin_id),
 
-    constraint uq_vendor_tiffin unique (vendor_id, heritage_tiffin_id),
+    constraint uq_vendor_tiffin unique (vendor_id),
     constraint chk_vendor_tiffin_id_format
         check (vendor_tiffin_id ~ '^VT[0-9]{4}$')
 );
@@ -2818,6 +2818,11 @@ create policy vendors_public_read on public.vendors
 for select to anon, authenticated
 using (participation_status = 'active');
 
+create policy vendors_admin_manage on public.vendors
+for all to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
+
 create policy vendor_hours_public_read on public.vendor_operating_hours
 for select to anon, authenticated
 using (
@@ -2827,6 +2832,11 @@ using (
           and parent_vendor.participation_status = 'active'
     )
 );
+
+create policy vendor_hours_admin_manage on public.vendor_operating_hours
+for all to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
 
 create policy vendor_foods_public_read on public.vendor_foods
 for select to anon, authenticated
@@ -2838,6 +2848,11 @@ using (
     )
 );
 
+create policy vendor_foods_admin_manage on public.vendor_foods
+for all to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
+
 create policy vendor_tiffin_public_read on public.vendor_tiffins
 for select to anon, authenticated
 using (
@@ -2847,6 +2862,11 @@ using (
           and parent_vendor.participation_status = 'active'
     )
 );
+
+create policy vendor_tiffins_admin_manage on public.vendor_tiffins
+for all to authenticated
+using (public.is_current_profile_admin())
+with check (public.is_current_profile_admin());
 
 -- Community content and user-owned writes.
 create policy community_posts_public_read on public.community_posts

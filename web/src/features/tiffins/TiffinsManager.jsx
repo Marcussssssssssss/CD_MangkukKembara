@@ -4,10 +4,13 @@ import TiffinDetails from './components/TiffinDetails';
 import TiffinForm from './components/TiffinForm';
 import TiffinDeactivateDialog from './components/TiffinDeactivateDialog';
 import TiffinQrDialog from './components/TiffinQrDialog';
+import NotificationCenter from '../../components/NotificationCenter';
+import { useNotifier } from '../../hooks/useNotifier';
 import { 
   fetchTiffins, 
   fetchReferenceData, 
   createTiffin, 
+  createHeritageFood,
   updateTiffin, 
   deactivateTiffin,
   generateTiffinQrCode 
@@ -29,15 +32,12 @@ export default function TiffinsManager() {
   const [deactivatingTiffin, setDeactivatingTiffin] = useState(null);
   const [qrResult, setQrResult] = useState(null);
 
-  // Notifications
-  const [feedbackMessage, setFeedbackMessage] = useState(null);
-  const [feedbackType, setFeedbackType] = useState('success');
-
-  const showFeedback = (msg, type = 'success') => {
-    setFeedbackMessage(msg);
-    setFeedbackType(type);
-    setTimeout(() => setFeedbackMessage(null), 5000);
-  };
+  const {
+    notifications,
+    success: notifySuccess,
+    failure: notifyFailure,
+    dismiss: dismissNotification,
+  } = useNotifier();
 
   // --- Data Fetching ---
   useEffect(() => {
@@ -126,38 +126,63 @@ export default function TiffinsManager() {
 
   // --- Save Operations ---
   const handleSaveTiffin = async (tiffinData, files) => {
-    if (editingTiffin) {
-      const updated = await updateTiffin(tiffinData.heritage_tiffin_id, tiffinData, files);
-      setTiffins((prev) =>
-        prev.map((t) => (t.heritage_tiffin_id === updated.heritage_tiffin_id ? updated : t))
-      );
-      syncArtworkAssignment(updated.heritage_tiffin_id, updated.artwork_id);
-      showFeedback('Tiffin edition updated successfully.');
-      handleCloseModals();
-    } else {
-      const created = await createTiffin(tiffinData, files);
-      setTiffins((prev) => [created, ...prev]);
-      syncArtworkAssignment(created.heritage_tiffin_id, created.artwork_id);
-      handleCloseModals();
+    const isEditing = Boolean(editingTiffin);
 
-      // Attempt QR code generation after successful tiffin creation
-      try {
-        const qr = await generateTiffinQrCode(created.heritage_tiffin_id);
-        // Update the tiffin in local state with its new QR
+    try {
+      if (isEditing) {
+        const updated = await updateTiffin(tiffinData.heritage_tiffin_id, tiffinData, files);
         setTiffins((prev) =>
-          prev.map((t) =>
-            t.heritage_tiffin_id === created.heritage_tiffin_id
-              ? { ...t, tiffin_qr_codes: [{ tiffin_qr_code_id: qr.tiffin_qr_code_id, code_value: qr.code_value, is_active: qr.is_active }] }
-              : t
-          )
+          prev.map((t) => (t.heritage_tiffin_id === updated.heritage_tiffin_id ? updated : t))
         );
-        setQrResult({ qrData: qr, tiffin: created });
-      } catch (qrErr) {
-        showFeedback(
-          `Tiffin created but QR generation failed: ${qrErr.message || 'Unknown error'}. You can retry from Tiffin Details.`,
-          'error'
-        );
+        syncArtworkAssignment(updated.heritage_tiffin_id, updated.artwork_id);
+        notifySuccess('Tiffin edition updated successfully.');
+        handleCloseModals();
+      } else {
+        const created = await createTiffin(tiffinData, files);
+        setTiffins((prev) => [created, ...prev]);
+        syncArtworkAssignment(created.heritage_tiffin_id, created.artwork_id);
+        notifySuccess('Tiffin edition created successfully.');
+        handleCloseModals();
+
+        // Attempt QR code generation after successful tiffin creation.
+        try {
+          const qr = await generateTiffinQrCode(created.heritage_tiffin_id);
+          setTiffins((prev) =>
+            prev.map((t) =>
+              t.heritage_tiffin_id === created.heritage_tiffin_id
+                ? { ...t, tiffin_qr_codes: [{ tiffin_qr_code_id: qr.tiffin_qr_code_id, code_value: qr.code_value, is_active: qr.is_active }] }
+                : t
+            )
+          );
+          notifySuccess('QR code generated successfully.');
+          setQrResult({ qrData: qr, tiffin: created });
+        } catch (qrErr) {
+          notifyFailure(
+            `The Tiffin was created, but its QR code could not be generated. ${qrErr.message || 'Please retry from Tiffin Details.'}`
+          );
+        }
       }
+    } catch (err) {
+      notifyFailure(
+        err.message || `The Tiffin edition could not be ${isEditing ? 'updated' : 'created'}.`
+      );
+      throw err;
+    }
+  };
+
+  const handleCreateHeritageFood = async (foodData, imageFile) => {
+    try {
+      const createdFood = await createHeritageFood(foodData, imageFile);
+      setReferenceData(prev => ({
+        ...prev,
+        foods: [...(prev?.foods || []), createdFood]
+          .sort((a, b) => a.food_name.localeCompare(b.food_name)),
+      }));
+      notifySuccess(`${createdFood.food_name} was added to Heritage Foods.`);
+      return createdFood;
+    } catch (err) {
+      notifyFailure(err.message || 'The Heritage Food could not be created.');
+      throw err;
     }
   };
 
@@ -172,9 +197,10 @@ export default function TiffinsManager() {
         )
       );
       setViewingTiffin(null);
+      notifySuccess('QR code generated successfully.');
       setQrResult({ qrData: qr, tiffin });
     } catch (err) {
-      showFeedback(err.message || 'Failed to generate QR code.', 'error');
+      notifyFailure(err.message || 'The QR code could not be generated.');
     }
   };
 
@@ -184,10 +210,10 @@ export default function TiffinsManager() {
       setTiffins((prev) =>
         prev.map((t) => (t.heritage_tiffin_id === id ? { ...t, status: 'inactive' } : t))
       );
-      showFeedback('Tiffin edition deactivated.');
+      notifySuccess('Tiffin edition deactivated successfully.');
       handleCloseModals();
     } catch (err) {
-      showFeedback(err.message || 'Failed to deactivate tiffin.', 'error');
+      notifyFailure(err.message || 'The Tiffin edition could not be deactivated.');
     }
   };
 
@@ -209,11 +235,7 @@ export default function TiffinsManager() {
 
   return (
     <div className="relative">
-      {feedbackMessage && (
-        <div className={`fixed bottom-4 right-4 z-50 rounded-lg px-4 py-2 text-sm text-white shadow-lg animate-in fade-in slide-in-from-bottom-2 ${feedbackType === 'error' ? 'bg-red-600' : 'bg-surface-900'}`}>
-          {feedbackMessage}
-        </div>
-      )}
+      <NotificationCenter notifications={notifications} onDismiss={dismissNotification} />
 
       <TiffinDashboard
         tiffins={filteredTiffins}
@@ -240,6 +262,7 @@ export default function TiffinsManager() {
         isOpen={isCreating || !!editingTiffin}
         onClose={handleCloseModals}
         onSave={handleSaveTiffin}
+        onCreateHeritageFood={handleCreateHeritageFood}
         referenceData={referenceData}
       />
 

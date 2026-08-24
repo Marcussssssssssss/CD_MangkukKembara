@@ -2,8 +2,10 @@ import { useState, useMemo, useEffect } from 'react';
 import SubmissionDashboard from './components/SubmissionDashboard';
 import SubmissionDetails from './components/SubmissionDetails';
 import SubmissionReviewDialog from './components/SubmissionReviewDialog';
+import NotificationCenter from '../../components/NotificationCenter';
 import { fetchSubmissions, approveSubmission, rejectSubmission } from './services/communityService';
 import { useAuth } from '../../hooks/useAuth';
+import { useNotifier } from '../../hooks/useNotifier';
 
 export default function SubmissionsManager() {
   // --- Data State ---
@@ -41,6 +43,12 @@ export default function SubmissionsManager() {
   }, [submissions, filterStatus]);
 
   const { profile } = useAuth();
+  const {
+    notifications,
+    success: notifySuccess,
+    failure: notifyFailure,
+    dismiss: dismissNotification,
+  } = useNotifier();
   
   // --- Handlers ---
   const handleView = (submission) => {
@@ -53,7 +61,7 @@ export default function SubmissionsManager() {
 
   const requestReviewConfirmation = (action, submission) => {
     if (!profile || !profile.profile_id) {
-      alert('Unable to determine your profile ID for this action.');
+      notifyFailure('Unable to determine your profile ID for this action. Please sign in again.');
       return;
     }
 
@@ -83,9 +91,9 @@ export default function SubmissionsManager() {
       }
 
       setReviewConfirmation(null);
-      alert(`Submission has been ${action === 'approve' ? 'approved' : 'rejected'}.`);
+      notifySuccess(`Artwork submission ${action === 'approve' ? 'approved' : 'rejected'} successfully.`);
     } catch (err) {
-      alert(err.message || `Failed to ${action} submission.`);
+      notifyFailure(err.message || `The artwork submission could not be ${action}d.`);
     } finally {
       setIsReviewing(false);
     }
@@ -109,6 +117,8 @@ export default function SubmissionsManager() {
 
   return (
     <div className="relative">
+      <NotificationCenter notifications={notifications} onDismiss={dismissNotification} />
+
       <SubmissionDashboard
         submissions={filteredSubmissions}
         filterStatus={filterStatus}

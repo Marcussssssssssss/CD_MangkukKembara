@@ -22,15 +22,25 @@ export default function VendorDetails({ vendor, isOpen, onClose, onEdit }) {
   };
 
   const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const latitude = Number(vendor.latitude);
+  const longitude = Number(vendor.longitude);
+  const hasMapLocation = Number.isFinite(latitude)
+    && Number.isFinite(longitude)
+    && !(latitude === 0 && longitude === 0);
+  const googleMapsUrl = hasMapLocation
+    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${latitude},${longitude}`)}${vendor.google_place_id ? `&query_place_id=${encodeURIComponent(vendor.google_place_id)}` : ''}`
+    : null;
 
   // Ensure hours are sorted by day_of_week
   const sortedHours = [...(vendor.vendor_operating_hours || [])].sort((a, b) => a.day_of_week - b.day_of_week);
 
   return (
     <Modal open={isOpen} onClose={onClose} title="Vendor Details" size="xl">
-      <div className="flex flex-col md:flex-row">
-        {/* Left Side: Image & Map placeholder */}
-        <div className="w-full md:w-1/3 shrink-0 flex flex-col border-r border-surface-200">
+      <div className="flex max-h-[calc(100dvh-7rem)] flex-col">
+        <div className="min-h-0 overflow-y-auto">
+          <div className="flex flex-col md:flex-row">
+            {/* Left Side: Image and operating hours */}
+            <div className="flex w-full shrink-0 flex-col border-surface-200 md:w-1/3 md:border-r">
           <div className="aspect-video md:aspect-square w-full bg-surface-100">
             {vendor.cover_image_url ? (
               <img 
@@ -45,7 +55,7 @@ export default function VendorDetails({ vendor, isOpen, onClose, onEdit }) {
             )}
           </div>
           
-          <div className="p-6 bg-surface-50 flex-1">
+              <div className="flex-1 bg-surface-50 p-6">
             <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400 mb-3">Operating Hours</h4>
             <div className="space-y-2 text-sm text-surface-700">
               {sortedHours.length > 0 ? sortedHours.map((oh) => (
@@ -57,11 +67,11 @@ export default function VendorDetails({ vendor, isOpen, onClose, onEdit }) {
                 <p className="italic text-surface-500">Not specified.</p>
               )}
             </div>
-          </div>
-        </div>
+              </div>
+            </div>
 
-        {/* Right Side: Details */}
-        <div className="flex-1 overflow-y-auto p-6 md:max-h-[80vh]">
+            {/* Right Side: Details */}
+            <div className="min-w-0 flex-1 p-6">
           <div className="flex items-start justify-between gap-4">
             <div>
               <h3 className="text-2xl font-bold text-surface-900">{vendor.vendor_name}</h3>
@@ -95,7 +105,21 @@ export default function VendorDetails({ vendor, isOpen, onClose, onEdit }) {
                 <div className="mt-2 space-y-1 text-sm text-surface-700">
                   <p className="font-medium text-surface-900">{vendor.states?.state_name}</p>
                   <p className="whitespace-pre-wrap">{vendor.address_line}</p>
-                  <p className="text-xs text-surface-500 font-mono mt-1">Lat: {vendor.latitude}, Lng: {vendor.longitude}</p>
+                  {googleMapsUrl && (
+                    <a
+                      href={googleMapsUrl}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-surface-300 px-3 py-2 text-xs font-semibold text-surface-700 transition-colors hover:border-primary-300 hover:bg-primary-50 hover:text-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                        <path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z" strokeLinejoin="round" />
+                        <circle cx="12" cy="10" r="2" />
+                      </svg>
+                      View on Google Maps
+                      <span className="sr-only"> (opens in a new tab)</span>
+                    </a>
+                  )}
                 </div>
               </div>
             </div>
@@ -136,20 +160,25 @@ export default function VendorDetails({ vendor, isOpen, onClose, onEdit }) {
 
           </div>
 
-          <div className="mt-8 flex justify-end gap-3 border-t border-surface-100 pt-4">
-            <button
-              onClick={onClose}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-100"
-            >
-              Close
-            </button>
-            <button
-              onClick={() => onEdit(vendor)}
-              className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
-            >
-              Edit
-            </button>
+            </div>
           </div>
+        </div>
+
+        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-surface-200 bg-surface-50 p-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-200"
+          >
+            Close
+          </button>
+          <button
+            type="button"
+            onClick={() => onEdit(vendor)}
+            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+          >
+            Edit
+          </button>
         </div>
       </div>
     </Modal>

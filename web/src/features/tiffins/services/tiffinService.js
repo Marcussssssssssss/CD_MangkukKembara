@@ -1,5 +1,8 @@
 import { supabase, queryRows, insertRows, updateRows } from '../../../services/supabase/api';
-import { uploadHeritageVideo } from '../../../services/cloudinary/upload';
+import {
+  uploadHeritageFoodImage,
+  uploadHeritageVideo,
+} from '../../../services/cloudinary/upload';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,6 +44,19 @@ function relationRow(relation) {
 function relationRows(relation) {
   if (Array.isArray(relation)) return relation;
   return relation ? [relation] : [];
+}
+
+async function edgeFunctionErrorMessage(error, fallback) {
+  const response = error?.context;
+  if (response && typeof response.clone === 'function') {
+    try {
+      const payload = await response.clone().json();
+      if (payload?.error) return payload.error;
+    } catch {
+      // Use the Supabase client message below.
+    }
+  }
+  return error?.message || fallback;
 }
 
 async function assertArtworkAvailable(artworkId, currentTiffinId = null) {
@@ -121,6 +137,9 @@ export async function fetchTiffins() {
     heritage_media: [...(tiffin.heritage_media || [])]
       .filter(media => media.media_type === 'video')
       .sort((a, b) => a.sort_order - b.sort_order),
+    // PostgREST returns a one-to-one embed as an object after the database
+    // adds UNIQUE (heritage_tiffin_id). Keep one stable array shape for the UI.
+    tiffin_qr_codes: relationRows(tiffin.tiffin_qr_codes),
   }));
 }
 
@@ -128,9 +147,10 @@ export async function fetchTiffins() {
  * Fetch all reference data needed for the Tiffin Forms.
  */
 export async function fetchReferenceData() {
-  const [states, foods, artworkRows] = await Promise.all([
+  const [states, foods, categories, artworkRows] = await Promise.all([
     queryRows('states', '*', q => q.eq('is_active', true).order('state_name')),
     queryRows('heritage_foods', '*', q => q.eq('is_active', true).order('food_name')),
+    queryRows('food_categories', '*', q => q.eq('is_active', true).order('category_name')),
     queryRows(
       'artworks',
       `
@@ -163,7 +183,36 @@ export async function fetchReferenceData() {
   }));
   const artworks = await enrichArtworksWithPublicProfiles(normalizedArtworks);
 
-  return { states, foods, artworks };
+  return { states, foods, categories, artworks };
+}
+
+/**
+ * Create one active Heritage Food for the Artwork campaign state.
+ * Authorization and ID allocation are enforced by an admin-only Edge Function.
+ */
+export async function createHeritageFood(foodData, imageFile = null) {
+  const imageResult = imageFile ? await uploadHeritageFoodImage(imageFile) : null;
+  const { data, error } = await supabase.functions.invoke('admin-create-heritage-food', {
+    body: {
+      food_name: foodData.food_name,
+      food_category_id: foodData.food_category_id,
+      state_id: foodData.state_id,
+      origin_summary: foodData.origin_summary,
+      cultural_significance: foodData.cultural_significance,
+      image_url: imageResult?.secure_url || null,
+    },
+  });
+
+  if (error) {
+    throw new Error(await edgeFunctionErrorMessage(
+      error,
+      'The Heritage Food could not be created.'
+    ));
+  }
+  if (!data?.heritage_food) {
+    throw new Error(data?.error || 'The Heritage Food could not be created.');
+  }
+  return data.heritage_food;
 }
 
 /**
@@ -174,7 +223,7 @@ export async function createTiffin(formData, files) {
 
   // 2. Insert Tiffin. Its display image comes from the linked Artwork.
   const tiffinPayload = {
-    edition_name: formData.edition_name,
+    edition_name: formData.edition_name.trim(),
     state_id: formData.state_id,
     heritage_food_id: formData.heritage_food_id,
     artwork_id: formData.artwork_id,
@@ -258,7 +307,7 @@ export async function updateTiffin(tiffinId, formData, files) {
 
   // 1. Update Tiffin. Its display image comes from the linked Artwork.
   const tiffinPayload = {
-    edition_name: formData.edition_name,
+    edition_name: formData.edition_name.trim(),
     state_id: formData.state_id,
     heritage_food_id: formData.heritage_food_id,
     artwork_id: formData.artwork_id,

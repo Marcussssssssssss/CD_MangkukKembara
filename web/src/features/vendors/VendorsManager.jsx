@@ -3,6 +3,8 @@ import VendorDashboard from './components/VendorDashboard';
 import VendorDetails from './components/VendorDetails';
 import VendorForm from './components/VendorForm';
 import VendorDeactivateDialog from './components/VendorDeactivateDialog';
+import NotificationCenter from '../../components/NotificationCenter';
+import { useNotifier } from '../../hooks/useNotifier';
 import { 
   fetchVendors, 
   fetchReferenceData, 
@@ -26,15 +28,12 @@ export default function VendorsManager() {
   const [isCreating, setIsCreating] = useState(false);
   const [deactivatingVendor, setDeactivatingVendor] = useState(null);
 
-  // Notifications
-  const [feedbackMessage, setFeedbackMessage] = useState(null);
-  const [feedbackType, setFeedbackType] = useState('success');
-
-  const showFeedback = (msg, type = 'success') => {
-    setFeedbackMessage(msg);
-    setFeedbackType(type);
-    setTimeout(() => setFeedbackMessage(null), 5000);
-  };
+  const {
+    notifications,
+    success: notifySuccess,
+    failure: notifyFailure,
+    dismiss: dismissNotification,
+  } = useNotifier();
 
   useEffect(() => {
     let isMounted = true;
@@ -91,15 +90,31 @@ export default function VendorsManager() {
 
   // --- Save Operations ---
   const handleSaveVendor = async (vendorData) => {
-    if (editingVendor) {
-      await updateVendor(vendorData.vendor_id, vendorData);
-      showFeedback('Vendor updated successfully.');
-    } else {
-      await createVendor(vendorData);
-      showFeedback('New vendor created.');
+    const isEditing = Boolean(editingVendor);
+
+    try {
+      if (isEditing) {
+        await updateVendor(vendorData.vendor_id, vendorData);
+      } else {
+        await createVendor(vendorData);
+      }
+    } catch (err) {
+      notifyFailure(err.message || `The vendor could not be ${isEditing ? 'updated' : 'created'}.`);
+      throw err;
     }
+
+    notifySuccess(`Vendor ${isEditing ? 'updated' : 'created'} successfully.`);
     handleCloseModals();
-    await reloadData();
+
+    try {
+      await reloadData();
+    } catch (err) {
+      notifyFailure(
+        err.message
+          ? `The vendor was saved, but the latest list could not be loaded. ${err.message}`
+          : 'The vendor was saved, but the latest list could not be loaded. Please refresh the page.'
+      );
+    }
   };
 
   const handleConfirmDeactivate = async (id) => {
@@ -108,10 +123,10 @@ export default function VendorsManager() {
       setVendors((prev) =>
         prev.map((v) => (v.vendor_id === id ? { ...v, participation_status: 'inactive' } : v))
       );
-      showFeedback('Vendor deactivated.');
+      notifySuccess('Vendor deactivated successfully.');
       handleCloseModals();
     } catch (err) {
-      showFeedback(err.message || 'Failed to deactivate vendor.', 'error');
+      notifyFailure(err.message || 'The vendor could not be deactivated.');
     }
   };
 
@@ -133,11 +148,7 @@ export default function VendorsManager() {
 
   return (
     <div className="relative">
-      {feedbackMessage && (
-        <div className={`fixed bottom-4 right-4 z-50 rounded-lg px-4 py-2 text-sm text-white shadow-lg animate-in fade-in slide-in-from-bottom-2 ${feedbackType === 'error' ? 'bg-red-600' : 'bg-surface-900'}`}>
-          {feedbackMessage}
-        </div>
-      )}
+      <NotificationCenter notifications={notifications} onDismiss={dismissNotification} />
 
       <VendorDashboard
         vendors={filteredVendors}

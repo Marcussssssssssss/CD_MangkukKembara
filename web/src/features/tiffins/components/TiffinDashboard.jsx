@@ -15,7 +15,6 @@ export default function TiffinDashboard({
     <div className="p-6 sm:p-8">
       <PageHeader
         title="Manage Heritage Tiffins"
-        description="View, create, edit, and deactivate heritage tiffin carrier editions."
         actions={
           <button
             onClick={onCreate}
@@ -43,7 +42,7 @@ export default function TiffinDashboard({
           </svg>
           <input
             type="text"
-            placeholder="Search editions or descriptions..."
+            placeholder="Search Tiffins"
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="w-full rounded-lg border border-surface-200 bg-white py-2 pl-10 pr-4 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
