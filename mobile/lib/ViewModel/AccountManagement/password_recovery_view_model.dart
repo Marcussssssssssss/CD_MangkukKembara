@@ -10,6 +10,7 @@ class PasswordRecoveryViewModel extends ChangeNotifier {
   bool _isLoading = false;
   String? _errorMessage;
   String? _successMessage;
+  bool _isCurrentPasswordVerified = false;
 
   // Change password state
   String _newPassword = '';
@@ -25,6 +26,7 @@ class PasswordRecoveryViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   String? get successMessage => _successMessage;
+  bool get isCurrentPasswordVerified => _isCurrentPasswordVerified;
 
   void updateNewPassword(String p) {
     _newPassword = p;
@@ -64,6 +66,27 @@ class PasswordRecoveryViewModel extends ChangeNotifier {
       return true;
     } catch (e) {
       _errorMessage = e.toString().replaceFirst('Exception: ', '');
+      notifyListeners();
+      return false;
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> verifyCurrentPassword(String currentPassword) async {
+    _isLoading = true;
+    _errorMessage = null;
+    _successMessage = null;
+    notifyListeners();
+    try {
+      await _repo.verifyCurrentPassword(currentPassword);
+      _isCurrentPasswordVerified = true;
+      notifyListeners();
+      return true;
+    } catch (_) {
+      _isCurrentPasswordVerified = false;
+      _errorMessage = 'The current password is incorrect. Please try again.';
       notifyListeners();
       return false;
     } finally {

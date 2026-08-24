@@ -93,13 +93,18 @@ class AccountRepository {
     required String currentPassword,
     required String newPassword,
   }) async {
+    await verifyCurrentPassword(currentPassword);
+    await _api.updatePassword(newPassword);
+  }
+
+  /// Re-authenticates the current user before allowing a password change.
+  Future<void> verifyCurrentPassword(String currentPassword) async {
     final user = _api.requireUser();
     final email = user.email;
     if (email == null) {
       throw const AppException('The account has no email address.');
     }
     await _api.signIn(email: email, password: currentPassword);
-    await _api.updatePassword(newPassword);
   }
 
   Future<ProfileModel> fetchProfile(String userId) async {
