@@ -400,11 +400,61 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                       _currentCtrl,
                       _obscureCurrent,
                       () => setState(() => _obscureCurrent = !_obscureCurrent),
+                      enabled: !vm.isCurrentPasswordVerified,
                       validator: (v) => v == null || v.isEmpty
                           ? 'Current password required'
                           : null,
                     ),
+                    const SizedBox(height: 10),
+                    if (!vm.isCurrentPasswordVerified)
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: vm.isLoading
+                              ? null
+                              : () async {
+                                  if (_currentCtrl.text.isEmpty) {
+                                    _formKey.currentState!.validate();
+                                    return;
+                                  }
+                                  await vm.verifyCurrentPassword(
+                                    _currentCtrl.text,
+                                  );
+                                },
+                          icon: const Icon(Icons.verified_user_outlined),
+                          label: const Text('Verify current password'),
+                        ),
+                      )
+                    else
+                      const Row(
+                        children: [
+                          Icon(
+                            Icons.check_circle_rounded,
+                            color: AppColors.success,
+                            size: 18,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Current password verified',
+                            style: TextStyle(
+                              color: AppColors.success,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.forgotPassword,
+                        ),
+                        child: const Text('Forgot password?'),
+                      ),
+                    ),
                     const SizedBox(height: 16),
+                    if (vm.isCurrentPasswordVerified) ...[
                     _passwordField(
                       'New Password',
                       _newCtrl,
@@ -442,6 +492,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                       validator: (v) =>
                           v != _newCtrl.text ? 'Passwords do not match' : null,
                     ),
+                    ],
 
                     if (vm.errorMessage != null) ...[
                       const SizedBox(height: 16),
@@ -454,10 +505,11 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                       ),
                     ],
                     const SizedBox(height: 24),
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: vm.isLoading
+                    if (vm.isCurrentPasswordVerified)
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton(
+                          onPressed: vm.isLoading
                             ? null
                             : () async {
                                 if (!_formKey.currentState!.validate()) return;
@@ -466,7 +518,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                                   newPassword: _newCtrl.text,
                                 );
                               },
-                        child: vm.isLoading
+                          child: vm.isLoading
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,
@@ -482,8 +534,8 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
+                        ),
                       ),
-                    ),
                     const SizedBox(height: 32),
                   ],
                 ),
@@ -502,6 +554,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
     VoidCallback toggleObscure, {
     Function(String)? onChange,
     String? Function(String?)? validator,
+    bool enabled = true,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -514,6 +567,7 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
         TextFormField(
           controller: ctrl,
           obscureText: obscure,
+          enabled: enabled,
           onChanged: onChange,
           decoration: InputDecoration(
             prefixIcon: const Icon(Icons.lock_outline_rounded),

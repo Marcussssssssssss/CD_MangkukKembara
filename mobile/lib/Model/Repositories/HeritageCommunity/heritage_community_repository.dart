@@ -628,7 +628,8 @@ class HeritageCommunityRepository {
           .from('artwork_submissions')
           .select('''
         *, artwork_campaigns(campaign_title),
-        artwork_submission_photos(view_type, photo_url, sort_order)
+        artwork_submission_photos(view_type, photo_url, sort_order),
+        artwork_voting_entries(artwork_voting_entry_id)
       ''')
           .eq('profile_id', profileId)
           .order('submitted_at', ascending: false),

@@ -31,10 +31,16 @@ class MangkukKembaraApp extends StatefulWidget {
 class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
   StreamSubscription<AuthState>? _authSubscription;
+  late bool _hadAuthenticatedSession;
 
   @override
   void initState() {
     super.initState();
+    // A password check re-authenticates an already signed-in user and emits
+    // SIGNED_IN. Keep that event on the current page instead of treating it
+    // as a fresh login and forcing navigation to the Treasure Map.
+    _hadAuthenticatedSession =
+        Supabase.instance.client.auth.currentSession != null;
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange
         .listen((state) {
           if (state.event == AuthChangeEvent.passwordRecovery) {
@@ -43,10 +49,14 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
               (route) => route.isFirst,
             );
           } else if (state.event == AuthChangeEvent.signedIn) {
+            if (_hadAuthenticatedSession) return;
+            _hadAuthenticatedSession = true;
             _navigatorKey.currentState?.pushNamedAndRemoveUntil(
               AppRoutes.treasureMap,
               (route) => false,
             );
+          } else if (state.event == AuthChangeEvent.signedOut) {
+            _hadAuthenticatedSession = false;
           }
         });
   }

@@ -66,13 +66,18 @@ class ProfileViewModel extends ChangeNotifier {
       final avatarUrl = avatar == null
           ? _profile!.avatarUrl
           : await _repo.uploadAvatar(avatar);
-      final updated = _profile!.copyWith(
+      // Create the updated record explicitly so optional selections can be
+      // cleared instead of silently retaining an old value.
+      final updated = ProfileModel(
+        id: _profile!.id,
         displayName: displayName,
         avatarUrl: avatarUrl,
         country: country,
         city: city,
         dateOfBirth: dateOfBirth,
         gender: gender,
+        isActive: _profile!.isActive,
+        createdAt: _profile!.createdAt,
       );
       _profile = await _repo.updateProfile(updated);
       _successMessage = 'Profile updated successfully.';

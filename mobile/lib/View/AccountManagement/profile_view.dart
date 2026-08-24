@@ -225,7 +225,15 @@ class _ProfileViewState extends State<ProfileView> {
               children: [
                 _MenuItem(Icons.rate_review_rounded, 'My Reviews', () => Navigator.pushNamed(ctx, AppRoutes.myReviews)),
                 _MenuItem(Icons.brush_rounded, 'My Artwork Submissions', () => Navigator.pushNamed(ctx, AppRoutes.myArtworkSubmissions)),
-                _MenuItem(Icons.edit_rounded, 'Edit Profile', () => Navigator.pushNamed(ctx, AppRoutes.editProfile)),
+                _MenuItem(Icons.edit_rounded, 'Edit Profile', () async {
+                  await Navigator.pushNamed(ctx, AppRoutes.editProfile);
+                  if (ctx.mounted && auth.currentUser != null) {
+                    await _profileVm.loadProfile(
+                      auth.currentUser!.id,
+                      showLoading: false,
+                    );
+                  }
+                }),
                 _MenuItem(Icons.lock_outline_rounded, 'Change Password', () => Navigator.pushNamed(ctx, AppRoutes.changePassword)),
                 _MenuItem(Icons.logout_rounded, 'Logout', () async {
                   try {
