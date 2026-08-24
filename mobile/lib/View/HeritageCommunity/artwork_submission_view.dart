@@ -1,4 +1,4 @@
-import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
@@ -8,6 +8,7 @@ import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../ViewModel/HeritageCommunity/artwork_submission_view_model.dart';
+import 'artwork_image_capture_crop_view.dart';
 import 'heritage_community_style.dart';
 
 /// Guided artwork submission with the four views required for review.
@@ -21,6 +22,10 @@ class ArtworkSubmissionView extends StatefulWidget {
 }
 
 class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
+  static const _layerGuidanceUrl =
+      'https://res.cloudinary.com/hv2ectij/image/upload/v1787577747/tiffin_5to1_guideline_fixed_ojjzyx.png';
+  static const _frontGuidanceUrl =
+      'https://res.cloudinary.com/hv2ectij/image/upload/v1787577747/tiffin_3_layer_front_view_guideline_pls4br.png';
   late final ArtworkSubmissionViewModel _vm;
   final ImagePicker _picker = ImagePicker();
 
@@ -128,7 +133,7 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
             step: '2',
             title: 'Add four required artwork views',
             subtitle:
-                'Follow the required tiffin layout. Each flattened layer must show continuous artwork from seam to seam.',
+                'Each layer image is one 30 cm × 6 cm canvas: FRONT on the left and BACK on the right.',
             child: Column(
               children: [
                 _photoCard(
@@ -138,39 +143,41 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
                   description:
                       'Show the complete assembled tiffin straight on. This becomes the main voting image.',
                   icon: Icons.crop_portrait_rounded,
+                  guidanceUrl: _frontGuidanceUrl,
                 ),
                 const SizedBox(height: 12),
                 _photoCard(
                   vm,
                   ArtworkPhotoView.layer1Flat360,
-                  title: '2. Layer 1 Flat 360°',
+                  title: '2. Layer 1 Design',
                   description:
-                      'Upload the full flattened circumference artwork for layer 1, including side and back areas.',
+                      'Upload one 5:1 image containing the 15 cm front and 15 cm back designs.',
                   icon: Icons.panorama_horizontal_rounded,
-                  previewAspectRatio: 3,
+                  isTiffinLayer: true,
+                  guidanceUrl: _layerGuidanceUrl,
                 ),
                 const SizedBox(height: 12),
                 _photoCard(
                   vm,
                   ArtworkPhotoView.layer2Flat360,
-                  title: '3. Layer 2 Flat 360°',
+                  title: '3. Layer 2 Design',
                   description:
-                      'Upload the full flattened circumference artwork for layer 2, from seam/start to end/seam.',
+                      'Upload one 5:1 image containing the 15 cm front and 15 cm back designs.',
                   icon: Icons.panorama_horizontal_rounded,
-                  previewAspectRatio: 3,
+                  isTiffinLayer: true,
+                  guidanceUrl: _layerGuidanceUrl,
                 ),
                 const SizedBox(height: 12),
                 _photoCard(
                   vm,
                   ArtworkPhotoView.layer3Flat360,
-                  title: '4. Layer 3 Flat 360°',
+                  title: '4. Layer 3 Design',
                   description:
-                      'Upload the full flattened circumference artwork for layer 3, including every visible side.',
+                      'Upload one 5:1 image containing the 15 cm front and 15 cm back designs.',
                   icon: Icons.panorama_horizontal_rounded,
-                  previewAspectRatio: 3,
+                  isTiffinLayer: true,
+                  guidanceUrl: _layerGuidanceUrl,
                 ),
-                const SizedBox(height: 12),
-                const _UploadRequirements(),
               ],
             ),
           ),
@@ -225,33 +232,48 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
     required String title,
     required String description,
     required IconData icon,
-    double previewAspectRatio = 16 / 9,
+    bool isTiffinLayer = false,
+    required String guidanceUrl,
   }) {
     return _PhotoViewCard(
       title: title,
       description: description,
       icon: icon,
       file: vm.photoFor(view),
-      previewAspectRatio: previewAspectRatio,
+      isTiffinLayer: isTiffinLayer,
+      onGuidance: () => _showGuidance(title, guidanceUrl),
       onAdd: () => _choosePhotoSource(view),
       onRemove: () => vm.removeArtworkPhoto(view),
     );
   }
 
   Future<void> _choosePhotoSource(ArtworkPhotoView view) async {
+    _clearMediaFocus();
+    final isLayer = ArtworkSubmissionViewModel.isLayerView(view);
+    final viewTitle = switch (view) {
+      ArtworkPhotoView.frontHero => 'Front View',
+      ArtworkPhotoView.layer1Flat360 => 'Layer 1 Design',
+      ArtworkPhotoView.layer2Flat360 => 'Layer 2 Design',
+      ArtworkPhotoView.layer3Flat360 => 'Layer 3 Design',
+    };
     final source = await showModalBottomSheet<ImageSource>(
       context: context,
       showDragHandle: true,
+      requestFocus: false,
       builder: (context) => SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const ListTile(
-              title: Text(
+            ListTile(
+              title: const Text(
                 'Add artwork photo',
                 style: TextStyle(fontWeight: FontWeight.w800),
               ),
-              subtitle: Text('Choose a clear, high-resolution image.'),
+              subtitle: Text(
+                isLayer
+                    ? 'The image will be cropped to a fixed 5:1 ratio.'
+                    : 'The original image ratio will be preserved.',
+              ),
             ),
             ListTile(
               leading: const Icon(Icons.photo_camera_outlined),
@@ -268,15 +290,155 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
         ),
       ),
     );
-    if (source == null) return;
+    _clearMediaFocus();
+    if (source == null || !mounted) return;
 
-    final file = await _picker.pickImage(
-      source: source,
-      maxWidth: 3000,
-      maxHeight: 3000,
-      imageQuality: 90,
+    if (!isLayer) {
+      final sourceFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 3000,
+        maxHeight: 3000,
+        imageQuality: 95,
+      );
+      _clearMediaFocus();
+      if (sourceFile == null || !mounted) return;
+
+      try {
+        final webpFile = await convertArtworkImageToWebP(sourceFile);
+        final validationMessage = await _vm.setArtworkPhoto(view, webpFile);
+        if (validationMessage != null && mounted) {
+          _showMediaError(validationMessage);
+        }
+      } catch (_) {
+        if (mounted) {
+          _showMediaError(
+            'This image format could not be converted to WebP. Choose another image.',
+          );
+        }
+      } finally {
+        _clearMediaFocusAfterReturn();
+      }
+      return;
+    }
+
+    XFile? sourceFile;
+    if (source == ImageSource.camera) {
+      _clearMediaFocus();
+      sourceFile = await Navigator.push<XFile>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ArtworkCameraCaptureView(
+            title: viewTitle,
+            aspectRatio: ArtworkSubmissionViewModel.layerAspectRatio,
+          ),
+        ),
+      );
+    } else {
+      sourceFile = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 3000,
+        maxHeight: 3000,
+        imageQuality: 95,
+      );
+    }
+    _clearMediaFocus();
+    if (sourceFile == null || !mounted) return;
+
+    final croppedFile = await Navigator.push<XFile>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ArtworkImageCropView(
+          sourceFile: sourceFile!,
+          title: viewTitle,
+          aspectRatio: ArtworkSubmissionViewModel.layerAspectRatio,
+        ),
+      ),
     );
-    if (file != null) _vm.setArtworkPhoto(view, file);
+    _clearMediaFocus();
+    if (croppedFile == null || !mounted) return;
+
+    final validationMessage = await _vm.setArtworkPhoto(view, croppedFile);
+    if (validationMessage != null && mounted) {
+      _showMediaError(validationMessage);
+    }
+    _clearMediaFocusAfterReturn();
+  }
+
+  void _clearMediaFocus() {
+    FocusManager.instance.primaryFocus?.unfocus();
+    if (mounted) FocusScope.of(context).unfocus();
+  }
+
+  void _clearMediaFocusAfterReturn() {
+    _clearMediaFocus();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _clearMediaFocus();
+    });
+  }
+
+  void _showMediaError(String message) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  Future<void> _showGuidance(String title, String imageUrl) {
+    return showDialog<void>(
+      context: context,
+      builder: (dialogContext) => Dialog(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720, maxHeight: 760),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(18, 12, 8, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '$title guidance',
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      tooltip: 'Close guidance',
+                      onPressed: () => Navigator.pop(dialogContext),
+                      icon: const Icon(Icons.close_rounded),
+                    ),
+                  ],
+                ),
+              ),
+              Flexible(
+                child: InteractiveViewer(
+                  minScale: 1,
+                  maxScale: 4,
+                  child: Image.network(
+                    imageUrl,
+                    fit: BoxFit.contain,
+                    loadingBuilder: (_, child, progress) => progress == null
+                        ? child
+                        : const SizedBox(
+                            height: 280,
+                            child: Center(child: CircularProgressIndicator()),
+                          ),
+                    errorBuilder: (_, _, _) => const SizedBox(
+                      height: 220,
+                      child: Center(
+                        child: Text('The guidance image could not be loaded.'),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _label(String text) => Padding(
@@ -406,7 +568,8 @@ class _PhotoViewCard extends StatelessWidget {
   final String description;
   final IconData icon;
   final XFile? file;
-  final double previewAspectRatio;
+  final bool isTiffinLayer;
+  final VoidCallback onGuidance;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
 
@@ -415,7 +578,8 @@ class _PhotoViewCard extends StatelessWidget {
     required this.description,
     required this.icon,
     required this.file,
-    this.previewAspectRatio = 16 / 9,
+    this.isTiffinLayer = false,
+    required this.onGuidance,
     required this.onAdd,
     required this.onRemove,
   });
@@ -436,17 +600,13 @@ class _PhotoViewCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (selected)
+          if (selected && isTiffinLayer)
             AspectRatio(
-              aspectRatio: previewAspectRatio,
-              child: Image.file(
-                File(file!.path),
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => const Center(
-                  child: Icon(Icons.broken_image_outlined, size: 36),
-                ),
-              ),
-            ),
+              aspectRatio: ArtworkSubmissionViewModel.layerAspectRatio,
+              child: _XFilePreview(file: file!),
+            )
+          else if (selected)
+            _XFilePreview(file: file!),
           Padding(
             padding: const EdgeInsets.all(12),
             child: Row(
@@ -472,6 +632,13 @@ class _PhotoViewCard extends StatelessWidget {
                               ),
                             ),
                           ),
+                          IconButton(
+                            tooltip: 'View guidance for $title',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: onGuidance,
+                            icon: const Icon(Icons.help_outline_rounded),
+                            color: AppColors.primary,
+                          ),
                           Text(
                             selected ? 'Added' : 'Required',
                             style: TextStyle(
@@ -496,7 +663,9 @@ class _PhotoViewCard extends StatelessWidget {
                       if (selected) ...[
                         const SizedBox(height: 5),
                         Text(
-                          file!.name,
+                          file!.name.isEmpty
+                              ? 'Converted WebP image'
+                              : file!.name,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(
@@ -544,34 +713,51 @@ class _PhotoViewCard extends StatelessWidget {
   }
 }
 
-class _UploadRequirements extends StatelessWidget {
-  const _UploadRequirements();
+class _XFilePreview extends StatefulWidget {
+  final XFile file;
+
+  const _XFilePreview({required this.file});
+
+  @override
+  State<_XFilePreview> createState() => _XFilePreviewState();
+}
+
+class _XFilePreviewState extends State<_XFilePreview> {
+  late Future<Uint8List> _bytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _bytes = widget.file.readAsBytes();
+  }
+
+  @override
+  void didUpdateWidget(covariant _XFilePreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.file != widget.file) {
+      _bytes = widget.file.readAsBytes();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: AppColors.primaryContainer,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: const Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(Icons.info_outline_rounded, size: 18, color: AppColors.primary),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'JPG, PNG or WebP · maximum 10 MB per photo · avoid filters, glare and cropped edges.',
-              style: TextStyle(
-                fontSize: 12,
-                color: AppColors.primary,
-                height: 1.35,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return FutureBuilder<Uint8List>(
+      future: _bytes,
+      builder: (_, snapshot) {
+        if (snapshot.hasData) {
+          return Image.memory(
+            snapshot.data!,
+            width: double.infinity,
+            fit: BoxFit.cover,
+          );
+        }
+        if (snapshot.hasError) {
+          return const Center(
+            child: Icon(Icons.broken_image_outlined, size: 36),
+          );
+        }
+        return const Center(child: CircularProgressIndicator());
+      },
     );
   }
 }

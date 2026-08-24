@@ -563,41 +563,40 @@ class HeritageCommunityRepository {
         frontHeroFile,
         folder: '$uploadFolder/front-hero',
         maxBytes: 10 * 1024 * 1024,
+        webpOnly: true,
       ),
       _cloudinary.uploadImage(
         layer1Flat360File,
         folder: '$uploadFolder/layer-1-flat-360',
         maxBytes: 10 * 1024 * 1024,
+        webpOnly: true,
       ),
       _cloudinary.uploadImage(
         layer2Flat360File,
         folder: '$uploadFolder/layer-2-flat-360',
         maxBytes: 10 * 1024 * 1024,
+        webpOnly: true,
       ),
       _cloudinary.uploadImage(
         layer3Flat360File,
         folder: '$uploadFolder/layer-3-flat-360',
         maxBytes: 10 * 1024 * 1024,
+        webpOnly: true,
       ),
     ]);
-    final response = await _api.guard(
-      () => _api.client.rpc(
-        'create_artwork_submission',
-        params: {
-          'p_artwork_campaign_id': campaignId,
-          'p_artwork_title': artworkTitle.trim(),
-          'p_design_description': designDescription.trim(),
-          'p_cultural_inspiration': culturalInspiration.trim(),
-          'p_layer_1_meaning': layer1Meaning.trim(),
-          'p_layer_2_meaning': layer2Meaning.trim(),
-          'p_layer_3_meaning': layer3Meaning.trim(),
-          'p_front_hero_photo_url': uploads[0].secureUrl,
-          'p_layer_1_flat_360_url': uploads[1].secureUrl,
-          'p_layer_2_flat_360_url': uploads[2].secureUrl,
-          'p_layer_3_flat_360_url': uploads[3].secureUrl,
-        },
-      ),
-    );
+    final response = await _api.createArtworkSubmission({
+      'p_artwork_campaign_id': campaignId,
+      'p_artwork_title': artworkTitle.trim(),
+      'p_design_description': designDescription.trim(),
+      'p_cultural_inspiration': culturalInspiration.trim(),
+      'p_layer_1_meaning': layer1Meaning.trim(),
+      'p_layer_2_meaning': layer2Meaning.trim(),
+      'p_layer_3_meaning': layer3Meaning.trim(),
+      'p_front_hero_photo_url': uploads[0].secureUrl,
+      'p_layer_1_flat_360_url': uploads[1].secureUrl,
+      'p_layer_2_flat_360_url': uploads[2].secureUrl,
+      'p_layer_3_flat_360_url': uploads[3].secureUrl,
+    });
     final json = switch (response) {
       final Map<String, dynamic> row => row,
       final List<dynamic> rows when rows.length == 1 =>

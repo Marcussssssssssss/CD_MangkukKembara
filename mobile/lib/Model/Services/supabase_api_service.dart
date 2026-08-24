@@ -66,6 +66,13 @@ class SupabaseApiService {
   Future<UserResponse> updatePassword(String password) =>
       guard(() => client.auth.updateUser(UserAttributes(password: password)));
 
+  /// Calls the four-view artwork submission RPC.
+  ///
+  /// Keeping this operation here ensures repositories do not need to own the
+  /// Supabase SDK call or its error translation.
+  Future<dynamic> createArtworkSubmission(Map<String, dynamic> params) =>
+      guard(() => client.rpc('create_artwork_submission', params: params));
+
   Future<T> guard<T>(Future<T> Function() action) async {
     try {
       return await action();
