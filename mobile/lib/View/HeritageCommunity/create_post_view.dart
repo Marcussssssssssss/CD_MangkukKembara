@@ -28,6 +28,7 @@ class CreatePostView extends StatefulWidget {
 
 class _CreatePostViewState extends State<CreatePostView> {
   late final CreatePostViewModel _vm;
+  final ImagePicker _picker = ImagePicker();
   final _reviewCtrl = TextEditingController();
   final _formKey = GlobalKey<FormState>();
 
@@ -247,30 +248,7 @@ class _CreatePostViewState extends State<CreatePostView> {
                               ),
                               if (vm.photos.length < AppConstants.maxPostPhotos)
                                 GestureDetector(
-                                  onTap: () async {
-                                    try {
-                                      final files = await ImagePicker()
-                                          .pickMultiImage(
-                                            maxWidth: 1920,
-                                            maxHeight: 1920,
-                                            imageQuality: 82,
-                                            limit:
-                                                AppConstants.maxPostPhotos -
-                                                vm.photos.length,
-                                          );
-                                      _vm.addPhotos(files);
-                                    } catch (error) {
-                                      if (!ctx.mounted) return;
-                                      ScaffoldMessenger.of(ctx).showSnackBar(
-                                        SnackBar(
-                                          content: Text(
-                                            'Photos could not be selected: $error',
-                                          ),
-                                          backgroundColor: AppColors.error,
-                                        ),
-                                      );
-                                    }
-                                  },
+                                  onTap: () => _choosePhotoSource(ctx, vm),
                                   child: Container(
                                     width: 60,
                                     height: 60,
@@ -376,6 +354,72 @@ class _CreatePostViewState extends State<CreatePostView> {
           content: Text(
             vm.errorMessage ?? 'Please correct the highlighted fields.',
           ),
+          backgroundColor: AppColors.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _choosePhotoSource(
+    BuildContext context,
+    CreatePostViewModel vm,
+  ) async {
+    FocusManager.instance.primaryFocus?.unfocus();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      showDragHandle: true,
+      requestFocus: false,
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const ListTile(
+              title: Text(
+                'Add post photos',
+                style: TextStyle(fontWeight: FontWeight.w800),
+              ),
+              subtitle: Text('Add up to 5 photos to your story.'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_camera_outlined),
+              title: const Text('Take a photo'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library_outlined),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(sheetContext, ImageSource.gallery),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+    if (source == null || !mounted) return;
+
+    try {
+      if (source == ImageSource.camera) {
+        final photo = await _picker.pickImage(
+          source: ImageSource.camera,
+          maxWidth: 1920,
+          maxHeight: 1920,
+          imageQuality: 82,
+        );
+        if (photo != null) vm.addPhotos([photo]);
+      } else {
+        final photos = await _picker.pickMultiImage(
+          maxWidth: 1920,
+          maxHeight: 1920,
+          imageQuality: 82,
+          limit: AppConstants.maxPostPhotos - vm.photos.length,
+        );
+        vm.addPhotos(photos);
+      }
+    } catch (error) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Photos could not be added: $error'),
           backgroundColor: AppColors.error,
         ),
       );
