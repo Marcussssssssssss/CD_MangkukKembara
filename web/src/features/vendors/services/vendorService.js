@@ -1,4 +1,10 @@
 import { supabase, queryRows, insertRows, updateRows, deleteRows } from '../../../services/supabase/api';
+import { uploadVendorImage } from '../../../services/cloudinary/upload';
+import {
+  CONTACT_NUMBER_ERROR,
+  isValidContactNumber,
+  normalizeContactNumber,
+} from './vendorContact';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -22,6 +28,11 @@ async function getNextId(table, column, prefix) {
   return `${prefix}${String(nextNum).padStart(4, '0')}`;
 }
 
+function toRelationArray(relation) {
+  if (!relation) return [];
+  return Array.isArray(relation) ? relation : [relation];
+}
+
 // ---------------------------------------------------------------------------
 // Service Exports
 // ---------------------------------------------------------------------------
@@ -34,13 +45,20 @@ export async function fetchVendors() {
     'vendors',
     `*, 
      states(state_name), 
-     vendor_foods(heritage_foods(heritage_food_id, food_name)), 
-     vendor_tiffins(heritage_tiffins(heritage_tiffin_id, edition_name)),
+     vendor_foods(vendor_food_id, heritage_food_id, is_featured, heritage_foods(heritage_food_id, food_name)),
+     vendor_tiffins(vendor_tiffin_id, heritage_tiffin_id, heritage_tiffins(heritage_tiffin_id, edition_name)),
      vendor_operating_hours(*)`,
     q => q.order('created_at', { ascending: false })
   );
   
-  return data;
+  return data.map(vendor => ({
+    ...vendor,
+    contact_number: normalizeContactNumber(vendor.contact_number),
+    // The unique vendor_id constraint makes this a one-to-one relation in
+    // PostgREST, so Supabase returns an object instead of an array. Keep the
+    // UI-facing shape stable for the dashboard, details, and edit form.
+    vendor_tiffins: toRelationArray(vendor.vendor_tiffins),
+  }));
 }
 
 /**
@@ -60,6 +78,14 @@ async function assertVendorSelectionsMatchState(formData) {
   const selectedFoodIds = formData.selected_foods || [];
   const selectedTiffinIds = (formData.selected_tiffins || [])
     .map(tiffin => tiffin.heritage_tiffin_id);
+
+  if (selectedTiffinIds.length > 1) {
+    throw new Error('A Vendor can be assigned to only one Tiffin edition.');
+  }
+  if (!isValidContactNumber(formData.contact_number)) {
+    throw new Error(CONTACT_NUMBER_ERROR);
+  }
+
   const [foods, tiffins] = await Promise.all([
     selectedFoodIds.length
       ? queryRows('heritage_foods', 'heritage_food_id, state_id', query => (
@@ -92,6 +118,9 @@ async function assertVendorSelectionsMatchState(formData) {
  */
 export async function createVendor(formData) {
   await assertVendorSelectionsMatchState(formData);
+  const imageResult = formData.cover_image_file
+    ? await uploadVendorImage(formData.cover_image_file)
+    : null;
   const vendorId = await getNextId('vendors', 'vendor_id', 'V');
 
   // 1. Insert Vendor
@@ -101,11 +130,13 @@ export async function createVendor(formData) {
     business_type: formData.business_type,
     description: formData.description,
     contact_person: formData.contact_person,
-    contact_number: formData.contact_number,
+    contact_number: normalizeContactNumber(formData.contact_number) || null,
     email: formData.email,
-    address_line: formData.address_line,
-    latitude: formData.latitude || 0,
-    longitude: formData.longitude || 0,
+    address_line: formData.address_line.trim(),
+    latitude: Number(formData.latitude),
+    longitude: Number(formData.longitude),
+    google_place_id: formData.google_place_id || null,
+    cover_image_url: imageResult?.secure_url || formData.cover_image_url || null,
     state_id: formData.state_id,
     participation_status: formData.participation_status,
     created_at: new Date().toISOString(),
@@ -147,15 +178,14 @@ export async function createVendor(formData) {
   }
 
   // 4. Insert Tiffins
-  if (formData.selected_tiffins && formData.selected_tiffins.length > 0) {
-    const baseTiffinId = await getNextId('vendor_tiffins', 'vendor_tiffin_id', 'VT');
-    const baseTiffinNum = parseInt(baseTiffinId.replace('VT', ''), 10);
-    const tiffinsPayload = formData.selected_tiffins.map((t, index) => ({
-      vendor_tiffin_id: `VT${String(baseTiffinNum + index).padStart(4, '0')}`,
+  const selectedTiffin = formData.selected_tiffins?.[0];
+  if (selectedTiffin) {
+    const vendorTiffinId = await getNextId('vendor_tiffins', 'vendor_tiffin_id', 'VT');
+    await insertRows('vendor_tiffins', [{
+      vendor_tiffin_id: vendorTiffinId,
       vendor_id: vendorId,
-      heritage_tiffin_id: t.heritage_tiffin_id
-    }));
-    await insertRows('vendor_tiffins', tiffinsPayload);
+      heritage_tiffin_id: selectedTiffin.heritage_tiffin_id
+    }]);
   }
 
   return insertedVendor;
@@ -166,17 +196,22 @@ export async function createVendor(formData) {
  */
 export async function updateVendor(vendorId, formData) {
   await assertVendorSelectionsMatchState(formData);
+  const imageResult = formData.cover_image_file
+    ? await uploadVendorImage(formData.cover_image_file)
+    : null;
   // 1. Update Vendor Basic Info
   const vendorPayload = {
     vendor_name: formData.vendor_name,
     business_type: formData.business_type,
     description: formData.description,
     contact_person: formData.contact_person,
-    contact_number: formData.contact_number,
+    contact_number: normalizeContactNumber(formData.contact_number) || null,
     email: formData.email,
-    address_line: formData.address_line,
-    latitude: formData.latitude || 0,
-    longitude: formData.longitude || 0,
+    address_line: formData.address_line.trim(),
+    latitude: Number(formData.latitude),
+    longitude: Number(formData.longitude),
+    google_place_id: formData.google_place_id || null,
+    cover_image_url: imageResult?.secure_url || formData.cover_image_url || null,
     state_id: formData.state_id,
     participation_status: formData.participation_status,
     updated_at: new Date().toISOString(),
@@ -229,15 +264,14 @@ export async function updateVendor(vendorId, formData) {
   // 4. Sync Tiffins
   if (formData.selected_tiffins) {
     await deleteRows('vendor_tiffins', q => q.eq('vendor_id', vendorId));
-    const baseTiffinId = await getNextId('vendor_tiffins', 'vendor_tiffin_id', 'VT');
-    const baseTiffinNum = parseInt(baseTiffinId.replace('VT', ''), 10);
-    const tiffinsPayload = formData.selected_tiffins.map((t, index) => ({
-      vendor_tiffin_id: `VT${String(baseTiffinNum + index).padStart(4, '0')}`,
-      vendor_id: vendorId,
-      heritage_tiffin_id: t.heritage_tiffin_id
-    }));
-    if (tiffinsPayload.length > 0) {
-      await insertRows('vendor_tiffins', tiffinsPayload);
+    const selectedTiffin = formData.selected_tiffins[0];
+    if (selectedTiffin) {
+      const vendorTiffinId = await getNextId('vendor_tiffins', 'vendor_tiffin_id', 'VT');
+      await insertRows('vendor_tiffins', [{
+        vendor_tiffin_id: vendorTiffinId,
+        vendor_id: vendorId,
+        heritage_tiffin_id: selectedTiffin.heritage_tiffin_id
+      }]);
     }
   }
 

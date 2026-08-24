@@ -21,7 +21,6 @@ export default function VendorDashboard({
     <div className="p-6 sm:p-8">
       <PageHeader
         title="Manage Heritage Food Vendors"
-        description="View, create, edit, and deactivate vendor information."
         actions={
           <button
             onClick={onCreate}

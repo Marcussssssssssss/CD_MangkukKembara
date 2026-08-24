@@ -61,3 +61,52 @@
     @apply font-sans antialiased text-surface-800 bg-surface-50;
   }
 }
+
+/* Google Places uses the operating-system colour scheme by default. Keep the
+   vendor picker consistent with this application's fixed light interface. */
+.vendor-place-autocomplete {
+  position: relative;
+  z-index: 30;
+  display: block;
+  width: 100%;
+  overflow: visible;
+  color-scheme: light;
+  color: #1c1917;
+  background-color: #ffffff;
+  border: 1px solid #d6d3d1;
+  border-radius: 0.75rem;
+  outline: none;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.vendor-place-autocomplete:focus-within {
+  border-color: #d97706;
+  box-shadow: 0 0 0 3px rgb(217 119 6 / 0.15);
+}
+
+.vendor-place-autocomplete::part(input) {
+  color: #1c1917;
+  background-color: #ffffff;
+  caret-color: #b45309;
+}
+
+.vendor-place-autocomplete::part(prediction-list) {
+  z-index: 100;
+  color: #1c1917;
+  background-color: #ffffff;
+  border: 1px solid #e7e5e4;
+  border-radius: 0.75rem;
+  box-shadow: 0 12px 28px rgb(28 25 23 / 0.16);
+}
+
+.vendor-place-autocomplete::part(prediction-item) {
+  color: #1c1917;
+  background-color: #ffffff;
+}
+
+.vendor-place-autocomplete::part(prediction-item):hover {
+  background-color: #fffbeb;
+}

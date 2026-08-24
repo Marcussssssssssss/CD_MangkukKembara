@@ -80,7 +80,6 @@ export default function CampaignDashboard({
     <div className="p-6 sm:p-8">
       <PageHeader
         title="Manage Heritage Community Campaigns"
-        description="View existing artwork design campaigns."
         actions={
           <button
             onClick={onCreate}

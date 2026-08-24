@@ -33,7 +33,12 @@ function isApprovedFolder(folder: string, userId: string, isAdmin: boolean) {
     'artwork_submissions',
     'community_posts',
   ]);
-  const adminFolders = new Set(['tiffin_designs', 'heritage_videos']);
+  const adminFolders = new Set([
+    'tiffin_designs',
+    'heritage_foods',
+    'heritage_videos',
+    'vendor_images',
+  ]);
   const userScopedPrefixes = [
     `mangkukkembara/community/${userId}`,
     `mangkukkembara/artwork-submissions/${userId}`,

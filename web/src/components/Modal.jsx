@@ -19,7 +19,7 @@ import { useEffect, useRef, useCallback } from 'react';
 export default function Modal({ open, onClose, title, size = 'md', children }) {
   const overlayRef = useRef(null);
 
-  const stableOnClose = useCallback(() => onClose(), [onClose]);
+  const stableOnClose = useCallback(() => onClose?.(), [onClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -29,11 +29,12 @@ export default function Modal({ open, onClose, title, size = 'md', children }) {
     };
 
     document.addEventListener('keydown', handleEsc);
+    const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
     return () => {
       document.removeEventListener('keydown', handleEsc);
-      document.body.style.overflow = '';
+      document.body.style.overflow = previousOverflow;
     };
   }, [open, stableOnClose]);
 
@@ -57,7 +58,7 @@ export default function Modal({ open, onClose, title, size = 'md', children }) {
       }}
     >
       <div
-        className={`my-8 w-full ${sizeClasses[size] || sizeClasses.md} rounded-xl bg-white shadow-2xl sm:my-0`}
+        className={`my-8 w-full ${sizeClasses[size] || sizeClasses.md} overflow-hidden rounded-xl bg-white shadow-2xl sm:my-0`}
         role="dialog"
         aria-modal="true"
         aria-label={title || 'Dialog'}
@@ -68,7 +69,8 @@ export default function Modal({ open, onClose, title, size = 'md', children }) {
             <button
               type="button"
               onClick={stableOnClose}
-              className="rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600"
+              disabled={!onClose}
+              className="rounded-lg p-1.5 text-surface-400 transition-colors hover:bg-surface-100 hover:text-surface-600 disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Close"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

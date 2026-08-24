@@ -73,7 +73,6 @@ export default function SubmissionDashboard({
     <div className="p-6 sm:p-8">
       <PageHeader
         title="Review Artwork Submissions"
-        description="View and manage community artwork design submissions."
       />
 
       {/* Toolbar */}

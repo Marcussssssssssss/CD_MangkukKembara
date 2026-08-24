@@ -6,7 +6,8 @@ export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGener
   const [qrRender, setQrRender] = useState({ codeValue: null, imageUrl: null, error: null });
   const canvasRef = useRef(null);
 
-  const qrCode = tiffin?.tiffin_qr_codes?.length > 0 ? tiffin.tiffin_qr_codes[0] : null;
+  const qrRelation = tiffin?.tiffin_qr_codes;
+  const qrCode = Array.isArray(qrRelation) ? qrRelation[0] : qrRelation || null;
 
   useEffect(() => {
     if (!qrCode?.code_value) return undefined;

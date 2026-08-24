@@ -1,6 +1,10 @@
 import { useMemo, useRef, useState } from 'react';
 import Modal from '../../../components/Modal';
-import { ALLOWED_VIDEO_TYPES, SIZE_LIMITS } from '../../../services/cloudinary/upload';
+import {
+  ALLOWED_IMAGE_TYPES,
+  ALLOWED_VIDEO_TYPES,
+  SIZE_LIMITS,
+} from '../../../services/cloudinary/upload';
 
 const STEPS = [
   { number: 1, label: 'Choose Artwork' },
@@ -40,6 +44,11 @@ function initialFormState(tiffin) {
   };
 }
 
+function suggestedEditionName(artwork, releaseYear) {
+  if (!artwork?.title || !releaseYear) return '';
+  return `${artwork.title} — ${releaseYear} Edition`;
+}
+
 export default function TiffinForm(props) {
   if (!props.isOpen || !props.referenceData) return null;
 
@@ -47,18 +56,28 @@ export default function TiffinForm(props) {
   return <TiffinFormContent key={formKey} {...props} />;
 }
 
-function TiffinFormContent({ tiffin, isOpen, onClose, onSave, referenceData }) {
+function TiffinFormContent({
+  tiffin,
+  isOpen,
+  onClose,
+  onSave,
+  onCreateHeritageFood,
+  referenceData,
+}) {
   const [formData, setFormData] = useState(() => initialFormState(tiffin));
   const [currentStep, setCurrentStep] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
   const [heritageVideoFile, setHeritageVideoFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isFoodCreatorOpen, setIsFoodCreatorOpen] = useState(false);
   const videoInputRef = useRef(null);
   const stepHeadingRef = useRef(null);
+  const foodCreatorTriggerRef = useRef(null);
+  const lastSuggestedEditionRef = useRef(null);
 
   const isEditing = !!tiffin;
-  const { states, foods, artworks } = referenceData;
+  const { states, foods, categories, artworks } = referenceData;
   const availableArtworks = artworks.filter(artwork => (
     !artwork.assigned_tiffin_id
     || artwork.assigned_tiffin_id === tiffin?.heritage_tiffin_id
@@ -80,6 +99,7 @@ function TiffinFormContent({ tiffin, isOpen, onClose, onSave, referenceData }) {
   const filteredFoods = foods.filter(food => (
     !formData.state_id || food.state_id === formData.state_id
   ));
+  const selectedState = states.find(state => state.state_id === formData.state_id);
 
   const clearError = (field) => {
     if (errors[field]) {
@@ -104,6 +124,17 @@ function TiffinFormContent({ tiffin, isOpen, onClose, onSave, referenceData }) {
         state_id: value,
         heritage_food_id: prev.state_id === value ? prev.heritage_food_id : '',
       }));
+    } else if (name === 'release_year') {
+      const nextSuggestion = suggestedEditionName(selectedArtwork, value);
+      setFormData(prev => ({
+        ...prev,
+        release_year: value,
+        edition_name: !prev.edition_name.trim()
+          || prev.edition_name === lastSuggestedEditionRef.current
+          ? nextSuggestion
+          : prev.edition_name,
+      }));
+      lastSuggestedEditionRef.current = nextSuggestion;
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -112,18 +143,43 @@ function TiffinFormContent({ tiffin, isOpen, onClose, onSave, referenceData }) {
 
   const handleArtworkSelect = (artwork) => {
     const nextStateId = artwork.campaign_state_id || '';
+    const nextSuggestion = suggestedEditionName(artwork, formData.release_year);
     setFormData(prev => ({
       ...prev,
       artwork_id: artwork.artwork_id,
       state_id: nextStateId,
       heritage_food_id: prev.state_id === nextStateId ? prev.heritage_food_id : '',
+      edition_name: !prev.edition_name.trim()
+        || prev.edition_name === lastSuggestedEditionRef.current
+        ? nextSuggestion
+        : prev.edition_name,
     }));
+    lastSuggestedEditionRef.current = nextSuggestion;
     setErrors(prev => ({
       ...prev,
       artwork_id: null,
       state_id: null,
       heritage_food_id: null,
     }));
+  };
+
+  const handleHeritageFoodCreated = async (foodData, imageFile) => {
+    const createdFood = await onCreateHeritageFood({
+      ...foodData,
+      state_id: formData.state_id,
+    }, imageFile);
+    setFormData(prev => ({
+      ...prev,
+      heritage_food_id: createdFood.heritage_food_id,
+    }));
+    clearError('heritage_food_id');
+    closeFoodCreator();
+    return createdFood;
+  };
+
+  const closeFoodCreator = () => {
+    setIsFoodCreatorOpen(false);
+    requestAnimationFrame(() => foodCreatorTriggerRef.current?.focus());
   };
 
   const handleVideoChange = (event) => {
@@ -164,7 +220,7 @@ function TiffinFormContent({ tiffin, isOpen, onClose, onSave, referenceData }) {
       nextErrors.artwork_id = 'Select a published winning Artwork to continue.';
     }
     if (step === 2) {
-      if (!formData.edition_name.trim()) nextErrors.edition_name = 'Edition name is required.';
+      if (!formData.edition_name.trim()) nextErrors.edition_name = 'Tiffin edition name is required.';
       if (!formData.state_id) nextErrors.state_id = 'State is required.';
       if (!formData.heritage_food_id) nextErrors.heritage_food_id = 'Heritage food is required.';
     }
@@ -228,9 +284,10 @@ function TiffinFormContent({ tiffin, isOpen, onClose, onSave, referenceData }) {
   };
 
   return (
-    <Modal
+    <>
+      <Modal
       open={isOpen}
-      onClose={isSaving ? undefined : onClose}
+      onClose={isSaving || isFoodCreatorOpen ? undefined : onClose}
       title={isEditing ? 'Edit Heritage Tiffin' : 'Create Heritage Tiffin'}
       size="xl"
     >
@@ -264,6 +321,8 @@ function TiffinFormContent({ tiffin, isOpen, onClose, onSave, referenceData }) {
                 foods={filteredFoods}
                 errors={errors}
                 onChange={handleChange}
+                onAddHeritageFood={() => setIsFoodCreatorOpen(true)}
+                addFoodButtonRef={foodCreatorTriggerRef}
                 artwork={selectedArtwork}
               />
             )}
@@ -325,7 +384,17 @@ function TiffinFormContent({ tiffin, isOpen, onClose, onSave, referenceData }) {
           </div>
         </div>
       </form>
-    </Modal>
+      </Modal>
+
+      {isFoodCreatorOpen && (
+        <HeritageFoodDialog
+          state={selectedState}
+          categories={categories || []}
+          onClose={closeFoodCreator}
+          onCreate={handleHeritageFoodCreated}
+        />
+      )}
+    </>
   );
 }
 
@@ -368,9 +437,6 @@ function ArtworkStep({
   return (
     <section>
       <h3 className="text-xl font-bold text-surface-900">Choose the Tiffin Artwork</h3>
-      <p className="mt-1 text-sm text-surface-600">
-        Select one published, unassigned campaign winner. Its image and cultural meanings will become part of the Tiffin experience.
-      </p>
 
       <label className="mt-5 block">
         <span className="text-sm font-medium text-surface-700">Search Artwork</span>
@@ -452,9 +518,6 @@ function ArtworkStep({
                 <ArtworkDetail label="Layer 2 Meaning" value={selectedSubmission?.layer_2_meaning} />
                 <ArtworkDetail label="Layer 3 Meaning" value={selectedSubmission?.layer_3_meaning} />
               </div>
-              <p className="text-xs text-surface-500">
-                This information comes from the winning submission and is read-only.
-              </p>
             </div>
           </div>
         </div>
@@ -463,15 +526,21 @@ function ArtworkStep({
   );
 }
 
-function TiffinDetailsStep({ formData, states, foods, errors, onChange, artwork }) {
+function TiffinDetailsStep({
+  formData,
+  states,
+  foods,
+  errors,
+  onChange,
+  onAddHeritageFood,
+  addFoodButtonRef,
+  artwork,
+}) {
   const selectedState = states.find(state => state.state_id === formData.state_id);
 
   return (
     <section>
       <h3 className="text-xl font-bold text-surface-900">Enter Tiffin Details</h3>
-      <p className="mt-1 text-sm text-surface-600">
-        Add only information specific to this Tiffin edition. Artwork information is already linked.
-      </p>
 
       {artwork && (
         <div className="mt-5 flex items-center gap-3 rounded-lg border border-surface-200 bg-surface-50 p-3">
@@ -484,12 +553,14 @@ function TiffinDetailsStep({ formData, states, foods, errors, onChange, artwork 
       )}
 
       <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
-        <FormField label="Edition Name" error={errors.edition_name} className="md:col-span-2">
+        <FormField label="Tiffin Edition Name" error={errors.edition_name} className="md:col-span-2">
           <input
             type="text"
             name="edition_name"
             value={formData.edition_name}
             onChange={onChange}
+            maxLength={150}
+            placeholder={suggestedEditionName(artwork, formData.release_year) || 'Enter the official Tiffin release name'}
             className={inputClass(errors.edition_name)}
           />
         </FormField>
@@ -518,18 +589,30 @@ function TiffinDetailsStep({ formData, states, foods, errors, onChange, artwork 
           <div className={`${inputClass(errors.state_id)} bg-surface-100 text-surface-700`}>
             {selectedState?.state_name || 'No campaign state is linked to this Artwork'}
           </div>
-          <p className="mt-1 text-xs text-surface-500">
-            Set automatically from the winning Artwork campaign.
-          </p>
         </FormField>
 
-        <FormField label="Featured Heritage Food" error={errors.heritage_food_id}>
+        <div>
+          <div className="flex min-h-5 items-center justify-between gap-3">
+            <label htmlFor="heritage_food_id" className="text-sm font-medium text-surface-700">
+              Featured Heritage Food<span className="text-red-500" aria-hidden="true"> *</span>
+            </label>
+            <button
+              ref={addFoodButtonRef}
+              type="button"
+              onClick={onAddHeritageFood}
+              disabled={!formData.state_id}
+              className="rounded px-1.5 py-0.5 text-xs font-semibold text-primary-700 hover:bg-primary-50 hover:text-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              + Add new
+            </button>
+          </div>
           <select
+            id="heritage_food_id"
             name="heritage_food_id"
             value={formData.heritage_food_id}
             onChange={onChange}
             disabled={!formData.state_id}
-            className={inputClass(errors.heritage_food_id)}
+            className={`mt-2 ${inputClass(errors.heritage_food_id)}`}
           >
             <option value="">{formData.state_id ? 'Select a heritage food' : 'Choose an Artwork first'}</option>
             {foods.map(food => (
@@ -538,12 +621,192 @@ function TiffinDetailsStep({ formData, states, foods, errors, onChange, artwork 
           </select>
           {formData.state_id && foods.length === 0 && (
             <p className="mt-1 text-xs text-amber-700">
-              No active heritage food is configured for this campaign state.
+              No food is available for this State. Use “Add new” to create one.
             </p>
           )}
-        </FormField>
+          {errors.heritage_food_id && (
+            <p className="mt-1 text-xs text-red-600">{errors.heritage_food_id}</p>
+          )}
+        </div>
       </div>
     </section>
+  );
+}
+
+function HeritageFoodDialog({ state, categories, onClose, onCreate }) {
+  const [foodData, setFoodData] = useState({
+    food_name: '',
+    food_category_id: categories[0]?.food_category_id || '',
+    origin_summary: '',
+    cultural_significance: '',
+  });
+  const [imageFile, setImageFile] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleChange = (event) => {
+    const { name, value } = event.target;
+    setFoodData(prev => ({ ...prev, [name]: value }));
+    if (errors[name]) setErrors(prev => ({ ...prev, [name]: null }));
+  };
+
+  const handleImageChange = (event) => {
+    const file = event.target.files?.[0] || null;
+    if (!file) {
+      setImageFile(null);
+      return;
+    }
+    if (!ALLOWED_IMAGE_TYPES.has(file.type || '')) {
+      setErrors(prev => ({ ...prev, image: 'Choose a JPG, PNG, or WebP image.' }));
+      event.target.value = '';
+      return;
+    }
+    if (file.size > SIZE_LIMITS.image) {
+      setErrors(prev => ({ ...prev, image: 'The image must not exceed 10 MB.' }));
+      event.target.value = '';
+      return;
+    }
+    setImageFile(file);
+    setErrors(prev => ({ ...prev, image: null }));
+  };
+
+  const handleCreate = async (event) => {
+    event.preventDefault();
+    const nextErrors = {};
+    if (!foodData.food_name.trim()) nextErrors.food_name = 'Food name is required.';
+    if (!foodData.food_category_id) nextErrors.food_category_id = 'Food category is required.';
+    if (Object.keys(nextErrors).length > 0) {
+      setErrors(nextErrors);
+      return;
+    }
+
+    setIsCreating(true);
+    setErrors({});
+    try {
+      await onCreate(foodData, imageFile);
+    } catch (error) {
+      setErrors({ submit: error.message || 'The Heritage Food could not be created.' });
+      setIsCreating(false);
+    }
+  };
+
+  return (
+    <Modal
+      open
+      onClose={isCreating ? undefined : onClose}
+      title="Add Heritage Food"
+      size="md"
+    >
+      <form onSubmit={handleCreate} className="flex max-h-[85vh] flex-col">
+        <div className="overflow-y-auto p-6">
+          <div className="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
+            <p className="text-xs font-semibold uppercase tracking-wider text-surface-500">State</p>
+            <p className="mt-1 text-sm font-semibold text-surface-900">
+              {state?.state_name || 'Selected campaign state'}
+            </p>
+          </div>
+
+          {errors.submit && (
+            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700" role="alert">
+              {errors.submit}
+            </div>
+          )}
+
+          <div className="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+            <CreatorField label="Food Name" error={errors.food_name}>
+              <input
+                autoFocus
+                type="text"
+                name="food_name"
+                value={foodData.food_name}
+                onChange={handleChange}
+                maxLength={150}
+                placeholder="e.g. Penang Assam Laksa"
+                className={inputClass(errors.food_name)}
+              />
+            </CreatorField>
+
+            <CreatorField label="Food Category" error={errors.food_category_id}>
+              <select
+                name="food_category_id"
+                value={foodData.food_category_id}
+                onChange={handleChange}
+                className={inputClass(errors.food_category_id)}
+              >
+                <option value="">Select a category</option>
+                {categories.map(category => (
+                  <option key={category.food_category_id} value={category.food_category_id}>
+                    {category.category_name}
+                  </option>
+                ))}
+              </select>
+            </CreatorField>
+
+            <CreatorField label="Origin Summary" required={false} className="md:col-span-2">
+              <textarea
+                name="origin_summary"
+                value={foodData.origin_summary}
+                onChange={handleChange}
+                rows={3}
+                placeholder="Where the dish comes from and how it is traditionally prepared"
+                className={inputClass()}
+              />
+            </CreatorField>
+
+            <CreatorField label="Cultural Significance" required={false} className="md:col-span-2">
+              <textarea
+                name="cultural_significance"
+                value={foodData.cultural_significance}
+                onChange={handleChange}
+                rows={3}
+                placeholder="Why the dish is meaningful to the local community"
+                className={inputClass()}
+              />
+            </CreatorField>
+
+            <CreatorField label="Food Image" required={false} error={errors.image} className="md:col-span-2">
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handleImageChange}
+                className="block w-full rounded-lg border border-surface-300 bg-white px-3 py-2 text-sm text-surface-600 file:mr-4 file:rounded-md file:border-0 file:bg-primary-50 file:px-3 file:py-2 file:font-semibold file:text-primary-700 hover:file:bg-primary-100"
+              />
+              <p className="mt-1 text-xs text-surface-500">Optional JPG, PNG, or WebP; maximum 10 MB.</p>
+            </CreatorField>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center justify-end gap-3 border-t border-surface-200 bg-surface-50 p-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isCreating}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-200 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={isCreating || categories.length === 0}
+            className="rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isCreating ? 'Adding Food…' : 'Add and Select'}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}
+
+function CreatorField({ label, error, required = true, className = '', children }) {
+  return (
+    <label className={`block ${className}`}>
+      <span className="text-sm font-medium text-surface-700">
+        {label}{required && <span className="text-red-500" aria-hidden="true"> *</span>}
+      </span>
+      <div className="mt-2">{children}</div>
+      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+    </label>
   );
 }
 
@@ -560,9 +823,6 @@ function HeritageContentStep({
   return (
     <section>
       <h3 className="text-xl font-bold text-surface-900">Add Heritage Content</h3>
-      <p className="mt-1 text-sm text-surface-600">
-        Add one heritage story and an optional video for the complete Tiffin experience.
-      </p>
 
       <div className="mt-6 space-y-5">
         <FormField label="Story Title" error={errors.story_title}>

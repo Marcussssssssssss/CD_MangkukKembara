@@ -205,6 +205,32 @@ export async function uploadTiffinImage(file) {
 }
 
 /**
+ * Upload an administrator-managed Heritage Food image.
+ *
+ * @param {File} file
+ * @returns {Promise<CloudinaryUploadResult>}
+ */
+export async function uploadHeritageFoodImage(file) {
+  return uploadMedia(file, {
+    folder: 'heritage_foods',
+    maxBytes: SIZE_LIMITS.image,
+  });
+}
+
+/**
+ * Upload an administrator-managed Vendor image.
+ *
+ * @param {File} file
+ * @returns {Promise<CloudinaryUploadResult>}
+ */
+export async function uploadVendorImage(file) {
+  return uploadMedia(file, {
+    folder: 'vendor_images',
+    maxBytes: SIZE_LIMITS.image,
+  });
+}
+
+/**
  * Upload a heritage story video.
  *
  * @param {File} file
