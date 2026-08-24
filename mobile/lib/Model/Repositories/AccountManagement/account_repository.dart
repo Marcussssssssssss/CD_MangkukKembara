@@ -66,6 +66,14 @@ class AccountRepository {
     if (user == null) {
       throw const AppException('Registration did not return a user.');
     }
+    // With email confirmation enabled, Supabase intentionally returns an
+    // obfuscated user (with no identities) for an email that is already
+    // registered. Treat it as a duplicate rather than a successful signup.
+    if (user.identities?.isEmpty ?? false) {
+      throw const AppException(
+        'An account already exists for this email address. Please log in or reset your password.',
+      );
+    }
     // Supabase normally returns no session when email confirmation is enabled.
     // Sign out defensively so registration never enters the application.
     if (response.session != null) await _api.signOut();

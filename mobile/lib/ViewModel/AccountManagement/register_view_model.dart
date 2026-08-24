@@ -63,8 +63,15 @@ class RegisterViewModel extends ChangeNotifier {
       _registeredEmail = email.trim();
       notifyListeners();
       return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+    } catch (error) {
+      final message = error.toString().replaceFirst('Exception: ', '');
+      final normalized = message.toLowerCase();
+      _errorMessage =
+          normalized.contains('already registered') ||
+              normalized.contains('already exists') ||
+              normalized.contains('email exists')
+          ? 'An account already exists for this email address. Please log in or reset your password.'
+          : message;
       notifyListeners();
       return false;
     } finally {
