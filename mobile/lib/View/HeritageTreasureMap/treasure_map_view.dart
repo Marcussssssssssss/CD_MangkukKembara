@@ -8,10 +8,12 @@ import '../../ViewModel/HeritageTreasureMap/treasure_map_view_model.dart';
 import '../../Model/Repositories/HeritageTreasureMap/vendor_model.dart';
 import '../../Model/Repositories/HeritageTreasureMap/pasar_malam_model.dart';
 import '../Widgets/app_bottom_nav.dart';
+import '../Widgets/app_network_image.dart';
 import '../Widgets/vendor_card.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/empty_state_widget.dart';
 import '../Widgets/error_state_widget.dart';
+import '../Widgets/rating_bar.dart';
 
 /// Visual tokens used exclusively by the treasure-map home screen.
 /// Keeping these local prevents the refreshed map design from altering the
@@ -83,7 +85,6 @@ class _TreasureMapViewState extends State<TreasureMapView> {
                   onSelect: widget.selectionMode
                       ? () => Navigator.pop(ctx, vm.previewVendor)
                       : null,
-                  bottom: widget.selectionMode ? 0 : 64,
                 ),
               if (vm.previewPasarMalam != null)
                 _PasarMalamPreviewSheet(
@@ -97,7 +98,6 @@ class _TreasureMapViewState extends State<TreasureMapView> {
                   onSelectVendor: widget.selectionMode
                       ? (vendor) => Navigator.pop(ctx, vendor)
                       : null,
-                  bottom: widget.selectionMode ? 0 : 64,
                 ),
             ],
           ),
@@ -246,13 +246,7 @@ class _TreasureMapViewState extends State<TreasureMapView> {
                   ),
                 ),
                 onChanged: vm.setSearchQuery,
-                onSubmitted: widget.selectionMode
-                    ? null
-                    : (q) => Navigator.pushNamed(
-                        ctx,
-                        AppRoutes.vendorSearch,
-                        arguments: q,
-                      ),
+                onSubmitted: vm.setSearchQuery,
               ),
             ],
           ),
@@ -403,15 +397,32 @@ class _TreasureMapViewState extends State<TreasureMapView> {
       );
     }
 
-    return _VendorGoogleMap(
-      // Vendors belonging to a Pasar Malam are accessed through the market
-      // marker, so only standalone vendors receive their own map pin.
-      vendors: vm.vendors,
-      pasarMalam: vm.pasarMalam,
-      showCurrentLocation: vm.canShowCurrentLocation,
-      showPlaceSummary: !widget.selectionMode,
-      onVendorTap: vm.showVendorPreview,
-      onPasarMalamTap: vm.showPasarMalamPreview,
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: _VendorGoogleMap(
+            // Vendors belonging to a Pasar Malam are shown through the market
+            // marker on the default map, then as direct pins during searches.
+            vendors: vm.vendors,
+            pasarMalam: vm.pasarMalam,
+            selectedVendor: vm.previewVendor,
+            showCurrentLocation: vm.canShowCurrentLocation,
+            onVendorTap: vm.showVendorPreview,
+            onPasarMalamTap: vm.showPasarMalamPreview,
+          ),
+        ),
+        if (vm.hasSearchQuery &&
+            vm.vendors.isNotEmpty &&
+            vm.previewVendor == null &&
+            vm.previewPasarMalam == null)
+          _SearchResultsPanel(
+            query: vm.searchQuery,
+            vendors: vm.vendors,
+            onVendorTap: (vendor) => widget.selectionMode
+                ? Navigator.pop(ctx, vendor)
+                : vm.showVendorPreview(vendor),
+          ),
+      ],
     );
   }
 }
@@ -420,16 +431,16 @@ class _TreasureMapViewState extends State<TreasureMapView> {
 class _VendorGoogleMap extends StatefulWidget {
   final List<VendorModel> vendors;
   final List<PasarMalamModel> pasarMalam;
+  final VendorModel? selectedVendor;
   final bool showCurrentLocation;
-  final bool showPlaceSummary;
   final void Function(VendorModel) onVendorTap;
   final void Function(PasarMalamModel) onPasarMalamTap;
 
   const _VendorGoogleMap({
     required this.vendors,
     required this.pasarMalam,
+    this.selectedVendor,
     required this.showCurrentLocation,
-    this.showPlaceSummary = true,
     required this.onVendorTap,
     required this.onPasarMalamTap,
   });
@@ -521,30 +532,6 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
             },
           ),
         ),
-        if (widget.showPlaceSummary)
-          Positioned(
-            top: 12,
-            right: 12,
-            child: Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(color: Colors.black.withAlpha(30), blurRadius: 6),
-                ],
-              ),
-              child: Text(
-                '${widget.vendors.length} places · '
-                '${widget.pasarMalam.length} markets',
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-            ),
-          ),
       ],
     );
   }
@@ -580,10 +567,28 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
     );
   }
 
+  Future<void> _focusVendor(VendorModel vendor) async {
+    final controller = _controller;
+    if (controller == null) return;
+    await controller.animateCamera(
+      CameraUpdate.newCameraPosition(
+        CameraPosition(
+          target: LatLng(vendor.latitude, vendor.longitude),
+          zoom: 15,
+        ),
+      ),
+    );
+  }
+
   @override
   void didUpdateWidget(covariant _VendorGoogleMap oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.vendors != widget.vendors ||
+    if (oldWidget.selectedVendor?.id != widget.selectedVendor?.id &&
+        widget.selectedVendor != null) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _focusVendor(widget.selectedVendor!),
+      );
+    } else if (oldWidget.vendors != widget.vendors ||
         oldWidget.pasarMalam != widget.pasarMalam) {
       WidgetsBinding.instance.addPostFrameCallback((_) => _fitVisiblePlaces());
     }
@@ -593,6 +598,324 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
   void dispose() {
     _controller?.dispose();
     super.dispose();
+  }
+}
+
+class _SearchResultsPanel extends StatelessWidget {
+  final String query;
+  final List<VendorModel> vendors;
+  final ValueChanged<VendorModel> onVendorTap;
+
+  const _SearchResultsPanel({
+    required this.query,
+    required this.vendors,
+    required this.onVendorTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final initialChildSize = vendors.length <= 2 ? 0.34 : 0.46;
+
+    return DraggableScrollableSheet(
+      minChildSize: 0.22,
+      initialChildSize: initialChildSize,
+      maxChildSize: 0.86,
+      snap: true,
+      snapSizes: const [0.22, 0.46, 0.86],
+      builder: (context, scrollController) {
+        return DecoratedBox(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(18)),
+            boxShadow: [
+              BoxShadow(
+                color: Color(0x33000000),
+                blurRadius: 18,
+                offset: Offset(0, -4),
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(18)),
+            child: CustomScrollView(
+              controller: scrollController,
+              physics: const ClampingScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const _SheetDragHandle(),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                query.trim(),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w800,
+                                      color: AppColors.textPrimary,
+                                    ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            Text(
+                              '${vendors.length} result${vendors.length == 1 ? "" : "s"}',
+                              style: Theme.of(context).textTheme.labelMedium
+                                  ?.copyWith(
+                                    color: AppColors.textHint,
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 14),
+                  sliver: SliverList.separated(
+                    itemCount: vendors.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 8),
+                    itemBuilder: (_, index) => _SearchResultCard(
+                      vendor: vendors[index],
+                      onTap: () => onVendorTap(vendors[index]),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _SheetDragHandle extends StatelessWidget {
+  const _SheetDragHandle();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.only(top: 10, bottom: 8),
+        width: 38,
+        height: 4,
+        decoration: BoxDecoration(
+          color: Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(2),
+        ),
+      ),
+    );
+  }
+}
+
+class _MapSheetSurface extends StatelessWidget {
+  final Widget child;
+
+  const _MapSheetSurface({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      elevation: 16,
+      shadowColor: const Color(0x4D000000),
+      borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+      clipBehavior: Clip.antiAlias,
+      child: SafeArea(top: false, child: child),
+    );
+  }
+}
+
+class _SheetTopBar extends StatelessWidget {
+  final VoidCallback onDismiss;
+
+  const _SheetTopBar({required this.onDismiss});
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      height: 46,
+      child: Stack(
+        alignment: Alignment.topCenter,
+        children: [
+          const _SheetDragHandle(),
+          Positioned(
+            top: 5,
+            right: 8,
+            child: SizedBox.square(
+              dimension: 36,
+              child: IconButton(
+                tooltip: 'Close',
+                padding: EdgeInsets.zero,
+                style: IconButton.styleFrom(
+                  backgroundColor: AppColors.surfaceVariant,
+                  foregroundColor: AppColors.textPrimary,
+                ),
+                icon: const Icon(Icons.close_rounded, size: 20),
+                onPressed: onDismiss,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SearchResultCard extends StatelessWidget {
+  final VendorModel vendor;
+  final VoidCallback onTap;
+
+  const _SearchResultCard({required this.vendor, required this.onTap});
+
+  String get _summary {
+    final description = vendor.description.trim();
+    if (description.isNotEmpty) return description;
+    if (vendor.heritageFoods.isNotEmpty) {
+      return vendor.heritageFoods.take(2).join(', ');
+    }
+    if (vendor.address.isNotEmpty) return vendor.address;
+    return vendor.state;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: SizedBox(
+                  width: 82,
+                  height: 82,
+                  child:
+                      vendor.coverImageUrl != null &&
+                          vendor.coverImageUrl!.isNotEmpty
+                      ? AppNetworkImage(
+                          imageUrl: vendor.coverImageUrl,
+                          fit: BoxFit.cover,
+                          targetOptimizationWidth: 260,
+                          errorWidget: const _VendorResultImageFallback(),
+                        )
+                      : const _VendorResultImageFallback(),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            vendor.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _OpenStatusPill(isOpen: vendor.isOpen),
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        RatingBar(rating: vendor.averageRating, size: 14),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            '${vendor.reviewCount} review${vendor.reviewCount == 1 ? "" : "s"}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelSmall
+                                ?.copyWith(color: AppColors.textHint),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _summary,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _OpenStatusPill extends StatelessWidget {
+  final bool isOpen;
+
+  const _OpenStatusPill({required this.isOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: isOpen ? AppColors.successLight : AppColors.errorLight,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        isOpen ? 'Open' : 'Closed',
+        style: TextStyle(
+          color: isOpen ? AppColors.success : AppColors.error,
+          fontSize: 11,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
+    );
+  }
+}
+
+class _VendorResultImageFallback extends StatelessWidget {
+  const _VendorResultImageFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.surfaceVariant,
+      child: const Center(
+        child: Icon(
+          Icons.restaurant_rounded,
+          color: AppColors.textSecondary,
+          size: 28,
+        ),
+      ),
+    );
   }
 }
 
@@ -634,7 +957,6 @@ class _PasarMalamPreviewSheet extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final VoidCallback onDismiss;
   final ValueChanged<VendorModel>? onSelectVendor;
-  final double bottom;
 
   const _PasarMalamPreviewSheet({
     required this.market,
@@ -645,175 +967,305 @@ class _PasarMalamPreviewSheet extends StatelessWidget {
     required this.onRefresh,
     required this.onDismiss,
     this.onSelectVendor,
-    this.bottom = 64,
   });
+
+  String get _location {
+    final address = market.address.trim();
+    return address.isNotEmpty ? address : market.state;
+  }
+
+  String get _description {
+    final description = market.description.trim();
+    if (description.isNotEmpty) return description;
+    if (market.state.isNotEmpty) return 'Night market in ${market.state}.';
+    return 'Local night market.';
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: bottom,
-      child: TweenAnimationBuilder<double>(
-        tween: Tween(begin: 0, end: 1),
-        duration: const Duration(milliseconds: 260),
-        curve: Curves.easeOutCubic,
-        builder: (_, value, child) => Transform.translate(
-          offset: Offset(0, 24 * (1 - value)),
-          child: Opacity(opacity: value, child: child),
-        ),
-        child: Container(
-          constraints: BoxConstraints(
-            maxHeight: MediaQuery.sizeOf(context).height * 0.66,
-          ),
-          margin: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(color: Colors.black.withAlpha(60), blurRadius: 20),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                margin: const EdgeInsets.only(top: 10),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+    return DraggableScrollableSheet(
+      minChildSize: 0.34,
+      initialChildSize: 0.52,
+      maxChildSize: 0.86,
+      snap: true,
+      snapSizes: const [0.34, 0.52, 0.86],
+      builder: (context, scrollController) {
+        return _MapSheetSurface(
+          child: RefreshIndicator(
+            onRefresh: onRefresh,
+            child: CustomScrollView(
+              controller: scrollController,
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: ClampingScrollPhysics(),
               ),
-              ListTile(
-                leading: const CircleAvatar(
-                  backgroundColor: AppColors.accentContainer,
-                  child: Icon(
-                    Icons.nightlife_rounded,
-                    color: AppColors.accentDark,
-                  ),
-                ),
-                title: Text(
-                  market.name,
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                subtitle: Text(
-                  '${market.address}\n${market.isOpen ? "Open now" : "Closed now"}',
-                ),
-                isThreeLine: true,
-                trailing: IconButton(
-                  tooltip: 'Close',
-                  icon: const Icon(Icons.close_rounded),
-                  onPressed: onDismiss,
-                ),
-              ),
-              if (market.description.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
-                  child: Align(
-                    alignment: Alignment.centerLeft,
-                    child: Text(
-                      market.description,
-                      maxLines: 3,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ),
-              const Divider(height: 1),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 6),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Active vendors',
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                ),
-              ),
-              Flexible(
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 220),
-                  child: isLoading
-                      ? const Center(
-                          key: ValueKey('market-loading'),
-                          child: Padding(
-                            padding: EdgeInsets.all(24),
-                            child: CircularProgressIndicator(),
-                          ),
-                        )
-                      : errorMessage != null
-                      ? Center(
-                          key: const ValueKey('market-error'),
-                          child: Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _SheetTopBar(onDismiss: onDismiss),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Vendors could not be loaded.'),
-                                TextButton.icon(
-                                  onPressed: onRetry,
-                                  icon: const Icon(Icons.refresh_rounded),
-                                  label: const Text('Retry'),
+                                Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: AppColors.accentContainer,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(
+                                    Icons.nightlife_rounded,
+                                    color: AppColors.accentDark,
+                                    size: 26,
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Text(
+                                    market.name,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleLarge
+                                        ?.copyWith(
+                                          color: AppColors.textPrimary,
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                _OpenStatusPill(isOpen: market.isOpen),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Icon(
+                                  Icons.place_outlined,
+                                  size: 18,
+                                  color: AppColors.textSecondary,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _location,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: AppColors.textSecondary,
+                                        ),
+                                  ),
                                 ),
                               ],
                             ),
-                          ),
-                        )
-                      : vendors.isEmpty
-                      ? RefreshableStateView(
-                          key: const ValueKey('market-empty'),
-                          onRefresh: onRefresh,
-                          child: const Padding(
-                            padding: EdgeInsets.all(24),
-                            child: Center(
+                            const SizedBox(height: 10),
+                            Text(
+                              _description,
+                              maxLines: 4,
+                              overflow: TextOverflow.ellipsis,
+                              style: Theme.of(context).textTheme.bodyMedium
+                                  ?.copyWith(color: AppColors.textPrimary),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const Divider(height: 1),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),
+                        child: Row(
+                          children: [
+                            Expanded(
                               child: Text(
-                                'No active vendors are listed for this Pasar Malam.',
-                                textAlign: TextAlign.center,
+                                'Active vendors',
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: FontWeight.w800,
+                                    ),
                               ),
                             ),
-                          ),
-                        )
-                      : RefreshIndicator(
-                          key: const ValueKey('market-vendors'),
-                          onRefresh: onRefresh,
-                          child: ListView.builder(
-                            physics: const AlwaysScrollableScrollPhysics(),
-                            shrinkWrap: true,
-                            itemCount: vendors.length,
-                            itemBuilder: (_, index) {
-                              final vendor = vendors[index];
-                              return ListTile(
-                                leading: const Icon(
-                                  Icons.storefront_rounded,
-                                  color: AppColors.primary,
-                                ),
-                                title: Text(vendor.name),
-                                subtitle: Text(
-                                  vendor.heritageFoods.take(2).join(', '),
-                                ),
-                                trailing: Icon(
-                                  onSelectVendor == null
-                                      ? Icons.chevron_right_rounded
-                                      : Icons.check_circle_outline_rounded,
-                                ),
-                                onTap: () => onSelectVendor != null
-                                    ? onSelectVendor!(vendor)
-                                    : Navigator.pushNamed(
-                                        context,
-                                        AppRoutes.vendorDetail,
-                                        arguments: vendor.id,
-                                      ),
-                              );
-                            },
-                          ),
+                            if (!isLoading && errorMessage == null)
+                              Text(
+                                '${vendors.length}',
+                                style: Theme.of(context).textTheme.labelMedium
+                                    ?.copyWith(
+                                      color: AppColors.textHint,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                              ),
+                          ],
                         ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+                if (isLoading)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                  )
+                else if (errorMessage != null)
+                  SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.cloud_off_rounded,
+                              color: AppColors.textHint,
+                              size: 30,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text('Vendors could not be loaded.'),
+                            TextButton.icon(
+                              onPressed: onRetry,
+                              icon: const Icon(Icons.refresh_rounded),
+                              label: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  )
+                else if (vendors.isEmpty)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(24),
+                        child: Text(
+                          'No active vendors are listed for this night market.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.textSecondary),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    sliver: SliverList.separated(
+                      itemCount: vendors.length,
+                      separatorBuilder: (_, _) =>
+                          const Divider(height: 1, indent: 76, endIndent: 16),
+                      itemBuilder: (_, index) {
+                        final vendor = vendors[index];
+                        return _MarketVendorRow(
+                          vendor: vendor,
+                          isSelectionMode: onSelectVendor != null,
+                          onTap: () => onSelectVendor != null
+                              ? onSelectVendor!(vendor)
+                              : Navigator.pushNamed(
+                                  context,
+                                  AppRoutes.vendorDetail,
+                                  arguments: vendor.id,
+                                ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            ),
           ),
+        );
+      },
+    );
+  }
+}
+
+class _MarketVendorRow extends StatelessWidget {
+  final VendorModel vendor;
+  final bool isSelectionMode;
+  final VoidCallback onTap;
+
+  const _MarketVendorRow({
+    required this.vendor,
+    required this.isSelectionMode,
+    required this.onTap,
+  });
+
+  String get _summary {
+    if (vendor.heritageFoods.isNotEmpty) {
+      return vendor.heritageFoods.take(2).join(', ');
+    }
+    final description = vendor.description.trim();
+    if (description.isNotEmpty) return description;
+    if (vendor.businessType.isNotEmpty) return vendor.businessType;
+    return vendor.state;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        child: Row(
+          children: [
+            Container(
+              width: 46,
+              height: 46,
+              decoration: BoxDecoration(
+                color: AppColors.successLight,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.storefront_rounded,
+                color: AppColors.primary,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    vendor.name,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppColors.textPrimary,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    _summary,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Icon(
+              isSelectionMode
+                  ? Icons.check_circle_outline_rounded
+                  : Icons.chevron_right_rounded,
+              color: AppColors.textSecondary,
+            ),
+          ],
         ),
       ),
     );
@@ -925,153 +1377,273 @@ class _VendorPreviewSheet extends StatelessWidget {
   final VendorModel vendor;
   final VoidCallback onDismiss;
   final VoidCallback? onSelect;
-  final double bottom;
 
   const _VendorPreviewSheet({
     required this.vendor,
     required this.onDismiss,
     this.onSelect,
-    this.bottom = 64,
   });
+
+  String get _location {
+    final address = vendor.address.trim();
+    return address.isNotEmpty ? address : vendor.state;
+  }
+
+  String get _summary {
+    final description = vendor.description.trim();
+    if (description.isNotEmpty) return description;
+    if (vendor.heritageFoods.isNotEmpty) {
+      return vendor.heritageFoods.take(2).join(', ');
+    }
+    if (vendor.businessType.isNotEmpty) return vendor.businessType;
+    return vendor.state;
+  }
 
   @override
   Widget build(BuildContext context) {
-    const coverColor = AppColors.primary;
-    return Positioned(
-      left: 0,
-      right: 0,
-      bottom: bottom,
-      child: GestureDetector(
-        onTap: () {},
-        child: Container(
-          margin: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withAlpha(60),
-                blurRadius: 20,
-                offset: const Offset(0, -4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle
-              Container(
-                margin: const EdgeInsets.only(top: 10),
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade300,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 60,
-                      height: 60,
-                      decoration: BoxDecoration(
-                        color: coverColor,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.restaurant_rounded,
-                        color: Colors.white,
-                        size: 30,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
+    final selectionMode = onSelect != null;
+    final minChildSize = selectionMode ? 0.26 : 0.28;
+    final initialChildSize = selectionMode ? 0.36 : 0.42;
+    final maxChildSize = selectionMode ? 0.58 : 0.78;
+
+    return Align(
+      alignment: Alignment.bottomCenter,
+      child: SizedBox(
+        width: double.infinity,
+        child: DraggableScrollableSheet(
+          // Let the sheet occupy only its current snap extent so the map stays
+          // interactive above it instead of receiving an invisible full-screen
+          // hit-test layer.
+          expand: false,
+          minChildSize: minChildSize,
+          initialChildSize: initialChildSize,
+          maxChildSize: maxChildSize,
+          snap: true,
+          shouldCloseOnMinExtent: false,
+          snapSizes: selectionMode
+              ? const [0.26, 0.36, 0.58]
+              : const [0.28, 0.42, 0.78],
+          builder: (context, scrollController) {
+            return _MapSheetSurface(
+              child: CustomScrollView(
+                controller: scrollController,
+                physics: const ClampingScrollPhysics(),
+                slivers: [
+                  SliverToBoxAdapter(child: _SheetTopBar(onDismiss: onDismiss)),
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+                    sliver: SliverToBoxAdapter(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            vendor.name,
-                            style: Theme.of(context).textTheme.titleMedium,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          DecoratedBox(
+                            decoration: BoxDecoration(
+                              color: AppColors.surface,
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: AppColors.divider),
+                            ),
+                            child: Padding(
+                              padding: const EdgeInsets.all(12),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      ClipRRect(
+                                        borderRadius: BorderRadius.circular(10),
+                                        child: SizedBox(
+                                          width: 96,
+                                          height: 84,
+                                          child:
+                                              vendor.coverImageUrl != null &&
+                                                  vendor
+                                                      .coverImageUrl!
+                                                      .isNotEmpty
+                                              ? AppNetworkImage(
+                                                  imageUrl:
+                                                      vendor.coverImageUrl,
+                                                  fit: BoxFit.cover,
+                                                  targetOptimizationWidth: 280,
+                                                  errorWidget:
+                                                      const _VendorResultImageFallback(),
+                                                )
+                                              : const _VendorResultImageFallback(),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 12),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              vendor.name,
+                                              maxLines: 2,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .titleLarge
+                                                  ?.copyWith(
+                                                    color:
+                                                        AppColors.textPrimary,
+                                                    fontWeight: FontWeight.w800,
+                                                  ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            _OpenStatusPill(
+                                              isOpen: vendor.isOpen,
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 14),
+                                  Row(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Icon(
+                                        Icons.place_outlined,
+                                        size: 18,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          _location,
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodyMedium
+                                              ?.copyWith(
+                                                color: AppColors.textSecondary,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 10),
+                                  Row(
+                                    children: [
+                                      RatingBar(
+                                        rating: vendor.averageRating,
+                                        size: 16,
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: Text(
+                                          '${vendor.averageRating.toStringAsFixed(1)} '
+                                          '(${vendor.reviewCount} review${vendor.reviewCount == 1 ? "" : "s"})',
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .labelMedium
+                                              ?.copyWith(
+                                                color: AppColors.textSecondary,
+                                              ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 12),
+                                  Text(
+                                    _summary,
+                                    maxLines: 3,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodyMedium
+                                        ?.copyWith(
+                                          color: AppColors.textPrimary,
+                                          height: 1.35,
+                                        ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${vendor.state} · ${vendor.isOpen ? "Open" : "Closed"}',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: vendor.isOpen
-                                      ? AppColors.success
-                                      : AppColors.error,
+                          const SizedBox(height: 16),
+                          if (selectionMode)
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(Icons.check_rounded, size: 18),
+                                label: const Text('Select this vendor'),
+                                onPressed: onSelect,
+                              ),
+                            )
+                          else ...[
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton.icon(
+                                icon: const Icon(
+                                  Icons.directions_rounded,
+                                  size: 20,
                                 ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            '★ ${vendor.averageRating} · ${vendor.reviewCount} reviews',
-                            style: Theme.of(context).textTheme.labelSmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close_rounded),
-                      onPressed: onDismiss,
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-                child: onSelect != null
-                    ? SizedBox(
-                        width: double.infinity,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.check_rounded, size: 18),
-                          label: const Text('Select this vendor'),
-                          onPressed: onSelect,
-                        ),
-                      )
-                    : Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              icon: const Icon(
-                                Icons.directions_rounded,
-                                size: 16,
-                              ),
-                              label: const Text('Navigate'),
-                              onPressed: () => Navigator.pushNamed(
-                                context,
-                                AppRoutes.routeNavigation,
-                                arguments: vendor.id,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              icon: const Icon(
-                                Icons.info_outline_rounded,
-                                size: 16,
-                              ),
-                              label: const Text('Details'),
-                              onPressed: () {
-                                onDismiss();
-                                Navigator.pushNamed(
+                                label: const Text('Get Directions'),
+                                onPressed: () => Navigator.pushNamed(
                                   context,
-                                  AppRoutes.vendorDetail,
+                                  AppRoutes.routeNavigation,
                                   arguments: vendor.id,
-                                );
-                              },
+                                ),
+                              ),
                             ),
-                          ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    icon: const Icon(
+                                      Icons.info_outline_rounded,
+                                      size: 18,
+                                    ),
+                                    label: const Text('View Details'),
+                                    onPressed: () {
+                                      onDismiss();
+                                      Navigator.pushNamed(
+                                        context,
+                                        AppRoutes.vendorDetail,
+                                        arguments: vendor.id,
+                                      );
+                                    },
+                                  ),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: OutlinedButton.icon(
+                                    icon: const Icon(
+                                      Icons.rate_review_outlined,
+                                      size: 18,
+                                    ),
+                                    label: const Text('View Reviews'),
+                                    onPressed: () => Navigator.pushNamed(
+                                      context,
+                                      AppRoutes.community,
+                                      arguments: {
+                                        'vendorId': vendor.id,
+                                        'vendorName': vendor.name,
+                                        'vendorAverageRating':
+                                            vendor.averageRating,
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

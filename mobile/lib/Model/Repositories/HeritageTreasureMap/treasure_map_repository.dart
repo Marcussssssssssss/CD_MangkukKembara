@@ -48,18 +48,18 @@ class TreasureMapRepository {
 
     if (foodCategory != null && foodCategory.isNotEmpty) {
       vendors = vendors
-          .where((vendor) => vendor.foodCategories.contains(foodCategory))
+          .where(
+            (vendor) => vendor.foodCategories.any(
+              (category) =>
+                  category.toLowerCase() == foodCategory.toLowerCase(),
+            ),
+          )
           .toList();
     }
     if (query != null && query.trim().isNotEmpty) {
-      final normalized = query.trim().toLowerCase();
-      vendors = vendors.where((vendor) {
-        return vendor.name.toLowerCase().contains(normalized) ||
-            vendor.state.toLowerCase().contains(normalized) ||
-            vendor.heritageFoods.any(
-              (food) => food.toLowerCase().contains(normalized),
-            );
-      }).toList();
+      vendors = vendors
+          .where((vendor) => _matchesVendorQuery(vendor, query))
+          .toList();
     }
     return _withRatingSummaries(vendors);
   }
@@ -283,5 +283,27 @@ class TreasureMapRepository {
     final parts = value.split(':');
     if (parts.length < 2) return null;
     return int.parse(parts[0]) * 60 + int.parse(parts[1]);
+  }
+
+  static bool _matchesVendorQuery(VendorModel vendor, String query) {
+    final terms = query
+        .trim()
+        .toLowerCase()
+        .split(RegExp(r'\s+'))
+        .where((term) => term.isNotEmpty)
+        .toList();
+    if (terms.isEmpty) return true;
+
+    final searchableText = [
+      vendor.name,
+      vendor.description,
+      vendor.state,
+      vendor.address,
+      vendor.businessType,
+      ...vendor.heritageFoods,
+      ...vendor.foodCategories,
+    ].join(' ').toLowerCase();
+
+    return terms.every(searchableText.contains);
   }
 }
