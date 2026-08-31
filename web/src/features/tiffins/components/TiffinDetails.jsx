@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 
 export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGenerateQr, referenceData }) {
   const [qrRender, setQrRender] = useState({ codeValue: null, imageUrl: null, error: null });
+  const [isRequestingQr, setIsRequestingQr] = useState(false);
   const canvasRef = useRef(null);
 
   const qrRelation = tiffin?.tiffin_qr_codes;
@@ -64,6 +65,16 @@ export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGener
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleGenerateQrRequest = async () => {
+    if (isRequestingQr || tiffin.status === 'inactive') return;
+    setIsRequestingQr(true);
+    try {
+      await onGenerateQr(tiffin);
+    } finally {
+      setIsRequestingQr(false);
+    }
   };
 
   return (
@@ -212,17 +223,22 @@ export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGener
               <div className="rounded-lg border border-surface-200 border-dashed bg-surface-50 p-4 flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-medium uppercase tracking-wider text-surface-400 mb-1">QR Code</h4>
-                  <p className="text-sm text-surface-500">No QR code has been generated for this tiffin yet.</p>
+                  <p className="text-sm text-surface-500">
+                    {tiffin.status === 'inactive'
+                      ? 'Inactive editions cannot generate an active QR code.'
+                      : 'No QR code has been generated for this tiffin yet.'}
+                  </p>
                 </div>
                 <button
-                  onClick={() => onGenerateQr(tiffin)}
-                  className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700"
+                  onClick={handleGenerateQrRequest}
+                  disabled={isRequestingQr || tiffin.status === 'inactive'}
+                  className="shrink-0 inline-flex items-center gap-2 rounded-lg bg-primary-600 px-4 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 3.75 9.375v-4.5ZM3.75 14.625c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5a1.125 1.125 0 0 1-1.125-1.125v-4.5ZM13.5 4.875c0-.621.504-1.125 1.125-1.125h4.5c.621 0 1.125.504 1.125 1.125v4.5c0 .621-.504 1.125-1.125 1.125h-4.5A1.125 1.125 0 0 1 13.5 9.375v-4.5Z" />
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 6.75h.75v.75h-.75v-.75ZM6.75 16.5h.75v.75h-.75v-.75ZM16.5 6.75h.75v.75h-.75v-.75ZM13.5 13.5h.75v.75h-.75v-.75ZM13.5 19.5h.75v.75h-.75v-.75ZM19.5 13.5h.75v.75h-.75v-.75ZM19.5 19.5h.75v.75h-.75v-.75ZM16.5 16.5h.75v.75h-.75v-.75Z" />
                   </svg>
-                  Generate QR
+                  {isRequestingQr ? 'Generating…' : 'Generate QR'}
                 </button>
               </div>
             )}

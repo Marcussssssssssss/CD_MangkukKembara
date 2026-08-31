@@ -17,6 +17,11 @@ const ALLOWED_VIDEO_TYPES = new Set([
   'video/webm',
 ]);
 
+const ALLOWED_MEDIA_TYPES = new Set([
+  ...ALLOWED_IMAGE_TYPES,
+  ...ALLOWED_VIDEO_TYPES,
+]);
+
 /** Default upload size limits (in bytes). */
 const SIZE_LIMITS = {
   profileImage: 5 * 1024 * 1024,   // 5 MB — enforced by Edge Function
@@ -119,9 +124,14 @@ async function resolveFunctionError(error) {
  * @param {Object} options
  * @param {string} options.folder      — Cloudinary folder path (e.g. "tiffin_designs", "profile_images").
  * @param {number} [options.maxBytes]  — Client-side size limit. Defaults to SIZE_LIMITS.image (10 MB).
+ * @param {Set<string>} [options.allowedTypes] — MIME types accepted by this upload purpose.
  * @returns {Promise<CloudinaryUploadResult>}
  */
-export async function uploadMedia(file, { folder, maxBytes = SIZE_LIMITS.image } = {}) {
+export async function uploadMedia(file, {
+  folder,
+  maxBytes = SIZE_LIMITS.image,
+  allowedTypes = ALLOWED_MEDIA_TYPES,
+} = {}) {
   // ── Client-side validations (fail fast before network request) ──
 
   if (!file || file.size === 0) {
@@ -135,13 +145,13 @@ export async function uploadMedia(file, { folder, maxBytes = SIZE_LIMITS.image }
 
   const mimeType = resolveMimeType(file);
 
-  const isImage = ALLOWED_IMAGE_TYPES.has(mimeType);
-  const isVideo = ALLOWED_VIDEO_TYPES.has(mimeType);
-
-  if (!isImage && !isVideo) {
-    throw new Error(
-      'Unsupported file type. Choose a JPG, PNG, WebP image or MP4, WebM video.'
-    );
+  if (!allowedTypes.has(mimeType)) {
+    const expectedType = allowedTypes === ALLOWED_VIDEO_TYPES
+      ? 'an MP4 or WebM video'
+      : allowedTypes === ALLOWED_IMAGE_TYPES
+        ? 'a JPG, PNG, or WebP image'
+        : 'a JPG, PNG, WebP, MP4, or WebM file';
+    throw new Error(`Unsupported file type. Choose ${expectedType}.`);
   }
 
   if (!folder) {
@@ -188,6 +198,7 @@ export async function uploadProfileImage(file) {
   return uploadMedia(file, {
     folder: 'profile_images',
     maxBytes: SIZE_LIMITS.profileImage,
+    allowedTypes: ALLOWED_IMAGE_TYPES,
   });
 }
 
@@ -201,6 +212,7 @@ export async function uploadTiffinImage(file) {
   return uploadMedia(file, {
     folder: 'tiffin_designs',
     maxBytes: SIZE_LIMITS.image,
+    allowedTypes: ALLOWED_IMAGE_TYPES,
   });
 }
 
@@ -214,6 +226,7 @@ export async function uploadHeritageFoodImage(file) {
   return uploadMedia(file, {
     folder: 'heritage_foods',
     maxBytes: SIZE_LIMITS.image,
+    allowedTypes: ALLOWED_IMAGE_TYPES,
   });
 }
 
@@ -227,6 +240,7 @@ export async function uploadVendorImage(file) {
   return uploadMedia(file, {
     folder: 'vendor_images',
     maxBytes: SIZE_LIMITS.image,
+    allowedTypes: ALLOWED_IMAGE_TYPES,
   });
 }
 
@@ -240,6 +254,7 @@ export async function uploadHeritageVideo(file) {
   return uploadMedia(file, {
     folder: 'heritage_videos',
     maxBytes: SIZE_LIMITS.video,
+    allowedTypes: ALLOWED_VIDEO_TYPES,
   });
 }
 
@@ -253,6 +268,7 @@ export async function uploadArtworkImage(file) {
   return uploadMedia(file, {
     folder: 'artwork_submissions',
     maxBytes: SIZE_LIMITS.image,
+    allowedTypes: ALLOWED_IMAGE_TYPES,
   });
 }
 
@@ -266,6 +282,7 @@ export async function uploadCommunityPhoto(file) {
   return uploadMedia(file, {
     folder: 'community_posts',
     maxBytes: SIZE_LIMITS.image,
+    allowedTypes: ALLOWED_IMAGE_TYPES,
   });
 }
 

@@ -1,6 +1,12 @@
 import Modal from '../../../components/Modal';
 
-export default function TiffinDeactivateDialog({ tiffin, isOpen, onClose, onConfirm }) {
+export default function TiffinDeactivateDialog({
+  tiffin,
+  isOpen,
+  onClose,
+  onConfirm,
+  isProcessing = false,
+}) {
   if (!tiffin) return null;
 
   return (
@@ -16,15 +22,17 @@ export default function TiffinDeactivateDialog({ tiffin, isOpen, onClose, onConf
         <div className="mt-8 flex justify-end gap-3">
           <button
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-100"
+            disabled={isProcessing}
+            className="rounded-lg px-4 py-2 text-sm font-medium text-surface-700 hover:bg-surface-100 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Cancel
           </button>
           <button
             onClick={() => onConfirm(tiffin.heritage_tiffin_id)}
-            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+            disabled={isProcessing}
+            className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Deactivate
+            {isProcessing ? 'Deactivating…' : 'Deactivate'}
           </button>
         </div>
       </div>
