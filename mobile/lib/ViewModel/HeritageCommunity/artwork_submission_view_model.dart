@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import '../../Model/Repositories/HeritageCommunity/heritage_community_repository.dart';
 import '../../Model/Repositories/HeritageCommunity/artwork_submission_model.dart';
@@ -7,6 +9,8 @@ enum ArtworkPhotoView { frontHero, layer1Flat360, layer2Flat360, layer3Flat360 }
 
 /// View model for the Submit Artwork form.
 class ArtworkSubmissionViewModel extends ChangeNotifier {
+  static const double layerAspectRatio = 5 / 1;
+
   final HeritageCommunityRepository _repo;
   ArtworkSubmissionViewModel({HeritageCommunityRepository? repo})
     : _repo = repo ?? HeritageCommunityRepository();
@@ -70,9 +74,40 @@ class ArtworkSubmissionViewModel extends ChangeNotifier {
     notifyListeners();
   }
 
-  void setArtworkPhoto(ArtworkPhotoView view, XFile file) {
+  static bool isLayerView(ArtworkPhotoView view) => switch (view) {
+    ArtworkPhotoView.layer1Flat360 ||
+    ArtworkPhotoView.layer2Flat360 ||
+    ArtworkPhotoView.layer3Flat360 => true,
+    ArtworkPhotoView.frontHero => false,
+  };
+
+  static bool isValidDimensions(ArtworkPhotoView view, int width, int height) {
+    if (width <= 0 || height <= 0) return false;
+    return !isLayerView(view) || width == height * 5;
+  }
+
+  Future<String?> setArtworkPhoto(ArtworkPhotoView view, XFile file) async {
+    if (file.mimeType != 'image/webp') {
+      return 'The image could not be prepared as WebP. Choose the image again.';
+    }
+    try {
+      final codec = await ui.instantiateImageCodec(await file.readAsBytes());
+      final frame = await codec.getNextFrame();
+      final width = frame.image.width;
+      final height = frame.image.height;
+      frame.image.dispose();
+      codec.dispose();
+
+      if (!isValidDimensions(view, width, height)) {
+        return 'This image is $width × $height px. Crop it to the required 5:1 landscape ratio.';
+      }
+    } catch (_) {
+      return 'This image could not be read. Choose a valid image file.';
+    }
+
     _artworkPhotos[view] = file;
     notifyListeners();
+    return null;
   }
 
   void removeArtworkPhoto(ArtworkPhotoView view) {

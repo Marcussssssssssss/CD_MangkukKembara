@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:http_parser/http_parser.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../../core/app_exception.dart';
@@ -49,6 +50,7 @@ class CloudinaryApiService {
     XFile file, {
     required String folder,
     int maxBytes = 10 * 1024 * 1024,
+    bool webpOnly = false,
   }) async {
     _supabase.requireUser();
     final bytes = await file.readAsBytes();
@@ -60,10 +62,20 @@ class CloudinaryApiService {
     }
 
     final extension = file.name.split('.').last.toLowerCase();
-    if (!_allowedImageExtensions.contains(extension)) {
+    if (webpOnly && file.mimeType != 'image/webp') {
+      throw const AppException(
+        'Artwork images must be converted to WebP before upload.',
+      );
+    }
+    if (!webpOnly && !_allowedImageExtensions.contains(extension)) {
       throw const AppException('Choose a JPG, PNG, or WebP image.');
     }
-    final mimeType = file.mimeType ?? _mimeForExtension(extension);
+    final mimeType = webpOnly
+        ? 'image/webp'
+        : file.mimeType ?? _mimeForExtension(extension);
+    final uploadFilename = webpOnly
+        ? 'artwork_${DateTime.now().millisecondsSinceEpoch}.webp'
+        : file.name;
     final session = _supabase.currentSession;
     if (session == null) throw const AuthenticationRequiredException();
 
@@ -77,7 +89,12 @@ class CloudinaryApiService {
       ..fields['folder'] = folder
       ..fields['mime_type'] = mimeType
       ..files.add(
-        http.MultipartFile.fromBytes('file', bytes, filename: file.name),
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: uploadFilename,
+          contentType: MediaType.parse(mimeType),
+        ),
       );
 
     try {

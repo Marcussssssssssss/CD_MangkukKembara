@@ -81,17 +81,6 @@ class _VendorDetailViewState extends State<VendorDetailView> {
                   )
                 : const _VendorCoverPlaceholder(),
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.directions_rounded),
-              tooltip: 'Navigate to vendor',
-              onPressed: () => Navigator.pushNamed(
-                ctx,
-                AppRoutes.routeNavigation,
-                arguments: v.id,
-              ),
-            ),
-          ],
         ),
         SliverToBoxAdapter(
           child: Column(

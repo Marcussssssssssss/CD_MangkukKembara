@@ -766,18 +766,26 @@ class _TiffinImageViewer extends StatelessWidget {
           children: [
             Positioned.fill(
               child: item.isPanorama
-                  ? SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      physics: const BouncingScrollPhysics(),
-                      child: SizedBox(
-                        width: 640,
-                        child: AppNetworkImage(
-                          imageUrl: item.imageUrl,
-                          width: 640,
-                          fit: BoxFit.cover,
-                          targetOptimizationWidth: 1400,
-                        ),
-                      ),
+                  ? LayoutBuilder(
+                      builder: (context, constraints) {
+                        final imageHeight = constraints.maxHeight;
+                        final imageWidth = imageHeight * 5;
+                        return SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          physics: const BouncingScrollPhysics(),
+                          child: SizedBox(
+                            width: imageWidth,
+                            height: imageHeight,
+                            child: AppNetworkImage(
+                              imageUrl: item.imageUrl,
+                              width: imageWidth,
+                              height: imageHeight,
+                              fit: BoxFit.contain,
+                              targetOptimizationWidth: 2000,
+                            ),
+                          ),
+                        );
+                      },
                     )
                   : GestureDetector(
                       behavior: HitTestBehavior.opaque,
@@ -817,7 +825,7 @@ class _TiffinImageViewer extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        '360°',
+                        'Swipe',
                         style: const TextStyle(
                           color: AppColors.primary,
                           fontSize: 11,
