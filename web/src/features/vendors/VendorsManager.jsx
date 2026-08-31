@@ -27,6 +27,7 @@ export default function VendorsManager() {
   const [editingVendor, setEditingVendor] = useState(null);
   const [isCreating, setIsCreating] = useState(false);
   const [deactivatingVendor, setDeactivatingVendor] = useState(null);
+  const [isDeactivating, setIsDeactivating] = useState(false);
 
   const {
     notifications,
@@ -118,6 +119,8 @@ export default function VendorsManager() {
   };
 
   const handleConfirmDeactivate = async (id) => {
+    if (isDeactivating) return;
+    setIsDeactivating(true);
     try {
       await deactivateVendor(id);
       setVendors((prev) =>
@@ -127,6 +130,8 @@ export default function VendorsManager() {
       handleCloseModals();
     } catch (err) {
       notifyFailure(err.message || 'The vendor could not be deactivated.');
+    } finally {
+      setIsDeactivating(false);
     }
   };
 
@@ -178,8 +183,9 @@ export default function VendorsManager() {
       <VendorDeactivateDialog
         vendor={deactivatingVendor}
         isOpen={!!deactivatingVendor}
-        onClose={handleCloseModals}
+        onClose={isDeactivating ? undefined : handleCloseModals}
         onConfirm={handleConfirmDeactivate}
+        isProcessing={isDeactivating}
       />
     </div>
   );

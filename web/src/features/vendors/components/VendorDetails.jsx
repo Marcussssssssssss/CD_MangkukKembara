@@ -31,8 +31,15 @@ export default function VendorDetails({ vendor, isOpen, onClose, onEdit }) {
     ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${latitude},${longitude}`)}${vendor.google_place_id ? `&query_place_id=${encodeURIComponent(vendor.google_place_id)}` : ''}`
     : null;
 
-  // Ensure hours are sorted by day_of_week
-  const sortedHours = [...(vendor.vendor_operating_hours || [])].sort((a, b) => a.day_of_week - b.day_of_week);
+  // Legacy seed rows list only open days. Treat omitted days as closed so the
+  // seven-day schedule is explicit and consistent with the create/edit form.
+  const savedHours = vendor.vendor_operating_hours || [];
+  const sortedHours = savedHours.length > 0
+    ? DAYS.map((_, dayOfWeek) => (
+      savedHours.find(hours => Number(hours.day_of_week) === dayOfWeek)
+      || { day_of_week: dayOfWeek, is_closed: true }
+    ))
+    : [];
 
   return (
     <Modal open={isOpen} onClose={onClose} title="Vendor Details" size="xl">

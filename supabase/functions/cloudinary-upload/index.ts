@@ -101,6 +101,13 @@ Deno.serve(async (request) => {
     if (!isImage && !isVideo) {
       return json({ error: 'Choose a JPG, PNG, WebP, MP4, or WebM file.' }, 415);
     }
+    if (folder === 'heritage_videos' ? !isVideo : !isImage) {
+      return json({
+        error: folder === 'heritage_videos'
+          ? 'Heritage Video uploads must be MP4 or WebM files.'
+          : 'This upload field accepts JPG, PNG, or WebP images only.',
+      }, 415);
+    }
 
     const maxBytes = isVideo
       ? videoLimit

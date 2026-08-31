@@ -31,6 +31,7 @@ export default function TiffinsManager() {
   const [isCreating, setIsCreating] = useState(false);
   const [deactivatingTiffin, setDeactivatingTiffin] = useState(null);
   const [qrResult, setQrResult] = useState(null);
+  const [isDeactivating, setIsDeactivating] = useState(false);
 
   const {
     notifications,
@@ -144,22 +145,24 @@ export default function TiffinsManager() {
         notifySuccess('Tiffin edition created successfully.');
         handleCloseModals();
 
-        // Attempt QR code generation after successful tiffin creation.
-        try {
-          const qr = await generateTiffinQrCode(created.heritage_tiffin_id);
-          setTiffins((prev) =>
-            prev.map((t) =>
-              t.heritage_tiffin_id === created.heritage_tiffin_id
-                ? { ...t, tiffin_qr_codes: [{ tiffin_qr_code_id: qr.tiffin_qr_code_id, code_value: qr.code_value, is_active: qr.is_active }] }
-                : t
-            )
-          );
-          notifySuccess('QR code generated successfully.');
-          setQrResult({ qrData: qr, tiffin: created });
-        } catch (qrErr) {
-          notifyFailure(
-            `The Tiffin was created, but its QR code could not be generated. ${qrErr.message || 'Please retry from Tiffin Details.'}`
-          );
+        // Inactive editions are intentionally not issued an active QR code.
+        if (created.status !== 'inactive') {
+          try {
+            const qr = await generateTiffinQrCode(created.heritage_tiffin_id);
+            setTiffins((prev) =>
+              prev.map((t) =>
+                t.heritage_tiffin_id === created.heritage_tiffin_id
+                  ? { ...t, tiffin_qr_codes: [{ tiffin_qr_code_id: qr.tiffin_qr_code_id, code_value: qr.code_value, is_active: qr.is_active }] }
+                  : t
+              )
+            );
+            notifySuccess('QR code generated successfully.');
+            setQrResult({ qrData: qr, tiffin: created });
+          } catch (qrErr) {
+            notifyFailure(
+              `The Tiffin was created, but its QR code could not be generated. ${qrErr.message || 'Please retry from Tiffin Details.'}`
+            );
+          }
         }
       }
     } catch (err) {
@@ -205,6 +208,8 @@ export default function TiffinsManager() {
   };
 
   const handleConfirmDeactivate = async (id) => {
+    if (isDeactivating) return;
+    setIsDeactivating(true);
     try {
       await deactivateTiffin(id);
       setTiffins((prev) =>
@@ -214,6 +219,8 @@ export default function TiffinsManager() {
       handleCloseModals();
     } catch (err) {
       notifyFailure(err.message || 'The Tiffin edition could not be deactivated.');
+    } finally {
+      setIsDeactivating(false);
     }
   };
 
@@ -269,8 +276,9 @@ export default function TiffinsManager() {
       <TiffinDeactivateDialog
         tiffin={deactivatingTiffin}
         isOpen={!!deactivatingTiffin}
-        onClose={handleCloseModals}
+        onClose={isDeactivating ? undefined : handleCloseModals}
         onConfirm={handleConfirmDeactivate}
+        isProcessing={isDeactivating}
       />
 
       <TiffinQrDialog

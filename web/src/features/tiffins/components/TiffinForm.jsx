@@ -5,6 +5,12 @@ import {
   ALLOWED_VIDEO_TYPES,
   SIZE_LIMITS,
 } from '../../../services/cloudinary/upload';
+import {
+  TIFFIN_RELEASE_YEAR_MAX,
+  TIFFIN_RELEASE_YEAR_MIN,
+  validateHeritageFoodInput,
+  validateTiffinInput,
+} from '../services/tiffinValidation';
 
 const STEPS = [
   { number: 1, label: 'Choose Artwork' },
@@ -34,7 +40,7 @@ function initialFormState(tiffin) {
     state_id: tiffin.state_id || '',
     heritage_food_id: tiffin.heritage_food_id || '',
     artwork_id: tiffin.artwork_id || '',
-    release_year: tiffin.release_year || new Date().getFullYear(),
+    release_year: tiffin.release_year ?? '',
     status: tiffin.status || 'draft',
     heritage_story: {
       title: story.title || '',
@@ -215,20 +221,17 @@ function TiffinFormContent({
   };
 
   const validateStep = (step) => {
-    const nextErrors = {};
-    if (step === 1 && !formData.artwork_id) {
-      nextErrors.artwork_id = 'Select a published winning Artwork to continue.';
-    }
-    if (step === 2) {
-      if (!formData.edition_name.trim()) nextErrors.edition_name = 'Tiffin edition name is required.';
-      if (!formData.state_id) nextErrors.state_id = 'State is required.';
-      if (!formData.heritage_food_id) nextErrors.heritage_food_id = 'Heritage food is required.';
-    }
-    if (step === 3) {
-      if (!formData.heritage_story.title.trim()) nextErrors.story_title = 'Story title is required.';
-      if (!formData.heritage_story.story_body.trim()) nextErrors.story_body = 'Story content is required.';
-    }
-    return nextErrors;
+    const validationErrors = validateTiffinInput(formData);
+    const fieldsByStep = {
+      1: ['artwork_id'],
+      2: ['edition_name', 'release_year', 'status', 'state_id', 'heritage_food_id'],
+      3: ['story_title', 'story_body'],
+    };
+    return Object.fromEntries(
+      fieldsByStep[step]
+        .filter(field => validationErrors[field])
+        .map(field => [field, validationErrors[field]])
+    );
   };
 
   const focusStepHeading = () => {
@@ -264,7 +267,11 @@ function TiffinFormContent({
       setErrors(validationErrors);
       const firstInvalidStep = validationErrors.artwork_id
         ? 1
-        : validationErrors.edition_name || validationErrors.state_id || validationErrors.heritage_food_id
+        : validationErrors.edition_name
+          || validationErrors.release_year
+          || validationErrors.status
+          || validationErrors.state_id
+          || validationErrors.heritage_food_id
           ? 2
           : 3;
       setCurrentStep(firstInvalidStep);
@@ -291,7 +298,7 @@ function TiffinFormContent({
       title={isEditing ? 'Edit Heritage Tiffin' : 'Create Heritage Tiffin'}
       size="xl"
     >
-      <form onSubmit={handleSubmit} className="flex max-h-[85vh] flex-col">
+      <form onSubmit={handleSubmit} noValidate className="flex max-h-[85vh] flex-col">
         <StepIndicator currentStep={currentStep} />
 
         <div className="flex-1 overflow-y-auto p-6">
@@ -449,7 +456,7 @@ function ArtworkStep({
         />
       </label>
 
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-2 text-sm text-red-600" role="alert">{error}</p>}
 
       <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {artworks.map(artwork => {
@@ -553,40 +560,68 @@ function TiffinDetailsStep({
       )}
 
       <div className="mt-6 grid grid-cols-1 gap-5 md:grid-cols-2">
-        <FormField label="Tiffin Edition Name" error={errors.edition_name} className="md:col-span-2">
+        <FormField
+          label="Tiffin Edition Name"
+          error={errors.edition_name}
+          errorId="tiffin-edition-name-error"
+          className="md:col-span-2"
+        >
           <input
+            id="edition_name"
             type="text"
             name="edition_name"
             value={formData.edition_name}
             onChange={onChange}
             maxLength={150}
             placeholder={suggestedEditionName(artwork, formData.release_year) || 'Enter the official Tiffin release name'}
+            aria-invalid={Boolean(errors.edition_name)}
+            aria-describedby={errors.edition_name ? 'tiffin-edition-name-error' : undefined}
             className={inputClass(errors.edition_name)}
           />
         </FormField>
 
-        <FormField label="Release Year" required={false}>
+        <FormField
+          label="Release Year"
+          required={false}
+          error={errors.release_year}
+          errorId="tiffin-release-year-error"
+        >
           <input
+            id="release_year"
             type="number"
             name="release_year"
-            min="2000"
-            max="2100"
+            min={TIFFIN_RELEASE_YEAR_MIN}
+            max={TIFFIN_RELEASE_YEAR_MAX}
             value={formData.release_year}
             onChange={onChange}
-            className={inputClass()}
+            aria-invalid={Boolean(errors.release_year)}
+            aria-describedby={errors.release_year ? 'tiffin-release-year-error' : undefined}
+            className={inputClass(errors.release_year)}
           />
         </FormField>
 
-        <FormField label="Status">
-          <select name="status" value={formData.status} onChange={onChange} className={inputClass()}>
+        <FormField label="Status" error={errors.status} errorId="tiffin-status-error">
+          <select
+            id="status"
+            name="status"
+            value={formData.status}
+            onChange={onChange}
+            aria-invalid={Boolean(errors.status)}
+            aria-describedby={errors.status ? 'tiffin-status-error' : undefined}
+            className={inputClass(errors.status)}
+          >
             <option value="draft">Draft</option>
             <option value="active">Active</option>
             <option value="inactive">Inactive</option>
           </select>
         </FormField>
 
-        <FormField label="State" error={errors.state_id}>
-          <div className={`${inputClass(errors.state_id)} bg-surface-100 text-surface-700`}>
+        <FormField label="State" error={errors.state_id} errorId="tiffin-state-error">
+          <div
+            className={`${inputClass(errors.state_id)} bg-surface-100 text-surface-700`}
+            aria-invalid={Boolean(errors.state_id)}
+            aria-describedby={errors.state_id ? 'tiffin-state-error' : undefined}
+          >
             {selectedState?.state_name || 'No campaign state is linked to this Artwork'}
           </div>
         </FormField>
@@ -612,6 +647,8 @@ function TiffinDetailsStep({
             value={formData.heritage_food_id}
             onChange={onChange}
             disabled={!formData.state_id}
+            aria-invalid={Boolean(errors.heritage_food_id)}
+            aria-describedby={errors.heritage_food_id ? 'tiffin-heritage-food-error' : undefined}
             className={`mt-2 ${inputClass(errors.heritage_food_id)}`}
           >
             <option value="">{formData.state_id ? 'Select a heritage food' : 'Choose an Artwork first'}</option>
@@ -625,7 +662,9 @@ function TiffinDetailsStep({
             </p>
           )}
           {errors.heritage_food_id && (
-            <p className="mt-1 text-xs text-red-600">{errors.heritage_food_id}</p>
+            <p id="tiffin-heritage-food-error" className="mt-1 text-xs text-red-600" role="alert">
+              {errors.heritage_food_id}
+            </p>
           )}
         </div>
       </div>
@@ -672,9 +711,10 @@ function HeritageFoodDialog({ state, categories, onClose, onCreate }) {
 
   const handleCreate = async (event) => {
     event.preventDefault();
-    const nextErrors = {};
-    if (!foodData.food_name.trim()) nextErrors.food_name = 'Food name is required.';
-    if (!foodData.food_category_id) nextErrors.food_category_id = 'Food category is required.';
+    const nextErrors = validateHeritageFoodInput({
+      ...foodData,
+      state_id: state?.state_id,
+    });
     if (Object.keys(nextErrors).length > 0) {
       setErrors(nextErrors);
       return;
@@ -697,13 +737,16 @@ function HeritageFoodDialog({ state, categories, onClose, onCreate }) {
       title="Add Heritage Food"
       size="md"
     >
-      <form onSubmit={handleCreate} className="flex max-h-[85vh] flex-col">
+      <form onSubmit={handleCreate} noValidate className="flex max-h-[85vh] flex-col">
         <div className="overflow-y-auto p-6">
           <div className="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-surface-500">State</p>
             <p className="mt-1 text-sm font-semibold text-surface-900">
               {state?.state_name || 'Selected campaign state'}
             </p>
+            {errors.state_id && (
+              <p className="mt-1 text-xs text-red-600">{errors.state_id}</p>
+            )}
           </div>
 
           {errors.submit && (
@@ -742,25 +785,37 @@ function HeritageFoodDialog({ state, categories, onClose, onCreate }) {
               </select>
             </CreatorField>
 
-            <CreatorField label="Origin Summary" required={false} className="md:col-span-2">
+            <CreatorField
+              label="Origin Summary"
+              required={false}
+              error={errors.origin_summary}
+              className="md:col-span-2"
+            >
               <textarea
                 name="origin_summary"
                 value={foodData.origin_summary}
                 onChange={handleChange}
                 rows={3}
+                maxLength={5000}
                 placeholder="Where the dish comes from and how it is traditionally prepared"
-                className={inputClass()}
+                className={inputClass(errors.origin_summary)}
               />
             </CreatorField>
 
-            <CreatorField label="Cultural Significance" required={false} className="md:col-span-2">
+            <CreatorField
+              label="Cultural Significance"
+              required={false}
+              error={errors.cultural_significance}
+              className="md:col-span-2"
+            >
               <textarea
                 name="cultural_significance"
                 value={foodData.cultural_significance}
                 onChange={handleChange}
                 rows={3}
+                maxLength={5000}
                 placeholder="Why the dish is meaningful to the local community"
-                className={inputClass()}
+                className={inputClass(errors.cultural_significance)}
               />
             </CreatorField>
 
@@ -825,22 +880,29 @@ function HeritageContentStep({
       <h3 className="text-xl font-bold text-surface-900">Add Heritage Content</h3>
 
       <div className="mt-6 space-y-5">
-        <FormField label="Story Title" error={errors.story_title}>
+        <FormField label="Story Title" error={errors.story_title} errorId="tiffin-story-title-error">
           <input
+            id="story_title"
             type="text"
             name="story_title"
             value={formData.heritage_story.title}
             onChange={onChange}
+            maxLength={180}
+            aria-invalid={Boolean(errors.story_title)}
+            aria-describedby={errors.story_title ? 'tiffin-story-title-error' : undefined}
             className={inputClass(errors.story_title)}
           />
         </FormField>
 
-        <FormField label="Story Content" error={errors.story_body}>
+        <FormField label="Story Content" error={errors.story_body} errorId="tiffin-story-content-error">
           <textarea
+            id="story_body"
             name="story_body"
             value={formData.heritage_story.story_body}
             onChange={onChange}
             rows={8}
+            aria-invalid={Boolean(errors.story_body)}
+            aria-describedby={errors.story_body ? 'tiffin-story-content-error' : undefined}
             className={inputClass(errors.story_body)}
           />
         </FormField>
@@ -887,14 +949,14 @@ function HeritageContentStep({
   );
 }
 
-function FormField({ label, error, required = true, className = '', children }) {
+function FormField({ label, error, errorId, required = true, className = '', children }) {
   return (
     <label className={`block ${className}`}>
       <span className="text-sm font-medium text-surface-700">
         {label}{required && <span className="text-red-500" aria-hidden="true"> *</span>}
       </span>
       <div className="mt-2">{children}</div>
-      {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
+      {error && <p id={errorId} className="mt-1 text-xs text-red-600" role="alert">{error}</p>}
     </label>
   );
 }
