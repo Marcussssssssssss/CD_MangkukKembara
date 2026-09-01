@@ -1,5 +1,9 @@
 project_id = "MangkukKembara"
 
+[auth.email]
+# Require confirmation from both the current and new inbox for email changes.
+double_confirm_changes = true
+
 [functions.cloudinary-upload]
 verify_jwt = true
 
