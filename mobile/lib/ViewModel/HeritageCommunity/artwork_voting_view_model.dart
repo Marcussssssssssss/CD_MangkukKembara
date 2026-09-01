@@ -78,6 +78,10 @@ class ArtworkVotingViewModel extends ChangeNotifier {
     }
   }
 
+  Future<ArtworkVotingEntryModel?> findEntryForArtworkSubmission(
+    String submissionId,
+  ) => _repo.fetchVotingEntryBySubmissionId(submissionId);
+
   Future<void> loadRankings(
     String campaignId, {
     bool showLoading = true,

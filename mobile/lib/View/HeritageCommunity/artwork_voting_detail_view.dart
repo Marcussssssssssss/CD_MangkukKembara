@@ -13,7 +13,12 @@ import 'heritage_community_style.dart';
 /// C7. Artwork Voting Detail View.
 class ArtworkVotingDetailView extends StatefulWidget {
   final String entryId;
-  const ArtworkVotingDetailView({super.key, required this.entryId});
+  final int initialLayer;
+  const ArtworkVotingDetailView({
+    super.key,
+    required this.entryId,
+    this.initialLayer = 0,
+  });
 
   @override
   State<ArtworkVotingDetailView> createState() =>
@@ -81,7 +86,7 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
           _ArtworkIntro(entry: e),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _ExploreTiffin(entry: e),
+            child: _ExploreTiffin(entry: e, initialLayer: widget.initialLayer),
           ),
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 26, 16, 0),
@@ -485,8 +490,9 @@ class _TiffinViewItem {
 
 class _ExploreTiffin extends StatefulWidget {
   final ArtworkVotingEntryModel entry;
+  final int initialLayer;
 
-  const _ExploreTiffin({required this.entry});
+  const _ExploreTiffin({required this.entry, this.initialLayer = 0});
 
   @override
   State<_ExploreTiffin> createState() => _ExploreTiffinState();
@@ -494,6 +500,17 @@ class _ExploreTiffin extends StatefulWidget {
 
 class _ExploreTiffinState extends State<_ExploreTiffin> {
   _TiffinView _selected = _TiffinView.front;
+
+  @override
+  void initState() {
+    super.initState();
+    _selected = switch (widget.initialLayer) {
+      1 => _TiffinView.layer1,
+      2 => _TiffinView.layer2,
+      3 => _TiffinView.layer3,
+      _ => _TiffinView.front,
+    };
+  }
 
   List<_TiffinViewItem> get _items => [
     _TiffinViewItem(

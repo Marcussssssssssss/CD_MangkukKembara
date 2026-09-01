@@ -7,6 +7,7 @@ class ArtworkModel {
   final String culturalInspiration;
   final String imageUrl;
   final String artistId;
+  final String? sourceArtworkSubmissionId;
 
   const ArtworkModel({
     required this.id,
@@ -16,6 +17,7 @@ class ArtworkModel {
     required this.culturalInspiration,
     required this.imageUrl,
     required this.artistId,
+    this.sourceArtworkSubmissionId,
   });
 
   factory ArtworkModel.fromJson(Map<String, dynamic> json) => ArtworkModel(
@@ -26,5 +28,6 @@ class ArtworkModel {
     culturalInspiration: json['cultural_inspiration'] as String? ?? '',
     imageUrl: json['image_url'] as String,
     artistId: json['profile_id'] as String,
+    sourceArtworkSubmissionId: json['source_artwork_submission_id'] as String?,
   );
 }

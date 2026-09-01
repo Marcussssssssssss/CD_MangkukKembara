@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_routes.dart';
+import '../../ViewModel/HeritageCommunity/artwork_voting_view_model.dart';
 import '../../ViewModel/HeritageExperience/tiffin_content_view_model.dart';
 import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
@@ -12,8 +14,9 @@ abstract final class _TiffinDetailColors {
   static const Color darkGreen = Color(0xFF335C31);
   static const Color mediumGreen = Color(0xFF61885B);
   static const Color yellow = Color(0xFFF9B10E);
-  static const Color softYellow = Color(0xFFFEF5E4);
   static const Color text = Color(0xFF283427);
+  static const Color terracotta = Color(0xFFC85D3A);
+  static const Color mist = Color(0xFFF3F7EF);
 }
 
 /// B4. Tiffin Experience Overview — full heritage content for a tiffin.
@@ -27,14 +30,34 @@ class TiffinExperienceView extends StatefulWidget {
 
 class _TiffinExperienceViewState extends State<TiffinExperienceView> {
   late final TiffinContentViewModel _vm;
+  late final ScrollController _scrollController;
+  double _scrollProgress = 0;
+  double _scrollOffset = 0;
 
   @override
   void initState() {
     super.initState();
     _vm = TiffinContentViewModel();
+    _scrollController = ScrollController()
+      ..addListener(() {
+        final progress = (_scrollController.offset / 220).clamp(0.0, 1.0);
+        final offset = _scrollController.offset.clamp(0.0, 900.0);
+        if ((progress != _scrollProgress || offset != _scrollOffset) && mounted) {
+          setState(() {
+            _scrollProgress = progress;
+            _scrollOffset = offset;
+          });
+        }
+      });
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _vm.loadTiffin(widget.tiffinId),
     );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   @override
@@ -48,11 +71,7 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView> {
               ? const LoadingSpinner(message: 'Loading heritage experience...')
               : vm.hasError || vm.tiffin == null
               ? ErrorStateWidget(onRetry: () => _vm.retry(widget.tiffinId))
-              : RefreshIndicator(
-                  onRefresh: () =>
-                      vm.loadTiffin(widget.tiffinId, showLoading: false),
-                  child: _buildContent(ctx, vm),
-                ),
+              : _buildContent(ctx, vm),
         ),
       ),
     );
@@ -62,197 +81,172 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView> {
     final t = vm.tiffin!;
     final backgroundAsset = _backgroundForState(t.state);
     return CustomScrollView(
-      physics: const AlwaysScrollableScrollPhysics(),
+      controller: _scrollController,
       slivers: [
-        // Hero header
-        SliverAppBar(
-          expandedHeight: 380,
-          backgroundColor: _TiffinDetailColors.background,
-          automaticallyImplyLeading: false,
-          flexibleSpace: Stack(
-            fit: StackFit.expand,
-            children: [
-              Image.asset(
-                backgroundAsset,
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-              ),
-              if (t.coverImageUrl != null && t.coverImageUrl!.isNotEmpty)
-                GestureDetector(
-                  onTap: () => Navigator.of(ctx).push(
-                    MaterialPageRoute<void>(
-                      builder: (_) => _FullscreenTiffinImageView(
-                        imageUrl: t.coverImageUrl!,
-                        tiffinName: t.editionName,
-                      ),
-                    ),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(40, 24, 40, 0),
-                    child: AppNetworkImage(
-                      imageUrl: t.coverImageUrl,
-                      fit: BoxFit.contain,
-                      targetOptimizationWidth: 1200,
-                    ),
-                  ),
-                )
-              else
-                Center(
-                  child: Icon(
-                    Icons.kitchen_rounded,
-                    size: 96,
-                    color: _TiffinDetailColors.darkGreen,
-                  ),
-                ),
-              Positioned(
-                top: MediaQuery.paddingOf(ctx).top + 12,
-                left: 20,
-                child: Material(
-                  color: Colors.white,
-                  shape: const CircleBorder(),
-                  elevation: 4,
-                  child: IconButton(
-                    tooltip: 'Back',
-                    icon: const Icon(
-                      Icons.arrow_back_rounded,
-                      color: _TiffinDetailColors.darkGreen,
-                    ),
-                    onPressed: () => Navigator.maybePop(ctx),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-
         SliverToBoxAdapter(
-          child: Transform.translate(
-            offset: const Offset(0, -24),
-            child: Container(
-              padding: const EdgeInsets.fromLTRB(12, 20, 12, 24),
-              decoration: const BoxDecoration(
-                color: _TiffinDetailColors.background,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-              // Edition title
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 12, 12, 4),
-                child: Text(t.editionName, style: const TextStyle(
-                  color: _TiffinDetailColors.darkGreen,
-                  fontSize: 25,
-                  fontWeight: FontWeight.w800,
-                )),
-              ),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Row(
-                  children: [
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 14,
-                      color: _TiffinDetailColors.mediumGreen,
-                    ),
-                    const SizedBox(width: 4),
-                    Text(
-                      t.state,
-                      style: Theme.of(ctx).textTheme.bodySmall?.copyWith(
-                        color: _TiffinDetailColors.darkGreen,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
-                child: Text(
-                  t.summary,
-                  style: Theme.of(ctx).textTheme.bodyMedium?.copyWith(
-                    color: _TiffinDetailColors.text,
-                  ),
-                ),
-              ),
-
-              // Content cards
-              if (vm.artwork != null)
-                _ContentCard(
-                  icon: Icons.palette_rounded,
-                  title: 'Artwork',
-                  subtitle: vm.artwork!.title,
-                  description: vm.artwork!.description,
-                  onTap: () => Navigator.pushNamed(
-                    ctx,
-                    AppRoutes.artworkMeaning,
-                    arguments: vm.artwork!.id,
-                  ),
-                ),
-
-              if (vm.artist != null)
-                _ContentCard(
-                  icon: Icons.person_outline_rounded,
-                  title: 'Artist',
-                  subtitle: vm.artist!.displayName,
-                  description: vm.artist!.biography.length > 120
-                      ? '${vm.artist!.biography.substring(0, 120)}...'
-                      : vm.artist!.biography,
-                  onTap: () => Navigator.pushNamed(
-                    ctx,
-                    AppRoutes.artistDetail,
-                    arguments: vm.artist!.id,
-                  ),
-                ),
-
-              if (vm.stories.isNotEmpty)
-                _ContentCard(
-                  icon: Icons.menu_book_rounded,
-                  title: 'Heritage Story',
-                  subtitle: vm.stories.first.title,
-                  description: vm.stories.first.body.length > 120
-                      ? '${vm.stories.first.body.substring(0, 120)}...'
-                      : vm.stories.first.body,
-                  onTap: () => Navigator.pushNamed(
-                    ctx,
-                    AppRoutes.heritageStory,
-                    arguments: t.id,
-                  ),
-                ),
-
-              _ContentCard(
-                icon: Icons.restaurant_rounded,
-                title: 'Food Origin & State',
-                subtitle: 'Learn about the heritage foods',
-                description:
-                    'Discover the cultural significance of the foods featured in this tiffin edition.',
-                onTap: () => Navigator.pushNamed(
-                  ctx,
-                  AppRoutes.foodOriginState,
-                  arguments: t.id,
-                ),
-              ),
-
-              if (vm.media.any((m) => m.isVideo))
-                _ContentCard(
-                  icon: Icons.play_circle_rounded,
-                  title: 'Heritage Video',
-                  subtitle: vm.media.firstWhere((m) => m.isVideo).title,
-                  description:
-                      vm.media.firstWhere((m) => m.isVideo).caption ?? '',
-                  onTap: () => Navigator.pushNamed(
-                    ctx,
-                    AppRoutes.heritageVideo,
-                    arguments: vm.media.firstWhere((m) => m.isVideo).id,
-                  ),
-                ),
-
-              const SizedBox(height: 8),
-            ],
-              ),
+          child: SizedBox(
+            height: MediaQuery.sizeOf(ctx).height,
+            child: _ExperienceHero(
+              backgroundAsset: backgroundAsset,
+              tiffinName: t.editionName,
+              state: t.state,
+              imageUrl: t.coverImageUrl,
+              onBack: () => Navigator.maybePop(ctx),
+              onLayerOneTap: () => _openArtworkStory(ctx, vm, storyLayer: 1),
+              onLayerTwoTap: () => _openArtworkStory(ctx, vm, storyLayer: 2),
+              onLayerThreeTap: () => _openArtworkStory(ctx, vm, storyLayer: 3),
+              scrollProgress: _scrollProgress,
+              scrollOffset: _scrollOffset,
             ),
           ),
         ),
+        SliverToBoxAdapter(child: _LearnMorePanel(vm: vm)),
       ],
+    );
+  }
+
+  void _openLayerOne(BuildContext context, TiffinContentViewModel vm) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => _TiffinLayerSheet(
+        layerNumber: 1,
+        items: [
+          _LayerDestinationData(
+            Icons.palette_rounded,
+            'ARTWORK',
+            vm.artwork?.title ?? 'Artwork story coming soon',
+            _TiffinDetailColors.terracotta,
+            vm.artwork == null
+                ? null
+                : () {
+                    Navigator.pop(sheetContext);
+                    _openArtworkStory(context, vm);
+                  },
+          ),
+          _LayerDestinationData(
+            Icons.person_outline_rounded,
+            'ARTIST',
+            vm.artist?.displayName ?? 'Artist profile coming soon',
+            _TiffinDetailColors.mediumGreen,
+            vm.artist == null
+                ? null
+                : () {
+                    Navigator.pop(sheetContext);
+                    Navigator.pushNamed(
+                      context,
+                      AppRoutes.artistDetail,
+                      arguments: vm.artist!.id,
+                    );
+                  },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _openLayerTwo(BuildContext context, TiffinContentViewModel vm) {
+    final video = vm.media.where((media) => media.isVideo).firstOrNull;
+    _showLayer(context, 2, [
+      if (vm.stories.isNotEmpty)
+        _LayerDestinationData(
+          Icons.menu_book_rounded,
+          'HERITAGE STORY',
+          vm.stories.first.title,
+          _TiffinDetailColors.mediumGreen,
+          () => Navigator.pushNamed(
+            context,
+            AppRoutes.heritageStory,
+            arguments: vm.tiffin!.id,
+          ),
+        ),
+      if (video != null)
+        _LayerDestinationData(
+          Icons.play_circle_rounded,
+          'HERITAGE VIDEO',
+          video.title,
+          const Color(0xFF456E9B),
+          () => Navigator.pushNamed(
+            context,
+            AppRoutes.heritageVideo,
+            arguments: video.id,
+          ),
+        ),
+    ]);
+  }
+
+  void _openLayerThree(BuildContext context, TiffinContentViewModel vm) =>
+      _showLayer(context, 3, [
+        _LayerDestinationData(
+          Icons.restaurant_rounded,
+          'FOOD ORIGIN & STATE',
+          'Discover the heritage foods',
+          _TiffinDetailColors.yellow,
+          () => Navigator.pushNamed(
+            context,
+            AppRoutes.foodOriginState,
+            arguments: vm.tiffin!.id,
+          ),
+        ),
+      ]);
+
+  void _showLayer(
+    BuildContext context,
+    int layerNumber,
+    List<_LayerDestinationData> items,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetContext) => _TiffinLayerSheet(
+        layerNumber: layerNumber,
+        items: items
+            .map(
+              (item) => item.copyWith(
+                onTap: item.onTap == null
+                    ? null
+                    : () {
+                        Navigator.pop(sheetContext);
+                        item.onTap!();
+                      },
+              ),
+            )
+            .toList(),
+      ),
+    );
+  }
+
+  Future<void> _openArtworkStory(
+    BuildContext context,
+    TiffinContentViewModel vm,
+    {int storyLayer = 0}
+  ) async {
+    final submissionId = vm.artwork?.sourceArtworkSubmissionId;
+    if (submissionId == null || submissionId.isEmpty) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Artwork Story is not available yet.')),
+        );
+      }
+      return;
+    }
+
+    final entry = await ArtworkVotingViewModel().findEntryForArtworkSubmission(
+      submissionId,
+    );
+    if (!context.mounted) return;
+    if (entry == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Artwork Story is not available yet.')),
+      );
+      return;
+    }
+    Navigator.pushNamed(
+      context,
+      AppRoutes.artworkVotingDetail,
+      arguments: {'entryId': entry.id, 'initialLayer': storyLayer},
     );
   }
 
@@ -266,123 +260,583 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView> {
   }
 }
 
-class _FullscreenTiffinImageView extends StatelessWidget {
-  final String imageUrl;
-  final String tiffinName;
-
-  const _FullscreenTiffinImageView({
-    required this.imageUrl,
+class _ExperienceHero extends StatefulWidget {
+  const _ExperienceHero({
+    required this.backgroundAsset,
     required this.tiffinName,
+    required this.state,
+    required this.imageUrl,
+    required this.onBack,
+    required this.onLayerOneTap,
+    required this.onLayerTwoTap,
+    required this.onLayerThreeTap,
+    required this.scrollProgress,
+    required this.scrollOffset,
   });
+
+  final String backgroundAsset;
+  final String tiffinName;
+  final String state;
+  final String? imageUrl;
+  final VoidCallback onBack;
+  final VoidCallback onLayerOneTap;
+  final VoidCallback onLayerTwoTap;
+  final VoidCallback onLayerThreeTap;
+  final double scrollProgress;
+  final double scrollOffset;
+
+  @override
+  State<_ExperienceHero> createState() => _ExperienceHeroState();
+}
+
+class _ExperienceHeroState extends State<_ExperienceHero>
+    with TickerProviderStateMixin {
+  late final AnimationController _entranceController;
+  late final AnimationController _glowController;
+
+  @override
+  void initState() {
+    super.initState();
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    )..forward();
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2400),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    _glowController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.black,
-      appBar: AppBar(
-        backgroundColor: Colors.black,
-        foregroundColor: Colors.white,
-        title: Text(tiffinName, maxLines: 1, overflow: TextOverflow.ellipsis),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: InteractiveViewer(
-            minScale: 0.8,
-            maxScale: 5,
-            child: AppNetworkImage(
-              imageUrl: imageUrl,
-              fit: BoxFit.contain,
-              targetOptimizationWidth: 1800,
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Image.asset(widget.backgroundAsset, fit: BoxFit.cover),
+        const DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [Color(0x00FFFFFF), Color(0x00FFFFFF), Color(0xB3305C42)],
+              stops: [0, .48, 1],
             ),
           ),
+        ),
+        Positioned(
+          right: -32,
+          top: 75,
+          child: Container(
+            width: 152,
+            height: 152,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: .12),
+            ),
+          ),
+        ),
+        Center(
+          child: AnimatedBuilder(
+            animation: _glowController,
+            builder: (context, _) => Container(
+              width: 286 + (_glowController.value * 18),
+              height: 286 + (_glowController.value * 18),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: const Color(0xFFFFC54D).withValues(
+                  alpha: .05 + (_glowController.value * .06),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFFFFC54D).withValues(
+                      alpha: .12 + (_glowController.value * .10),
+                    ),
+                    blurRadius: 42 + (_glowController.value * 16),
+                    spreadRadius: 5 + (_glowController.value * 5),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (widget.imageUrl?.isNotEmpty ?? false)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(22, 48, 22, 72),
+            child: FadeTransition(
+              opacity: CurvedAnimation(parent: _entranceController, curve: const Interval(0, .65, curve: Curves.easeOut)),
+              child: Transform.translate(
+                offset: Offset(0, widget.scrollOffset * .58),
+                child: Transform.scale(
+                  scale: 1 - (widget.scrollProgress * .40),
+                  child: ScaleTransition(
+                  scale: Tween<double>(begin: .82, end: 1).animate(CurvedAnimation(parent: _entranceController, curve: Curves.easeOutBack)),
+                  child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                AppNetworkImage(
+                  imageUrl: widget.imageUrl,
+                  fit: BoxFit.contain,
+                  targetOptimizationWidth: 1200,
+                ),
+                    Positioned(right: 310, top: 350, child: _AnimatedLayerMarker(number: 1, onTap: widget.onLayerOneTap, entrance: _entranceController, delay: .45)),
+                    Positioned(right: 30, top: 418, child: _AnimatedLayerMarker(number: 2, onTap: widget.onLayerTwoTap, entrance: _entranceController, delay: .59)),
+                    Positioned(right: 310, top: 486, child: _AnimatedLayerMarker(number: 3, onTap: widget.onLayerThreeTap, entrance: _entranceController, delay: .73)),
+                  ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          )
+        else
+          const Center(
+            child: Icon(Icons.kitchen_rounded, size: 110, color: Colors.white),
+          ),
+        Positioned(
+          top: MediaQuery.paddingOf(context).top + 12,
+          left: 18,
+          child: Material(
+            color: Colors.white.withValues(alpha: .94),
+            shape: const CircleBorder(),
+            child: IconButton(
+              tooltip: 'Back',
+              onPressed: widget.onBack,
+              icon: const Icon(
+                Icons.arrow_back_rounded,
+                color: _TiffinDetailColors.darkGreen,
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 24,
+          right: 24,
+          bottom: 34,
+          child: Opacity(
+            opacity: 1,
+            child: Transform.translate(
+              offset: Offset(0, widget.scrollOffset * .50),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: _TiffinDetailColors.yellow,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  'HERITAGE TASTE TRAIL',
+                  style: GoogleFonts.nunito(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.2,
+                    color: _TiffinDetailColors.darkGreen,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 9),
+              Text(
+                widget.tiffinName,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.playfairDisplay(
+                  fontSize: 30,
+                  height: 1.04,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on_rounded,
+                    size: 15,
+                    color: Color(0xFFFFD773),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    widget.state,
+                    style: GoogleFonts.nunito(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _LayerMarker extends StatelessWidget {
+  const _LayerMarker({required this.number, required this.onTap});
+
+  final int number;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Colors.white.withValues(alpha: .88),
+    shape: const CircleBorder(),
+    elevation: 3,
+    child: InkWell(
+      onTap: onTap,
+      customBorder: const CircleBorder(),
+      child: SizedBox(
+        width: 30,
+        height: 30,
+        child: Center(
+          child: Text(
+            '$number',
+            style: GoogleFonts.nunito(
+              color: _TiffinDetailColors.darkGreen,
+              fontSize: 14,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
+class _AnimatedLayerMarker extends StatefulWidget {
+  const _AnimatedLayerMarker({
+    required this.number,
+    required this.onTap,
+    required this.entrance,
+    required this.delay,
+  });
+
+  final int number;
+  final VoidCallback onTap;
+  final Animation<double> entrance;
+  final double delay;
+
+  @override
+  State<_AnimatedLayerMarker> createState() => _AnimatedLayerMarkerState();
+}
+
+class _AnimatedLayerMarkerState extends State<_AnimatedLayerMarker>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _floatController;
+
+  @override
+  void initState() {
+    super.initState();
+    _floatController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1800),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _floatController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final entrance = CurvedAnimation(
+      parent: widget.entrance,
+      curve: Interval(widget.delay, 1, curve: Curves.easeOutBack),
+    );
+    return FadeTransition(
+      opacity: entrance,
+      child: AnimatedBuilder(
+        animation: _floatController,
+        child: _LayerMarker(number: widget.number, onTap: widget.onTap),
+        builder: (context, child) => Transform.translate(
+          offset: Offset(0, -3 + (_floatController.value * 6)),
+          child: child,
         ),
       ),
     );
   }
 }
 
-class _ContentCard extends StatelessWidget {
-  final IconData icon;
-  final String title;
-  final String subtitle;
-  final String description;
-  final VoidCallback onTap;
+class _LearnMorePanel extends StatelessWidget {
+  const _LearnMorePanel({required this.vm});
 
-  const _ContentCard({
-    required this.icon,
-    required this.title,
-    required this.subtitle,
-    required this.description,
-    required this.onTap,
-  });
+  final TiffinContentViewModel vm;
 
   @override
   Widget build(BuildContext context) {
-    return Card(
-      margin: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-      color: _TiffinDetailColors.softYellow,
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(18),
-        side: const BorderSide(color: _TiffinDetailColors.yellow),
+    final tiffin = vm.tiffin!;
+    final video = vm.media.where((item) => item.isVideo).firstOrNull;
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 30, 20, 40),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(34)),
       ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('LEARN MORE', style: GoogleFonts.nunito(color: _TiffinDetailColors.terracotta, fontWeight: FontWeight.w900, fontSize: 10, letterSpacing: 1.3)),
+          const SizedBox(height: 5),
+          Text('Unpack the story', style: GoogleFonts.playfairDisplay(color: _TiffinDetailColors.darkGreen, fontSize: 28, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 18),
+          if (vm.artwork != null) _GlassLearnCard(index: 0, icon: Icons.palette_rounded, label: 'ARTWORK', title: vm.artwork!.title, onTap: () => _openArtwork(context, vm)),
+          if (vm.artist != null) _GlassLearnCard(index: 1, icon: Icons.person_outline_rounded, label: 'ARTIST', title: vm.artist!.displayName, onTap: () => Navigator.pushNamed(context, AppRoutes.artistDetail, arguments: vm.artist!.id)),
+          if (vm.stories.isNotEmpty) _GlassLearnCard(index: 2, icon: Icons.menu_book_rounded, label: 'HERITAGE STORY', title: vm.stories.first.title, onTap: () => Navigator.pushNamed(context, AppRoutes.heritageStory, arguments: tiffin.id)),
+          if (video != null) _GlassLearnCard(index: 3, icon: Icons.play_circle_rounded, label: 'HERITAGE VIDEO', title: video.title, onTap: () => Navigator.pushNamed(context, AppRoutes.heritageVideo, arguments: video.id)),
+          _GlassLearnCard(index: 4, icon: Icons.restaurant_rounded, label: 'FOOD ORIGIN & STATE', title: 'Discover the heritage foods', onTap: () => Navigator.pushNamed(context, AppRoutes.foodOriginState, arguments: tiffin.id)),
+        ],
+      ),
+    );
+  }
+
+  void _openArtwork(BuildContext context, TiffinContentViewModel vm) {
+    final state = context.findAncestorStateOfType<_TiffinExperienceViewState>();
+    state?._openArtworkStory(context, vm);
+  }
+}
+
+class _GlassLearnCard extends StatelessWidget {
+  const _GlassLearnCard({required this.index, required this.icon, required this.label, required this.title, required this.onTap});
+  final int index;
+  final IconData icon;
+  final String label;
+  final String title;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: 1),
+    duration: Duration(milliseconds: 600 + (index * 150)),
+    curve: Curves.easeOutCubic,
+    builder: (context, value, child) => Opacity(
+      opacity: value,
+      child: Transform.translate(offset: Offset(0, 24 * (1 - value)), child: child),
+    ),
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Material(
+      color: _TiffinDetailColors.mist,
+      borderRadius: BorderRadius.circular(20),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Row(
-            children: [
-              Container(
-                width: 44,
-                height: 44,
+          padding: const EdgeInsets.all(15),
+          child: Row(children: [
+            Container(width: 42, height: 42, decoration: BoxDecoration(color: _TiffinDetailColors.yellow.withValues(alpha: .18), borderRadius: BorderRadius.circular(14)), child: Icon(icon, color: _TiffinDetailColors.darkGreen)),
+            const SizedBox(width: 12),
+            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(label, style: GoogleFonts.nunito(fontSize: 10, fontWeight: FontWeight.w900, letterSpacing: 1, color: _TiffinDetailColors.terracotta)),
+              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: GoogleFonts.nunito(fontSize: 16, fontWeight: FontWeight.w800, color: _TiffinDetailColors.darkGreen)),
+            ])),
+            const Icon(Icons.arrow_forward_rounded, color: _TiffinDetailColors.mediumGreen),
+          ]),
+        ),
+      ),
+      ),
+    ),
+  );
+}
+
+class _TiffinLayerSheet extends StatelessWidget {
+  const _TiffinLayerSheet({required this.layerNumber, required this.items});
+
+  final int layerNumber;
+  final List<_LayerDestinationData> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(22, 12, 22, 32),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(30)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
                 decoration: BoxDecoration(
-                  color: _TiffinDetailColors.softYellow,
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(icon, color: _TiffinDetailColors.darkGreen, size: 22),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w700,
-                        color: _TiffinDetailColors.darkGreen,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: _TiffinDetailColors.darkGreen,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      description,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: _TiffinDetailColors.text,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ],
+                  color: const Color(0xFFDDE6DA),
+                  borderRadius: BorderRadius.circular(9),
                 ),
               ),
-              const Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 14,
-                color: _TiffinDetailColors.darkGreen,
+            ),
+            const SizedBox(height: 22),
+            Row(
+              children: [
+                Container(
+                  width: 48,
+                  height: 48,
+                  decoration: BoxDecoration(
+                    color: _TiffinDetailColors.mist,
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: const Icon(
+                    Icons.inventory_2_rounded,
+                    color: _TiffinDetailColors.terracotta,
+                  ),
+                ),
+                const SizedBox(width: 13),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'TIFFIN LAYER $layerNumber',
+                        style: GoogleFonts.nunito(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.1,
+                          color: _TiffinDetailColors.terracotta,
+                        ),
+                      ),
+                      Text(
+                        'What this layer carries',
+                        style: GoogleFonts.playfairDisplay(
+                          fontSize: 23,
+                          fontWeight: FontWeight.w800,
+                          color: _TiffinDetailColors.darkGreen,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 9),
+            Text(
+              'Open each layer to discover the people and cultural details behind this tiffin.',
+              style: GoogleFonts.nunito(
+                color: _TiffinDetailColors.text,
+                height: 1.4,
               ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 19),
+            if (items.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Text('This layer is waiting to be discovered.'),
+              )
+            else
+              for (var index = 0; index < items.length; index++) ...[
+                _LayerDestination(
+                  icon: items[index].icon,
+                  label: items[index].label,
+                  title: items[index].title,
+                  color: items[index].color,
+                  onTap: items[index].onTap,
+                ),
+                if (index < items.length - 1) const SizedBox(height: 10),
+              ],
+          ],
         ),
       ),
     );
   }
+}
+
+class _LayerDestinationData {
+  const _LayerDestinationData(
+    this.icon,
+    this.label,
+    this.title,
+    this.color,
+    this.onTap,
+  );
+
+  final IconData icon;
+  final String label;
+  final String title;
+  final Color color;
+  final VoidCallback? onTap;
+
+  _LayerDestinationData copyWith({VoidCallback? onTap}) =>
+      _LayerDestinationData(icon, label, title, color, onTap);
+}
+
+class _LayerDestination extends StatelessWidget {
+  const _LayerDestination({
+    required this.icon,
+    required this.label,
+    required this.title,
+    required this.color,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final String title;
+  final Color color;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: color.withValues(alpha: .08),
+    borderRadius: BorderRadius.circular(18),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(18),
+      child: Padding(
+        padding: const EdgeInsets.all(14),
+        child: Row(
+          children: [
+            Icon(icon, color: color),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: GoogleFonts.nunito(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: .9,
+                      color: color,
+                    ),
+                  ),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.nunito(
+                      fontWeight: FontWeight.w800,
+                      color: _TiffinDetailColors.darkGreen,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_rounded,
+              color: onTap == null ? Colors.black26 : color,
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
