@@ -451,18 +451,59 @@ class _VendorGoogleMap extends StatefulWidget {
 
 class _VendorGoogleMapState extends State<_VendorGoogleMap> {
   GoogleMapController? _controller;
+  BitmapDescriptor? _nightMarketMarkerIcon;
+  BitmapDescriptor? _restaurantMarkerIcon;
 
   static const _malaysia = CameraPosition(
     target: LatLng(4.2105, 101.9758),
     zoom: 5.4,
   );
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _loadMarkerIcons());
+  }
+
+  Future<void> _loadMarkerIcons() async {
+    try {
+      final configuration = createLocalImageConfiguration(
+        context,
+        size: const Size(48, 48),
+      );
+      final icons = await Future.wait([
+        BitmapDescriptor.asset(
+          configuration,
+          'asset/image/nightmarket_tiffin_pin.png',
+          width: 48,
+          height: 48,
+        ),
+        BitmapDescriptor.asset(
+          configuration,
+          'asset/image/restaurant_tiffin_pin.png',
+          width: 48,
+          height: 48,
+        ),
+      ]);
+      if (!mounted) return;
+      setState(() {
+        _nightMarketMarkerIcon = icons[0];
+        _restaurantMarkerIcon = icons[1];
+      });
+    } catch (_) {
+      // The existing default pins remain available as a safe fallback.
+    }
+  }
+
   Set<Marker> get _markers => {
     ...widget.vendors.map(
       (vendor) => Marker(
         markerId: MarkerId('vendor_${vendor.id}'),
         position: LatLng(vendor.latitude, vendor.longitude),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        icon:
+            _restaurantMarkerIcon ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        anchor: const Offset(.5, .85),
         zIndexInt: 2,
         infoWindow: InfoWindow(title: vendor.name, snippet: vendor.address),
         onTap: () => widget.onVendorTap(vendor),
@@ -472,7 +513,10 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
       (market) => Marker(
         markerId: MarkerId('market_${market.id}'),
         position: LatLng(market.latitude, market.longitude),
-        icon: BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+        icon:
+            _nightMarketMarkerIcon ??
+            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+        anchor: const Offset(.5, .85),
         zIndexInt: 1,
         infoWindow: InfoWindow(title: market.name, snippet: market.address),
         onTap: () => widget.onPasarMalamTap(market),
