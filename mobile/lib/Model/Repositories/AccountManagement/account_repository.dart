@@ -105,34 +105,6 @@ class AccountRepository {
     await _api.updatePassword(newPassword);
   }
 
-  /// Starts Supabase's verified email-change flow. The existing address stays
-  /// active until the confirmation requirements configured in Supabase are met.
-  Future<String> requestEmailChange({
-    required String newEmail,
-    required String currentPassword,
-  }) async {
-    final user = _api.requireUser();
-    final normalizedEmail = newEmail.trim().toLowerCase();
-    if ((user.email ?? '').trim().toLowerCase() == normalizedEmail) {
-      throw const AppException(
-        'The new email address must be different from your current email.',
-      );
-    }
-
-    await verifyCurrentPassword(currentPassword);
-    final response = await _api.updateEmail(
-      normalizedEmail,
-      currentPassword: currentPassword,
-      emailRedirectTo: BackendConfig.emailConfirmationRedirect,
-    );
-    if (response.user == null) {
-      throw const AppException(
-        'The email change request could not be started.',
-      );
-    }
-    return response.user!.newEmail ?? normalizedEmail;
-  }
-
   /// Re-authenticates the current user before allowing a password change.
   Future<void> verifyCurrentPassword(String currentPassword) async {
     final user = _api.requireUser();
@@ -140,13 +112,7 @@ class AccountRepository {
     if (email == null) {
       throw const AppException('The account has no email address.');
     }
-    final response = await _api.signIn(email: email, password: currentPassword);
-    if (response.user?.id != user.id) {
-      await _api.signOut();
-      throw const AppException(
-        'Account verification failed. Please log in again.',
-      );
-    }
+    await _api.signIn(email: email, password: currentPassword);
   }
 
   Future<ProfileModel> fetchProfile(String userId) async {
