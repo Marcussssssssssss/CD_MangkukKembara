@@ -30,8 +30,10 @@ class MangkukKembaraApp extends StatefulWidget {
 
 class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
+  final _messengerKey = GlobalKey<ScaffoldMessengerState>();
   StreamSubscription<AuthState>? _authSubscription;
   late bool _hadAuthenticatedSession;
+  String? _lastKnownEmail;
 
   @override
   void initState() {
@@ -39,26 +41,79 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
     // A password check re-authenticates an already signed-in user and emits
     // SIGNED_IN. Keep that event on the current page instead of treating it
     // as a fresh login and forcing navigation to the Treasure Map.
-    _hadAuthenticatedSession =
-        Supabase.instance.client.auth.currentSession != null;
-    _authSubscription = Supabase.instance.client.auth.onAuthStateChange
-        .listen((state) {
-          if (state.event == AuthChangeEvent.passwordRecovery) {
-            _navigatorKey.currentState?.pushNamedAndRemoveUntil(
-              AppRoutes.resetPassword,
-              (route) => route.isFirst,
+    final initialUser = Supabase.instance.client.auth.currentSession?.user;
+    _hadAuthenticatedSession = initialUser != null;
+    _lastKnownEmail = initialUser?.email;
+    if (_hasPendingEmail(initialUser)) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _showPendingEmailNotice(initialUser!),
+      );
+    }
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
+      state,
+    ) {
+      if (state.event == AuthChangeEvent.passwordRecovery) {
+        _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          AppRoutes.resetPassword,
+          (route) => route.isFirst,
+        );
+      } else if (state.event == AuthChangeEvent.signedIn) {
+        final user = state.session?.user;
+        if (_hadAuthenticatedSession) {
+          if (_hasPendingEmail(user)) {
+            _showPendingEmailNotice(user!);
+          } else if (user?.email != null &&
+              _lastKnownEmail != null &&
+              user!.email != _lastKnownEmail) {
+            _showMessage(
+              'Email address changed successfully to ${user.email}.',
             );
-          } else if (state.event == AuthChangeEvent.signedIn) {
-            if (_hadAuthenticatedSession) return;
-            _hadAuthenticatedSession = true;
-            _navigatorKey.currentState?.pushNamedAndRemoveUntil(
-              AppRoutes.treasureMap,
-              (route) => false,
-            );
-          } else if (state.event == AuthChangeEvent.signedOut) {
-            _hadAuthenticatedSession = false;
           }
-        });
+          _lastKnownEmail = user?.email ?? _lastKnownEmail;
+          return;
+        }
+        _hadAuthenticatedSession = true;
+        _lastKnownEmail = user?.email;
+        _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+          AppRoutes.treasureMap,
+          (route) => false,
+        );
+      } else if (state.event == AuthChangeEvent.signedOut) {
+        _hadAuthenticatedSession = false;
+        _lastKnownEmail = null;
+      }
+    });
+  }
+
+  bool _hasPendingEmail(User? user) =>
+      user?.newEmail != null && user!.newEmail!.trim().isNotEmpty;
+
+  void _showPendingEmailNotice(User user) {
+    final oldEmail = user.email ?? 'your old email address';
+    final newEmail = user.newEmail!;
+    _showMessage(
+      'Email change is not complete yet. If you confirmed $newEmail, now open $oldEmail and approve the email change there too.',
+      duration: const Duration(seconds: 20),
+    );
+  }
+
+  void _showMessage(
+    String message, {
+    Duration duration = const Duration(seconds: 6),
+  }) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final messenger = _messengerKey.currentState;
+      if (messenger == null) return;
+      messenger
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          SnackBar(
+            content: Text(message),
+            duration: duration,
+            action: SnackBarAction(label: 'OK', onPressed: () {}),
+          ),
+        );
+    });
   }
 
   @override
@@ -76,6 +131,7 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
       ],
       child: MaterialApp(
         navigatorKey: _navigatorKey,
+        scaffoldMessengerKey: _messengerKey,
         title: 'MangkukKembara',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,

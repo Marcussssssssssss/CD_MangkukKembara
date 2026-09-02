@@ -5,12 +5,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 class AuthUserModel {
   final String id;
   final String email;
+  final String? pendingEmail;
   final DateTime createdAt;
   final bool isEmailVerified;
 
   const AuthUserModel({
     required this.id,
     required this.email,
+    this.pendingEmail,
     required this.createdAt,
     required this.isEmailVerified,
   });
@@ -18,6 +20,7 @@ class AuthUserModel {
   factory AuthUserModel.fromSupabase(User user) => AuthUserModel(
     id: user.id,
     email: user.email ?? '',
+    pendingEmail: user.newEmail,
     createdAt: DateTime.parse(user.createdAt),
     isEmailVerified: user.emailConfirmedAt != null,
   );

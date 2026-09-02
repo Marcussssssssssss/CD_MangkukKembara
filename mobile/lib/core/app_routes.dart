@@ -184,8 +184,12 @@ abstract final class AppRoutes {
           settings,
         );
       case artworkVotingDetail:
+        final args = settings.arguments;
         return _build(
-          ArtworkVotingDetailView(entryId: settings.arguments as String? ?? ''),
+          ArtworkVotingDetailView(
+            entryId: args is Map ? args['entryId'] as String? ?? '' : args as String? ?? '',
+            initialLayer: args is Map ? args['initialLayer'] as int? ?? 0 : 0,
+          ),
           settings,
         );
       case artworkSubmission:

@@ -62,6 +62,10 @@ flutter:
     - asset/image/tiffin_background_yellow.png
     - asset/image/profile_background_green.png
     - asset/image/campaign_background.png
+    - asset/image/heritage_story_illustration.png
+    - asset/image/heritage_background.png
+    - asset/image/nightmarket_tiffin_pin.png
+    - asset/image/restaurant_tiffin_pin.png
 
   # To add assets to your application, add an assets section, like this:
   # assets:
