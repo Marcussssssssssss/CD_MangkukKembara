@@ -500,6 +500,24 @@ class HeritageCommunityRepository {
     return entries.where((entry) => entry.id == id).firstOrNull;
   }
 
+  /// Resolves the voting entry for an artwork published from a winning
+  /// submission, so a heritage tiffin can open its Artwork Story.
+  Future<ArtworkVotingEntryModel?> fetchVotingEntryBySubmissionId(
+    String submissionId,
+  ) async {
+    final row = await _api.guard(
+      () => _api.client
+          .from('artwork_voting_entries')
+          .select('artwork_voting_entry_id')
+          .eq('artwork_submission_id', submissionId)
+          .order('published_at', ascending: false)
+          .limit(1)
+          .maybeSingle(),
+    );
+    if (row == null) return null;
+    return fetchVotingEntryById(row['artwork_voting_entry_id'] as String);
+  }
+
   Future<void> submitVote(String entryId, String userId) async {
     final user = _api.requireUser();
     if (user.id != userId) throw const AppException('Vote access denied.');
