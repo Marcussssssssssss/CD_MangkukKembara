@@ -3,6 +3,11 @@ import {
   uploadHeritageFoodImage,
   uploadHeritageVideo,
 } from '../../../services/cloudinary/upload';
+import {
+  firstTiffinValidationMessage,
+  validateHeritageFoodInput,
+  validateTiffinInput,
+} from './tiffinValidation';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -57,6 +62,48 @@ async function edgeFunctionErrorMessage(error, fallback) {
     }
   }
   return error?.message || fallback;
+}
+
+function assertValidTiffinId(tiffinId) {
+  if (!/^HT[0-9]{4}$/.test(tiffinId || '')) {
+    throw new Error('A valid Heritage Tiffin is required.');
+  }
+}
+
+function assertValidTiffinInput(formData) {
+  const validationErrors = validateTiffinInput(formData);
+  if (Object.keys(validationErrors).length > 0) {
+    throw new Error(firstTiffinValidationMessage(validationErrors));
+  }
+}
+
+async function assertTiffinExists(tiffinId) {
+  assertValidTiffinId(tiffinId);
+  const tiffins = await queryRows(
+    'heritage_tiffins',
+    'heritage_tiffin_id, release_year, status',
+    query => query.eq('heritage_tiffin_id', tiffinId).limit(1)
+  );
+  if (!tiffins[0]) {
+    throw new Error('The selected Heritage Tiffin no longer exists.');
+  }
+  return tiffins[0];
+}
+
+async function assertEditionNameAvailable(editionName, currentTiffinId = null) {
+  const duplicates = await queryRows(
+    'heritage_tiffins',
+    'heritage_tiffin_id',
+    query => {
+      const editionQuery = query.eq('edition_name', editionName.trim());
+      return currentTiffinId
+        ? editionQuery.neq('heritage_tiffin_id', currentTiffinId).limit(1)
+        : editionQuery.limit(1);
+    }
+  );
+  if (duplicates.length > 0) {
+    throw new Error('A Heritage Tiffin with this edition name already exists.');
+  }
 }
 
 async function assertArtworkAvailable(artworkId, currentTiffinId = null) {
@@ -191,14 +238,34 @@ export async function fetchReferenceData() {
  * Authorization and ID allocation are enforced by an admin-only Edge Function.
  */
 export async function createHeritageFood(foodData, imageFile = null) {
+  const validationErrors = validateHeritageFoodInput(foodData);
+  if (Object.keys(validationErrors).length > 0) {
+    throw new Error(Object.values(validationErrors)[0]);
+  }
+
+  const normalizedFoodData = {
+    food_name: foodData.food_name.trim(),
+    food_category_id: foodData.food_category_id,
+    state_id: foodData.state_id,
+    origin_summary: foodData.origin_summary?.trim() || null,
+    cultural_significance: foodData.cultural_significance?.trim() || null,
+  };
+  const duplicateFoods = await queryRows(
+    'heritage_foods',
+    'heritage_food_id',
+    query => query
+      .eq('state_id', normalizedFoodData.state_id)
+      .ilike('food_name', normalizedFoodData.food_name)
+      .limit(1)
+  );
+  if (duplicateFoods.length > 0) {
+    throw new Error('A Heritage Food with this name already exists for the selected state.');
+  }
+
   const imageResult = imageFile ? await uploadHeritageFoodImage(imageFile) : null;
   const { data, error } = await supabase.functions.invoke('admin-create-heritage-food', {
     body: {
-      food_name: foodData.food_name,
-      food_category_id: foodData.food_category_id,
-      state_id: foodData.state_id,
-      origin_summary: foodData.origin_summary,
-      cultural_significance: foodData.cultural_significance,
+      ...normalizedFoodData,
       image_url: imageResult?.secure_url || null,
     },
   });
@@ -219,7 +286,11 @@ export async function createHeritageFood(foodData, imageFile = null) {
  * Create a new Tiffin with optional media.
  */
 export async function createTiffin(formData, files) {
-  await assertTiffinRelationships(formData);
+  assertValidTiffinInput(formData);
+  await Promise.all([
+    assertTiffinRelationships(formData),
+    assertEditionNameAvailable(formData.edition_name),
+  ]);
 
   // 2. Insert Tiffin. Its display image comes from the linked Artwork.
   const tiffinPayload = {
@@ -227,7 +298,7 @@ export async function createTiffin(formData, files) {
     state_id: formData.state_id,
     heritage_food_id: formData.heritage_food_id,
     artwork_id: formData.artwork_id,
-    release_year: formData.release_year,
+    release_year: formData.release_year === '' ? null : Number(formData.release_year),
     status: formData.status,
     created_at: new Date().toISOString(),
     updated_at: new Date().toISOString(),
@@ -241,8 +312,8 @@ export async function createTiffin(formData, files) {
     // 3. Insert Story
     const storyPayload = {
       heritage_tiffin_id: tiffinId,
-      title: formData.heritage_story.title,
-      story_body: formData.heritage_story.story_body,
+      title: formData.heritage_story.title.trim(),
+      story_body: formData.heritage_story.story_body.trim(),
       is_published: true,
       sort_order: 1
     };
@@ -298,7 +369,22 @@ export async function createTiffin(formData, files) {
  * Update an existing Tiffin with optional media replacement.
  */
 export async function updateTiffin(tiffinId, formData, files) {
-  await assertTiffinRelationships(formData, tiffinId);
+  assertValidTiffinInput(formData);
+  await assertTiffinExists(tiffinId);
+  const [, , existingStories, existingMedia] = await Promise.all([
+    assertTiffinRelationships(formData, tiffinId),
+    assertEditionNameAvailable(formData.edition_name, tiffinId),
+    queryRows(
+      'heritage_stories',
+      '*',
+      query => query.eq('heritage_tiffin_id', tiffinId).limit(1)
+    ),
+    queryRows(
+      'heritage_media',
+      '*',
+      query => query.eq('heritage_tiffin_id', tiffinId).eq('media_type', 'video').limit(1)
+    ),
+  ]);
 
   // Upload first. A Cloudinary failure must not leave partially updated DB rows.
   const uploadedVideo = files?.heritageVideo
@@ -311,7 +397,7 @@ export async function updateTiffin(tiffinId, formData, files) {
     state_id: formData.state_id,
     heritage_food_id: formData.heritage_food_id,
     artwork_id: formData.artwork_id,
-    release_year: formData.release_year,
+    release_year: formData.release_year === '' ? null : Number(formData.release_year),
     status: formData.status,
     updated_at: new Date().toISOString(),
   };
@@ -321,29 +407,33 @@ export async function updateTiffin(tiffinId, formData, files) {
     tiffinPayload, 
     q => q.eq('heritage_tiffin_id', tiffinId)
   );
+  if (!updatedTiffin) {
+    throw new Error('The selected Heritage Tiffin could not be updated. Refresh and try again.');
+  }
 
   // 2. Update Story
   let updatedStory;
-  const existingStory = formData.heritage_stories && formData.heritage_stories.length > 0 
-    ? formData.heritage_stories[0] 
-    : null;
+  const existingStory = existingStories[0] || null;
 
   if (existingStory) {
     const storyPayload = {
-      title: formData.heritage_story.title,
-      story_body: formData.heritage_story.story_body,
+      title: formData.heritage_story.title.trim(),
+      story_body: formData.heritage_story.story_body.trim(),
     };
     const [res] = await updateRows(
       'heritage_stories',
       storyPayload,
       q => q.eq('heritage_story_id', existingStory.heritage_story_id)
     );
+    if (!res) {
+      throw new Error('The Heritage Story could not be updated. Refresh and try again.');
+    }
     updatedStory = res;
   } else {
     const storyPayload = {
       heritage_tiffin_id: tiffinId,
-      title: formData.heritage_story.title,
-      story_body: formData.heritage_story.story_body,
+      title: formData.heritage_story.title.trim(),
+      story_body: formData.heritage_story.story_body.trim(),
       is_published: true,
       sort_order: 1
     };
@@ -354,8 +444,7 @@ export async function updateTiffin(tiffinId, formData, files) {
   // 3. Replace the single heritage story video if a new file is provided.
   let mediaResult = null;
   if (uploadedVideo) {
-    const existingVideo = (formData.heritage_media || [])
-      .find(media => media.media_type === 'video');
+    const existingVideo = existingMedia[0] || null;
     const mediaPayload = {
       media_type: 'video',
       title: formData.heritage_story.title || 'Heritage Story Video',
@@ -386,7 +475,7 @@ export async function updateTiffin(tiffinId, formData, files) {
   return {
     ...updatedTiffin,
     heritage_stories: updatedStory ? [updatedStory] : [],
-    heritage_media: mediaResult ? [mediaResult] : (formData.heritage_media || []),
+    heritage_media: mediaResult ? [mediaResult] : existingMedia,
     tiffin_qr_codes: formData.tiffin_qr_codes || [],
   };
 }
@@ -395,11 +484,19 @@ export async function updateTiffin(tiffinId, formData, files) {
  * Deactivate a Tiffin (Soft Delete)
  */
 export async function deactivateTiffin(tiffinId) {
+  const tiffin = await assertTiffinExists(tiffinId);
+  if (tiffin.status === 'inactive') {
+    throw new Error('This Heritage Tiffin is already inactive.');
+  }
+
   const [updatedTiffin] = await updateRows(
     'heritage_tiffins',
     { status: 'inactive', updated_at: new Date().toISOString() },
     q => q.eq('heritage_tiffin_id', tiffinId)
   );
+  if (!updatedTiffin) {
+    throw new Error('The selected Heritage Tiffin could not be deactivated. Refresh and try again.');
+  }
   return updatedTiffin;
 }
 
@@ -418,6 +515,11 @@ export async function deactivateTiffin(tiffinId) {
  * @returns {Promise<Object>} The tiffin_qr_codes row.
  */
 export async function generateTiffinQrCode(tiffinId) {
+  const tiffin = await assertTiffinExists(tiffinId);
+  if (tiffin.status === 'inactive') {
+    throw new Error('An inactive Heritage Tiffin cannot have an active QR code generated.');
+  }
+
   // Check for existing QR to prevent duplicates
   const existing = await queryRows(
     'tiffin_qr_codes',
@@ -429,7 +531,7 @@ export async function generateTiffinQrCode(tiffinId) {
     return existing[0];
   }
 
-  const year = new Date().getFullYear();
+  const year = tiffin.release_year || new Date().getFullYear();
   const codeValue = `MKK-${tiffinId}-${year}`;
 
   const payload = {
@@ -439,6 +541,22 @@ export async function generateTiffinQrCode(tiffinId) {
     generated_at: new Date().toISOString(),
   };
 
-  const [inserted] = await insertRows('tiffin_qr_codes', [payload]);
-  return inserted;
+  try {
+    const [inserted] = await insertRows('tiffin_qr_codes', [payload]);
+    if (!inserted) throw new Error('The QR code could not be saved.');
+    return inserted;
+  } catch (error) {
+    // Two administrators can request the same edition at nearly the same
+    // moment. The database unique constraint decides the winner; return that
+    // row to make this operation safely idempotent.
+    if (error?.code === '23505') {
+      const concurrentResult = await queryRows(
+        'tiffin_qr_codes',
+        '*',
+        query => query.eq('heritage_tiffin_id', tiffinId).limit(1)
+      );
+      if (concurrentResult[0]) return concurrentResult[0];
+    }
+    throw error;
+  }
 }

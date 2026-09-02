@@ -5,13 +5,14 @@ import {
   SIZE_LIMITS,
 } from '../../../services/cloudinary/upload';
 import VendorLocationPicker from './VendorLocationPicker';
-import { hasValidVendorLocation } from '../services/vendorLocation';
 import {
-  CONTACT_NUMBER_ERROR,
   CONTACT_NUMBER_PLACEHOLDER,
-  isValidContactNumber,
   normalizeContactNumber,
 } from '../services/vendorContact';
+import {
+  validateOperatingHours,
+  validateVendorInput,
+} from '../services/vendorValidation';
 
 const DEFAULT_HOURS = Array.from({ length: 7 }, (_, i) => ({
   day_of_week: i,
@@ -54,12 +55,16 @@ function initialFormData(vendor) {
 }
 
 function initialHours(vendor) {
-  if (!vendor?.vendor_operating_hours?.length) return DEFAULT_HOURS;
+  if (!vendor) return DEFAULT_HOURS.map(hours => ({ ...hours }));
+
+  const existingHours = vendor.vendor_operating_hours || [];
   return DEFAULT_HOURS.map(defaultDay => {
-    const existing = vendor.vendor_operating_hours.find(
-      hours => hours.day_of_week === defaultDay.day_of_week
+    const existing = existingHours.find(
+      hours => Number(hours.day_of_week) === defaultDay.day_of_week
     );
-    return existing ? { ...existing } : defaultDay;
+    return existing
+      ? { ...existing }
+      : { ...defaultDay, is_closed: true };
   });
 }
 
@@ -80,6 +85,7 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
   );
   const coverImageInputRef = useRef(null);
   const coverImageObjectUrl = useRef(null);
+  const formRef = useRef(null);
 
   // Complex relation state
   const [selectedFoods, setSelectedFoods] = useState(
@@ -118,8 +124,12 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
       setSelectedTiffins([]);
     }
     setFormData(prev => ({ ...prev, [name]: value }));
-    if (errors[name]) {
-      setErrors(prev => ({ ...prev, [name]: null }));
+    if (errors[name] || (name === 'participation_status' && errors.operating_hours)) {
+      setErrors(prev => ({
+        ...prev,
+        [name]: null,
+        ...(name === 'participation_status' ? { operating_hours: null } : {}),
+      }));
     }
   };
 
@@ -212,20 +222,51 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
     setOperatingHours(prev => 
       prev.map(oh => oh.day_of_week === dayOfWeek ? { ...oh, [field]: value } : oh)
     );
+    setErrors(prev => {
+      if (!prev.operating_hours) return prev;
+      const nextOperatingHoursErrors = { ...prev.operating_hours };
+      delete nextOperatingHoursErrors[dayOfWeek];
+      delete nextOperatingHoursErrors._form;
+      return {
+        ...prev,
+        operating_hours: Object.keys(nextOperatingHoursErrors).length > 0
+          ? nextOperatingHoursErrors
+          : null,
+      };
+    });
+  };
+
+  const handleHourBlur = (dayOfWeek) => {
+    const nextValidation = validateOperatingHours(
+      operatingHours,
+      formData.participation_status,
+    );
+    setErrors(prev => {
+      const nextOperatingHoursErrors = { ...(prev.operating_hours || {}) };
+      if (nextValidation[dayOfWeek]) {
+        nextOperatingHoursErrors[dayOfWeek] = nextValidation[dayOfWeek];
+      } else {
+        delete nextOperatingHoursErrors[dayOfWeek];
+      }
+      if (nextValidation._form) {
+        nextOperatingHoursErrors._form = nextValidation._form;
+      } else {
+        delete nextOperatingHoursErrors._form;
+      }
+      return {
+        ...prev,
+        operating_hours: Object.keys(nextOperatingHoursErrors).length > 0
+          ? nextOperatingHoursErrors
+          : null,
+      };
+    });
   };
 
   const validate = () => {
-    const newErrors = {};
-    if (!formData.vendor_name?.trim()) newErrors.vendor_name = 'Vendor Name is required.';
-    if (!formData.business_type) newErrors.business_type = 'Business Type is required.';
-    if (!formData.state_id) newErrors.state_id = 'State is required.';
-    if (!isValidContactNumber(formData.contact_number)) {
-      newErrors.contact_number = CONTACT_NUMBER_ERROR;
-    }
-    if (!hasValidVendorLocation(formData)) {
-      newErrors.location = 'Search for and confirm the vendor location before saving.';
-    }
-    return newErrors;
+    return validateVendorInput({
+      ...formData,
+      operating_hours: operatingHours,
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -234,6 +275,13 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
     const validationErrors = validate();
     if (Object.keys(validationErrors).length > 0) {
       setErrors(validationErrors);
+      requestAnimationFrame(() => {
+        const firstInvalid = formRef.current?.querySelector(
+          '[aria-invalid="true"], [data-validation-error="true"]'
+        );
+        firstInvalid?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        firstInvalid?.focus?.({ preventScroll: true });
+      });
       return;
     }
 
@@ -266,7 +314,7 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
       title={vendor ? 'Edit Heritage Vendor' : 'Add New Heritage Vendor'} 
       size="xl"
     >
-      <form onSubmit={handleSubmit} className="flex flex-col">
+      <form ref={formRef} onSubmit={handleSubmit} className="flex flex-col" noValidate>
         <div className="p-6 overflow-y-auto max-h-[80vh]">
           {errors.submit && (
             <div className="mb-6 rounded-lg border border-red-500/20 bg-red-50 p-4 text-sm text-red-600">
@@ -281,49 +329,70 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
               <h4 className="text-base font-semibold text-surface-900 border-b border-surface-200 pb-2 mb-4">Basic Information</h4>
               <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                 <div className="sm:col-span-2">
-                  <label htmlFor="vendor_name" className="block text-sm font-medium text-surface-900">Vendor Name</label>
+                  <label htmlFor="vendor_name" className="block text-sm font-medium text-surface-900">
+                    Vendor Name <span className="text-red-500" aria-hidden="true">*</span>
+                  </label>
                   <input
                     type="text"
                     id="vendor_name"
                     name="vendor_name"
                     value={formData.vendor_name}
                     onChange={handleChange}
+                    maxLength={150}
+                    aria-invalid={Boolean(errors.vendor_name)}
+                    aria-describedby={errors.vendor_name ? 'vendor-name-error' : undefined}
                     className={`mt-2 block w-full rounded-lg border ${errors.vendor_name ? 'border-red-500' : 'border-surface-300'} px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
                   />
-                  {errors.vendor_name && <p className="mt-1 text-xs text-red-500">{errors.vendor_name}</p>}
+                  {errors.vendor_name && <p id="vendor-name-error" className="mt-1 text-xs text-red-600" role="alert">{errors.vendor_name}</p>}
                 </div>
 
                 <div>
-                  <label htmlFor="business_type" className="block text-sm font-medium text-surface-900">Business Type</label>
+                  <label htmlFor="business_type" className="block text-sm font-medium text-surface-900">
+                    Business Type <span className="text-red-500" aria-hidden="true">*</span>
+                  </label>
                   <select
                     id="business_type"
                     name="business_type"
                     value={formData.business_type}
                     onChange={handleChange}
-                    required
-                    className="mt-2 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    aria-invalid={Boolean(errors.business_type)}
+                    aria-describedby={errors.business_type ? 'vendor-business-type-error' : undefined}
+                    className={`mt-2 block w-full rounded-lg border ${errors.business_type ? 'border-red-500' : 'border-surface-300'} px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
                   >
                     <option value="restaurant">Restaurant</option>
                     <option value="cafe">Cafe</option>
                     <option value="food_stall">Food Stall</option>
                     <option value="night_market_stall">Night Market Stall</option>
                   </select>
+                  {errors.business_type && (
+                    <p id="vendor-business-type-error" className="mt-1 text-xs text-red-600" role="alert">
+                      {errors.business_type}
+                    </p>
+                  )}
                 </div>
 
                 <div>
-                  <label htmlFor="participation_status" className="block text-sm font-medium text-surface-900">Participation Status</label>
+                  <label htmlFor="participation_status" className="block text-sm font-medium text-surface-900">
+                    Participation Status <span className="text-red-500" aria-hidden="true">*</span>
+                  </label>
                   <select
                     id="participation_status"
                     name="participation_status"
                     value={formData.participation_status}
                     onChange={handleChange}
-                    required
-                    className="mt-2 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    aria-invalid={Boolean(errors.participation_status)}
+                    aria-describedby={errors.participation_status ? 'vendor-participation-status-error' : undefined}
+                    className={`mt-2 block w-full rounded-lg border ${errors.participation_status ? 'border-red-500' : 'border-surface-300'} px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
                   >
                     <option value="active">Active</option>
                     <option value="pending">Pending</option>
                     <option value="inactive">Inactive</option>
                   </select>
+                  {errors.participation_status && (
+                    <p id="vendor-participation-status-error" className="mt-1 text-xs text-red-600" role="alert">
+                      {errors.participation_status}
+                    </p>
+                  )}
                 </div>
 
                 <div className="sm:col-span-2">
@@ -424,8 +493,12 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
                     name="contact_person"
                     value={formData.contact_person}
                     onChange={handleChange}
-                    className="mt-2 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    maxLength={100}
+                    aria-invalid={Boolean(errors.contact_person)}
+                    aria-describedby={errors.contact_person ? 'vendor-contact-person-error' : undefined}
+                    className={`mt-2 block w-full rounded-lg border ${errors.contact_person ? 'border-red-500' : 'border-surface-300'} px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
                   />
+                  {errors.contact_person && <p id="vendor-contact-person-error" className="mt-1 text-xs text-red-600" role="alert">{errors.contact_person}</p>}
                 </div>
                 <div>
                   <label htmlFor="contact_number" className="block text-sm font-medium text-surface-900">Contact Number</label>
@@ -462,8 +535,12 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
                     name="email"
                     value={formData.email}
                     onChange={handleChange}
-                    className="mt-2 block w-full rounded-lg border border-surface-300 px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                    maxLength={150}
+                    aria-invalid={Boolean(errors.email)}
+                    aria-describedby={errors.email ? 'vendor-email-error' : undefined}
+                    className={`mt-2 block w-full rounded-lg border ${errors.email ? 'border-red-500' : 'border-surface-300'} px-3 py-2 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
                   />
+                  {errors.email && <p id="vendor-email-error" className="mt-1 text-xs text-red-600" role="alert">{errors.email}</p>}
                 </div>
 
                 <div className="sm:col-span-2">
@@ -512,43 +589,75 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
             {/* Operating Hours */}
             <div>
               <h4 className="text-base font-semibold text-surface-900 border-b border-surface-200 pb-2 mb-4">Operating Hours</h4>
+              <p className="mb-3 text-xs leading-5 text-surface-500">
+                Opening and closing times must be different. A closing time earlier than the opening time is treated as the next day.
+              </p>
+              {errors.operating_hours?._form && (
+                <p
+                  className="mb-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-medium text-red-700"
+                  role="alert"
+                  tabIndex={-1}
+                  data-validation-error="true"
+                >
+                  {errors.operating_hours._form}
+                </p>
+              )}
               <div className="space-y-3">
-                {operatingHours.map((oh) => (
-                  <div key={oh.day_of_week} className="flex items-center gap-4 text-sm">
-                    <div className="w-24 font-medium text-surface-900">
-                      {DAYS[oh.day_of_week]}
-                    </div>
-                    <label className="flex items-center gap-2">
-                      <input 
-                        type="checkbox" 
-                        checked={oh.is_closed}
-                        onChange={(e) => handleHourChange(oh.day_of_week, 'is_closed', e.target.checked)}
-                        className="rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-                      />
-                      <span>Closed</span>
-                    </label>
-                    
-                    {!oh.is_closed && (
-                      <div className="flex items-center gap-2 flex-1">
-                        <input 
-                          type="time" 
-                          step="1"
-                          value={oh.opening_time || '00:00:00'}
-                          onChange={(e) => handleHourChange(oh.day_of_week, 'opening_time', e.target.value)}
-                          className="rounded-lg border border-surface-300 px-2 py-1 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                        />
-                        <span>to</span>
-                        <input 
-                          type="time" 
-                          step="1"
-                          value={oh.closing_time || '00:00:00'}
-                          onChange={(e) => handleHourChange(oh.day_of_week, 'closing_time', e.target.value)}
-                          className="rounded-lg border border-surface-300 px-2 py-1 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500"
-                        />
+                {operatingHours.map((oh) => {
+                  const dayError = errors.operating_hours?.[oh.day_of_week];
+                  const errorId = `vendor-hours-${oh.day_of_week}-error`;
+                  return (
+                    <div key={oh.day_of_week}>
+                      <div className={`flex flex-wrap items-center gap-4 rounded-lg border p-3 text-sm ${dayError ? 'border-red-300 bg-red-50/60' : 'border-surface-200 bg-surface-50'}`}>
+                        <div className="w-24 font-medium text-surface-900">
+                          {DAYS[oh.day_of_week]}
+                        </div>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={oh.is_closed}
+                            onChange={(e) => handleHourChange(oh.day_of_week, 'is_closed', e.target.checked)}
+                            className="rounded border-surface-300 text-primary-600 focus:ring-primary-500"
+                          />
+                          <span>Closed</span>
+                        </label>
+
+                        {!oh.is_closed && (
+                          <div className="flex min-w-64 flex-1 flex-wrap items-center gap-2">
+                            <input
+                              type="time"
+                              step="1"
+                              value={oh.opening_time || '00:00:00'}
+                              onChange={(e) => handleHourChange(oh.day_of_week, 'opening_time', e.target.value)}
+                              onBlur={() => handleHourBlur(oh.day_of_week)}
+                              aria-label={`Opening time for ${DAYS[oh.day_of_week]}`}
+                              aria-invalid={Boolean(dayError)}
+                              aria-describedby={dayError ? errorId : undefined}
+                              className={`rounded-lg border ${dayError ? 'border-red-500' : 'border-surface-300'} px-2 py-1 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
+                            />
+                            <span className="text-surface-500">to</span>
+                            <input
+                              type="time"
+                              step="1"
+                              value={oh.closing_time || '00:00:00'}
+                              onChange={(e) => handleHourChange(oh.day_of_week, 'closing_time', e.target.value)}
+                              onBlur={() => handleHourBlur(oh.day_of_week)}
+                              aria-label={`Closing time for ${DAYS[oh.day_of_week]}`}
+                              aria-invalid={Boolean(dayError)}
+                              aria-describedby={dayError ? errorId : undefined}
+                              className={`rounded-lg border ${dayError ? 'border-red-500' : 'border-surface-300'} px-2 py-1 focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500`}
+                            />
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
-                ))}
+                      {dayError && (
+                        <p id={errorId} className="mt-1 text-xs font-medium text-red-600" role="alert">
+                          {DAYS[oh.day_of_week]}: {dayError}
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
 

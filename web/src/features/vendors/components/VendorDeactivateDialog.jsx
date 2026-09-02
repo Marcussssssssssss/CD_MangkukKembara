@@ -1,6 +1,12 @@
 import Modal from '../../../components/Modal';
 
-export default function VendorDeactivateDialog({ vendor, isOpen, onClose, onConfirm }) {
+export default function VendorDeactivateDialog({
+  vendor,
+  isOpen,
+  onClose,
+  onConfirm,
+  isProcessing = false,
+}) {
   if (!vendor) return null;
 
   return (
@@ -27,17 +33,19 @@ export default function VendorDeactivateDialog({ vendor, isOpen, onClose, onConf
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
           <button
             type="button"
-            className="inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-surface-900 shadow-sm ring-1 ring-inset ring-surface-300 hover:bg-surface-50 sm:w-auto"
+            className="inline-flex w-full justify-center rounded-lg bg-white px-3 py-2 text-sm font-semibold text-surface-900 shadow-sm ring-1 ring-inset ring-surface-300 hover:bg-surface-50 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             onClick={onClose}
+            disabled={isProcessing}
           >
             Cancel
           </button>
           <button
             type="button"
-            className="inline-flex w-full justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 sm:w-auto"
+            className="inline-flex w-full justify-center rounded-lg bg-red-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-red-500 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
             onClick={() => onConfirm(vendor.vendor_id)}
+            disabled={isProcessing}
           >
-            Deactivate
+            {isProcessing ? 'Deactivating…' : 'Deactivate'}
           </button>
         </div>
       </div>

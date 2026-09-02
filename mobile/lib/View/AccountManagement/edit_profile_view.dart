@@ -9,6 +9,7 @@ import '../../core/app_colors.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../ViewModel/AccountManagement/profile_view_model.dart';
 import '../Widgets/error_state_widget.dart';
+import 'change_email_dialog.dart';
 
 /// D6. Edit Profile View.
 class EditProfileView extends StatefulWidget {
@@ -347,6 +348,25 @@ ZW|Zimbabwe
     );
   }
 
+  Future<void> _changeEmail(AuthViewModel auth) async {
+    final currentEmail = auth.currentUser?.email;
+    if (currentEmail == null || currentEmail.isEmpty) return;
+    final pendingEmail = await showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => ChangeEmailDialog(currentEmail: currentEmail),
+    );
+    if (pendingEmail == null || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Verification sent to $pendingEmail. Confirm the new inbox first, then approve the same change from your current inbox.',
+        ),
+        duration: const Duration(seconds: 20),
+      ),
+    );
+  }
+
   Future<void> _selectCountry() async {
     final code = await showModalBottomSheet<String>(
       context: context,
@@ -581,13 +601,40 @@ ZW|Zimbabwe
                             const SizedBox(height: 16),
 
                             _label('Email'),
-                            TextFormField(
-                              initialValue: auth.currentUser?.email,
-                              enabled: false,
-                              decoration: const InputDecoration(
-                                prefixIcon: Icon(Icons.email_outlined),
+                            InputDecorator(
+                              decoration: InputDecoration(
+                                prefixIcon: const Icon(Icons.email_outlined),
+                                suffixIcon: TextButton(
+                                  onPressed: () => _changeEmail(auth),
+                                  child: const Text('Change'),
+                                ),
                               ),
+                              child: Text(auth.currentUser?.email ?? ''),
                             ),
+                            if (auth.currentUser?.pendingEmail != null) ...[
+                              const SizedBox(height: 8),
+                              Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  const Icon(
+                                    Icons.schedule_send_outlined,
+                                    size: 17,
+                                    color: AppColors.warning,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      'Pending verification: ${auth.currentUser!.pendingEmail}',
+                                      style: const TextStyle(
+                                        color: AppColors.textSecondary,
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                             const SizedBox(height: 16),
 
                             _label('Country Code'),

@@ -1,10 +1,11 @@
 import { supabase, queryRows, insertRows, updateRows, deleteRows } from '../../../services/supabase/api';
 import { uploadVendorImage } from '../../../services/cloudinary/upload';
+import { normalizeContactNumber } from './vendorContact';
 import {
-  CONTACT_NUMBER_ERROR,
-  isValidContactNumber,
-  normalizeContactNumber,
-} from './vendorContact';
+  firstVendorValidationMessage,
+  normalizeOperatingHours,
+  validateVendorInput,
+} from './vendorValidation';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -31,6 +32,39 @@ async function getNextId(table, column, prefix) {
 function toRelationArray(relation) {
   if (!relation) return [];
   return Array.isArray(relation) ? relation : [relation];
+}
+
+async function assertVendorExists(vendorId) {
+  if (!/^V[0-9]{4}$/.test(vendorId || '')) {
+    throw new Error('A valid Vendor is required.');
+  }
+  const vendors = await queryRows(
+    'vendors',
+    'vendor_id, participation_status',
+    query => query.eq('vendor_id', vendorId).limit(1),
+  );
+  if (!vendors[0]) throw new Error('The selected Vendor no longer exists.');
+  return vendors[0];
+}
+
+async function assertVendorIdentityAvailable(formData, currentVendorId = null) {
+  const vendorName = formData.vendor_name.trim();
+  const addressLine = formData.address_line.trim();
+  const duplicates = await queryRows(
+    'vendors',
+    'vendor_id',
+    query => {
+      const duplicateQuery = query
+        .eq('vendor_name', vendorName)
+        .eq('address_line', addressLine);
+      return currentVendorId
+        ? duplicateQuery.neq('vendor_id', currentVendorId).limit(1)
+        : duplicateQuery.limit(1);
+    },
+  );
+  if (duplicates.length > 0) {
+    throw new Error('A Vendor with this name and address already exists.');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -75,18 +109,41 @@ export async function fetchReferenceData() {
 }
 
 async function assertVendorSelectionsMatchState(formData) {
-  const selectedFoodIds = formData.selected_foods || [];
-  const selectedTiffinIds = (formData.selected_tiffins || [])
-    .map(tiffin => tiffin.heritage_tiffin_id);
+  const validationErrors = validateVendorInput(formData);
+  if (Object.keys(validationErrors).length > 0) {
+    throw new Error(firstVendorValidationMessage(validationErrors));
+  }
 
-  if (selectedTiffinIds.length > 1) {
+  if (formData.selected_foods && !Array.isArray(formData.selected_foods)) {
+    throw new Error('Heritage Food selections are invalid.');
+  }
+  if (formData.selected_tiffins && !Array.isArray(formData.selected_tiffins)) {
+    throw new Error('Tiffin selections are invalid.');
+  }
+
+  const rawFoodIds = formData.selected_foods || [];
+  const selectedFoodIds = [...new Set(rawFoodIds)];
+  const rawTiffinIds = (formData.selected_tiffins || [])
+    .map(tiffin => tiffin.heritage_tiffin_id);
+  const selectedTiffinIds = [...new Set(rawTiffinIds)];
+
+  if (selectedFoodIds.length !== rawFoodIds.length) {
+    throw new Error('A Heritage Food cannot be selected more than once.');
+  }
+  if (selectedTiffinIds.length !== rawTiffinIds.length || selectedTiffinIds.length > 1) {
     throw new Error('A Vendor can be assigned to only one Tiffin edition.');
   }
-  if (!isValidContactNumber(formData.contact_number)) {
-    throw new Error(CONTACT_NUMBER_ERROR);
+  if (selectedFoodIds.some(foodId => !/^HF[0-9]{4}$/.test(foodId || ''))) {
+    throw new Error('One or more Heritage Food selections are invalid.');
+  }
+  if (selectedTiffinIds.some(tiffinId => !/^HT[0-9]{4}$/.test(tiffinId || ''))) {
+    throw new Error('The selected Tiffin edition is invalid.');
   }
 
-  const [foods, tiffins] = await Promise.all([
+  const [states, foods, tiffins] = await Promise.all([
+    queryRows('states', 'state_id', query => (
+      query.eq('state_id', formData.state_id).eq('is_active', true).limit(1)
+    )),
     selectedFoodIds.length
       ? queryRows('heritage_foods', 'heritage_food_id, state_id', query => (
         query.in('heritage_food_id', selectedFoodIds).eq('is_active', true)
@@ -99,6 +156,9 @@ async function assertVendorSelectionsMatchState(formData) {
       : [],
   ]);
 
+  if (!states[0]) {
+    throw new Error('The selected Vendor state is no longer active.');
+  }
   if (
     foods.length !== selectedFoodIds.length
     || foods.some(food => food.state_id !== formData.state_id)
@@ -118,6 +178,9 @@ async function assertVendorSelectionsMatchState(formData) {
  */
 export async function createVendor(formData) {
   await assertVendorSelectionsMatchState(formData);
+  await assertVendorIdentityAvailable(formData);
+
+  const normalizedHours = normalizeOperatingHours(formData.operating_hours);
   const imageResult = formData.cover_image_file
     ? await uploadVendorImage(formData.cover_image_file)
     : null;
@@ -126,12 +189,12 @@ export async function createVendor(formData) {
   // 1. Insert Vendor
   const vendorPayload = {
     vendor_id: vendorId,
-    vendor_name: formData.vendor_name,
+    vendor_name: formData.vendor_name.trim(),
     business_type: formData.business_type,
-    description: formData.description,
-    contact_person: formData.contact_person,
+    description: formData.description?.trim() || null,
+    contact_person: formData.contact_person?.trim() || null,
     contact_number: normalizeContactNumber(formData.contact_number) || null,
-    email: formData.email,
+    email: formData.email?.trim() || null,
     address_line: formData.address_line.trim(),
     latitude: Number(formData.latitude),
     longitude: Number(formData.longitude),
@@ -146,14 +209,14 @@ export async function createVendor(formData) {
   const [insertedVendor] = await insertRows('vendors', [vendorPayload]);
 
   // 2. Insert Operating Hours
-  if (formData.operating_hours && formData.operating_hours.length > 0) {
+  if (normalizedHours.length > 0) {
     // In a real high concurrency environment, getting next ID iteratively like this could collide. 
     // Usually UUIDs are better, but we are adhering to the exact schema VOH0000 format.
     // To prevent collision in this loop, we generate them sequentially or use a fixed counter.
     // Let's improve the ID generator for batch.
     const baseHourId = await getNextId('vendor_operating_hours', 'vendor_operating_hours_id', 'VOH');
     const baseHourNum = parseInt(baseHourId.replace('VOH', ''), 10);
-    const safeHoursPayload = formData.operating_hours.map((oh, index) => ({
+    const safeHoursPayload = normalizedHours.map((oh, index) => ({
       vendor_operating_hours_id: `VOH${String(baseHourNum + index).padStart(4, '0')}`,
       vendor_id: vendorId,
       day_of_week: oh.day_of_week,
@@ -195,18 +258,22 @@ export async function createVendor(formData) {
  * Update an existing Vendor.
  */
 export async function updateVendor(vendorId, formData) {
+  await assertVendorExists(vendorId);
   await assertVendorSelectionsMatchState(formData);
+  await assertVendorIdentityAvailable(formData, vendorId);
+
+  const normalizedHours = normalizeOperatingHours(formData.operating_hours);
   const imageResult = formData.cover_image_file
     ? await uploadVendorImage(formData.cover_image_file)
     : null;
   // 1. Update Vendor Basic Info
   const vendorPayload = {
-    vendor_name: formData.vendor_name,
+    vendor_name: formData.vendor_name.trim(),
     business_type: formData.business_type,
-    description: formData.description,
-    contact_person: formData.contact_person,
+    description: formData.description?.trim() || null,
+    contact_person: formData.contact_person?.trim() || null,
     contact_number: normalizeContactNumber(formData.contact_number) || null,
-    email: formData.email,
+    email: formData.email?.trim() || null,
     address_line: formData.address_line.trim(),
     latitude: Number(formData.latitude),
     longitude: Number(formData.longitude),
@@ -222,17 +289,20 @@ export async function updateVendor(vendorId, formData) {
     vendorPayload, 
     q => q.eq('vendor_id', vendorId)
   );
+  if (!updatedVendor) {
+    throw new Error('The selected Vendor could not be updated. Refresh and try again.');
+  }
 
   // For relations, the simplest approach for an admin panel is to delete all existing and re-insert,
   // OR update them one by one. Given we don't have cascade delete on everything or we might lose PKs,
   // we will perform deletion then insertion to keep it perfectly synced.
 
   // 2. Sync Operating Hours
-  if (formData.operating_hours) {
+  if (normalizedHours) {
     await deleteRows('vendor_operating_hours', q => q.eq('vendor_id', vendorId));
     const baseHourId = await getNextId('vendor_operating_hours', 'vendor_operating_hours_id', 'VOH');
     const baseHourNum = parseInt(baseHourId.replace('VOH', ''), 10);
-    const safeHoursPayload = formData.operating_hours.map((oh, index) => ({
+    const safeHoursPayload = normalizedHours.map((oh, index) => ({
       vendor_operating_hours_id: `VOH${String(baseHourNum + index).padStart(4, '0')}`,
       vendor_id: vendorId,
       day_of_week: oh.day_of_week,
@@ -282,10 +352,18 @@ export async function updateVendor(vendorId, formData) {
  * Deactivate a Vendor (Soft Delete)
  */
 export async function deactivateVendor(vendorId) {
+  const vendor = await assertVendorExists(vendorId);
+  if (vendor.participation_status === 'inactive') {
+    throw new Error('This Vendor is already inactive.');
+  }
+
   const [updatedVendor] = await updateRows(
     'vendors',
     { participation_status: 'inactive', updated_at: new Date().toISOString() },
     q => q.eq('vendor_id', vendorId)
   );
+  if (!updatedVendor) {
+    throw new Error('The selected Vendor could not be deactivated. Refresh and try again.');
+  }
   return updatedVendor;
 }

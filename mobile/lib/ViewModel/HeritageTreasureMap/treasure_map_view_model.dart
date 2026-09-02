@@ -47,6 +47,7 @@ class TreasureMapViewModel extends ChangeNotifier {
   String get errorMessage => _errorMessage;
   MapViewMode get viewMode => _viewMode;
   String get searchQuery => _searchQuery;
+  bool get hasSearchQuery => _searchQuery.trim().isNotEmpty;
   String get selectedState => _selectedState;
   String get selectedFoodCategory => _selectedFoodCategory;
   VendorModel? get previewVendor => _previewVendor;

@@ -66,6 +66,20 @@ class SupabaseApiService {
   Future<UserResponse> updatePassword(String password) =>
       guard(() => client.auth.updateUser(UserAttributes(password: password)));
 
+  Future<UserResponse> updateEmail(
+    String email, {
+    required String currentPassword,
+    required String emailRedirectTo,
+  }) => guard(
+    () => client.auth.updateUser(
+      UserAttributes(
+        email: email.trim().toLowerCase(),
+        currentPassword: currentPassword,
+      ),
+      emailRedirectTo: emailRedirectTo,
+    ),
+  );
+
   /// Calls the four-view artwork submission RPC.
   ///
   /// Keeping this operation here ensures repositories do not need to own the

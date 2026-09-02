@@ -186,6 +186,10 @@ Expected result: zero rows.
   heritage content, and visible artwork campaigns.
 - Logged-out users cannot query full records from `profiles`.
 - Registration asks for email verification before login.
+- Editing an account email asks for the current password, leaves the old email
+  active, and sends verification messages according to Supabase Auth's secure
+  email-change setting. In the hosted Supabase dashboard, keep **Secure email
+  change** enabled and allow-list the `EMAIL_CONFIRMATION_REDIRECT` URL.
 - A verified user can log in and is routed to the Treasure Map.
 - My Account loads the authenticated user's linked profile without a
   single-object coercion error.
