@@ -10,7 +10,7 @@ export default function VendorDeactivateDialog({
   if (!vendor) return null;
 
   return (
-    <Modal open={isOpen} onClose={onClose} title="Deactivate Vendor">
+    <Modal open={isOpen} onClose={onClose} title="Deactivate Vendor" closeOnBackdrop={false}>
       <div className="p-6">
         <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-100">
           <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth="1.5" stroke="currentColor">

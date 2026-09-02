@@ -42,9 +42,9 @@ export default function VendorDetails({ vendor, isOpen, onClose, onEdit }) {
     : [];
 
   return (
-    <Modal open={isOpen} onClose={onClose} title="Vendor Details" size="xl">
-      <div className="flex max-h-[calc(100dvh-7rem)] flex-col">
-        <div className="min-h-0 overflow-y-auto">
+    <Modal open={isOpen} onClose={onClose} title="Vendor Details" size="xl" closeOnBackdrop={false}>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <div className="flex flex-col md:flex-row">
             {/* Left Side: Image and operating hours */}
             <div className="flex w-full shrink-0 flex-col border-surface-200 md:w-1/3 md:border-r">
