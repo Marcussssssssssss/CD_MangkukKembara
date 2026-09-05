@@ -500,9 +500,10 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
       (vendor) => Marker(
         markerId: MarkerId('vendor_${vendor.id}'),
         position: LatLng(vendor.latitude, vendor.longitude),
-        icon:
-            _restaurantMarkerIcon ??
-            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        // Custom assets are shared across platforms. The plain default marker
+        // is the loading/error fallback because defaultMarkerWithHue is not
+        // implemented by google_maps_flutter_web.
+        icon: _restaurantMarkerIcon ?? BitmapDescriptor.defaultMarker,
         anchor: const Offset(.5, .85),
         zIndexInt: 2,
         infoWindow: InfoWindow(title: vendor.name, snippet: vendor.address),
@@ -513,9 +514,7 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
       (market) => Marker(
         markerId: MarkerId('market_${market.id}'),
         position: LatLng(market.latitude, market.longitude),
-        icon:
-            _nightMarketMarkerIcon ??
-            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+        icon: _nightMarketMarkerIcon ?? BitmapDescriptor.defaultMarker,
         anchor: const Offset(.5, .85),
         zIndexInt: 1,
         infoWindow: InfoWindow(title: market.name, snippet: market.address),
