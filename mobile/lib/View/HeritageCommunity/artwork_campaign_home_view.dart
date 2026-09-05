@@ -507,7 +507,7 @@ class _ArtworkGalleryHeader extends StatelessWidget {
                 ),
                 ButtonSegment(
                   value: 'New',
-                  label: Text('Fresh'),
+                  label: Text('New'),
                   icon: Icon(Icons.auto_awesome_rounded),
                 ),
               ],
