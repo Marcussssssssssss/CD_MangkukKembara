@@ -567,6 +567,9 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
             buildingsEnabled: true,
             mapToolbarEnabled: false,
             zoomControlsEnabled: false,
+            // The Maps JavaScript API exposes a separate camera control on
+            // web; zoomControlsEnabled only covers the legacy +/- controls.
+            webCameraControlEnabled: false,
             onMapCreated: (controller) {
               _controller = controller;
               WidgetsBinding.instance.addPostFrameCallback(

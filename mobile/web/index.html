@@ -13,15 +13,45 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="MangkukKembara">
 
-  <!--
-    google_maps_flutter_web expects the Maps JavaScript API to exist before
-    Flutter starts. Use a browser-referrer-restricted key in production.
-  -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD2UZsL47qzn0TysIh2fplKbpKZeaKI1vg"></script>
+  <!-- google_maps_flutter_web requires google.maps before Flutter starts. -->
+  <script>
+    window.googleMapsReady = new Promise((resolve, reject) => {
+      window.initGoogleMaps = () => {
+        if (window.google && window.google.maps) {
+          resolve();
+        } else {
+          reject(new Error('Google Maps loaded without the maps namespace.'));
+        }
+      };
+
+      const mapsScript = document.createElement('script');
+      mapsScript.src = 'https://maps.googleapis.com/maps/api/js?key=AIzaSyAkKJJu77uNxawcDHeqhUxQQWxGTj-TLSI&v=weekly&loading=async&callback=initGoogleMaps';
+      mapsScript.async = true;
+      mapsScript.onerror = () => reject(new Error('Google Maps JavaScript API could not be loaded.'));
+      document.head.appendChild(mapsScript);
+    });
+  </script>
 
   <title>MangkukKembara</title>
 </head>
 <body>
-  <script src="flutter_bootstrap.js" async></script>
+  <script>
+    window.googleMapsReady
+      .then(() => {
+        const flutterScript = document.createElement('script');
+        flutterScript.src = 'flutter_bootstrap.js';
+        flutterScript.async = true;
+        document.body.appendChild(flutterScript);
+      })
+      .catch((error) => {
+        console.error(error);
+        document.body.innerHTML = `
+          <main style="box-sizing:border-box;max-width:430px;margin:64px auto;padding:24px;font:16px/1.5 sans-serif;color:#283427">
+            <h1 style="font-size:22px">Map service could not start</h1>
+            <p>${error.message}</p>
+            <p>Check this site's Google Maps API key and HTTP referrer restrictions, then reload the page.</p>
+          </main>`;
+      });
+  </script>
 </body>
 </html>
