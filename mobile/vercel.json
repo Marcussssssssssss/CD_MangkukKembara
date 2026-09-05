@@ -1,4 +1,7 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "git clone https://github.com/flutter/flutter.git --depth 1 --branch 3.44.8 /tmp/flutter && /tmp/flutter/bin/flutter build web --release",
+  "outputDirectory": "build/web",
   "rewrites": [
     {
       "source": "/(.*)",
