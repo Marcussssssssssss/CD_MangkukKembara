@@ -51,6 +51,7 @@ class CloudinaryApiService {
     required String folder,
     int maxBytes = 10 * 1024 * 1024,
     bool webpOnly = false,
+    bool uniqueFilename = false,
   }) async {
     _supabase.requireUser();
     final bytes = await file.readAsBytes();
@@ -75,6 +76,8 @@ class CloudinaryApiService {
         : file.mimeType ?? _mimeForExtension(extension);
     final uploadFilename = webpOnly
         ? 'artwork_${DateTime.now().millisecondsSinceEpoch}.webp'
+        : uniqueFilename
+        ? 'profile_${DateTime.now().microsecondsSinceEpoch}.$extension'
         : file.name;
     final session = _supabase.currentSession;
     if (session == null) throw const AuthenticationRequiredException();

@@ -37,21 +37,33 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
       child: Consumer<PasswordRecoveryViewModel>(
         builder: (ctx, vm, _) => Scaffold(
           backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Form(
+          appBar: AppBar(
+            backgroundColor: AppColors.background,
+            foregroundColor: AppColors.primary,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            leading: BackButton(
+              onPressed: () {
+                final navigator = Navigator.of(ctx);
+                if (navigator.canPop()) {
+                  navigator.pop();
+                } else {
+                  navigator.pushReplacementNamed(AppRoutes.login);
+                }
+              },
+            ),
+          ),
+          body: AuthPageLayout(
+            child: Transform.translate(
+              offset: const Offset(0, -64),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Form(
                 key: _formKey,
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Center(
-                      child: AuthBranding(
-                        subtitle: 'Recover your password',
-                        imageAsset: 'asset/image/mangkuk_kembara_logo_green.png',
-                      ),
-                    ),
-                    const SizedBox(height: 24),
                     const Icon(
                       Icons.lock_open_rounded,
                       size: 56,
@@ -172,19 +184,10 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
-                    Center(
-                      child: TextButton(
-                        onPressed: () => Navigator.pushReplacementNamed(
-                          ctx,
-                          AppRoutes.login,
-                        ),
-                        child: const Text('Back to Login'),
-                      ),
-                    ),
                   ],
                 ),
               ),
+            ),
             ),
           ),
         ),
