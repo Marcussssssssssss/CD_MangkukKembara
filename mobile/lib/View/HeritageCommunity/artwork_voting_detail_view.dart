@@ -8,14 +8,7 @@ import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
-
-// Artwork Story's palette is local so other community pages keep their styling.
-const _storyInk = Color(0xFF09251F);
-const _storyGreen = Color(0xFF406D49);
-const _storyGold = Color(0xFFFFCA35);
-const _storyBackground = 'asset/image/artwork_story_background.png';
-const _ideaBackground = 'asset/image/artwork_story_idea.png';
-const _cultureBackground = 'asset/image/artwork_story_culture.png';
+import 'heritage_community_style.dart';
 
 /// C7. Artwork Voting Detail View.
 class ArtworkVotingDetailView extends StatefulWidget {
@@ -51,22 +44,8 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
       child: Consumer2<ArtworkVotingViewModel, AuthViewModel>(
         builder: (ctx, vm, auth, _) {
           return Scaffold(
-            backgroundColor: Colors.white,
-            appBar: AppBar(
-              toolbarHeight: 44,
-              title: const Text('Artwork Story'),
-              titleTextStyle: const TextStyle(
-                color: _storyInk,
-                fontSize: 19,
-                fontWeight: FontWeight.w600,
-              ),
-              backgroundColor: Colors.white,
-              foregroundColor: _storyInk,
-              surfaceTintColor: Colors.transparent,
-              scrolledUnderElevation: 0,
-              elevation: 0,
-              centerTitle: false,
-            ),
+            backgroundColor: HeritageCommunityStyle.background,
+            appBar: heritageCommunityAppBar(title: 'Artwork Story'),
             body: vm.isLoading
                 ? const LoadingSpinner()
                 : vm.hasError || vm.selectedEntry == null
@@ -97,16 +76,70 @@ class _ArtworkVotingDetailViewState extends State<ArtworkVotingDetailView> {
   }
 
   Widget _buildContent(BuildContext ctx, ArtworkVotingViewModel vm) {
+    final e = vm.selectedEntry!;
     return SingleChildScrollView(
       physics: const AlwaysScrollableScrollPhysics(),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 600),
-          child: _ExploreTiffin(
-            entry: vm.selectedEntry!,
-            initialLayer: widget.initialLayer,
+      padding: const EdgeInsets.only(bottom: 28),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _ArtworkIntro(entry: e),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _ExploreTiffin(entry: e, initialLayer: widget.initialLayer),
           ),
-        ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 26, 16, 0),
+            child: Row(
+              children: [
+                Container(
+                  width: 4,
+                  height: 26,
+                  decoration: BoxDecoration(
+                    color: AppColors.accent,
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'The story within',
+                  style: Theme.of(ctx).textTheme.titleLarge?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            height: 230,
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              scrollDirection: Axis.horizontal,
+              physics: const BouncingScrollPhysics(),
+              children: [
+                _StoryCard(
+                  eyebrow: 'THE IDEA',
+                  title: 'Design narrative',
+                  body: e.designDescription,
+                  icon: Icons.draw_rounded,
+                  colors: const [Color(0xFFEAF2E6), Color(0xFFD6E5D1)],
+                  foreground: AppColors.primary,
+                ),
+                const SizedBox(width: 12),
+                _StoryCard(
+                  eyebrow: 'THE ROOTS',
+                  title: 'Cultural inspiration',
+                  body: e.culturalInspiration,
+                  icon: Icons.local_florist_rounded,
+                  colors: const [Color(0xFFFFF4D9), Color(0xFFFFE4A3)],
+                  foreground: AppColors.accentDark,
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -146,66 +179,99 @@ class _ArtworkIntro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 22, 22, 8),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 10, 16, 18),
+      padding: const EdgeInsets.fromLTRB(20, 20, 18, 18),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFFEAF2E6), Color(0xFFD6E5D1)],
+        ),
+        borderRadius: BorderRadius.circular(26),
+        border: Border.all(color: AppColors.primary, width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x1F335C31),
+            blurRadius: 18,
+            offset: Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Stack(
         children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-            decoration: BoxDecoration(
-              color: const Color(0xFFD9EDCD),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: const Text(
-              'FEATURED ARTWORK',
-              style: TextStyle(
-                color: _storyInk,
-                fontSize: 9,
-                letterSpacing: 1,
-                fontWeight: FontWeight.w500,
-              ),
+          const Positioned(
+            right: -18,
+            bottom: -30,
+            child: Icon(
+              Icons.palette_rounded,
+              size: 126,
+              color: Color(0x16335C31),
             ),
           ),
-          const SizedBox(height: 5),
-          Text(
-            entry.artworkTitle,
-            style: const TextStyle(
-              color: _storyInk,
-              fontSize: 26,
-              fontWeight: FontWeight.w700,
-              height: 1.15,
-            ),
-          ),
-          const SizedBox(height: 5),
-          Row(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const CircleAvatar(
-                radius: 14,
-                backgroundColor: Color(0xFFDDE9D8),
-                child: Icon(Icons.person_rounded, size: 21, color: _storyGreen),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Text(
-                  'Created by ${entry.submitterName}',
-                  style: const TextStyle(color: _storyInk, fontSize: 14),
+              const Text(
+                'FEATURED ARTWORK',
+                style: TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 10,
+                  letterSpacing: 1.5,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 7,
-            runSpacing: 6,
-            children: [
-              _ArtworkStat(
-                icon: Icons.emoji_events_rounded,
-                label: 'Rank #${entry.currentRank}',
+              const SizedBox(height: 8),
+              Text(
+                entry.artworkTitle,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w900,
+                  height: 1.12,
+                ),
               ),
-              _ArtworkStat(
-                icon: Icons.favorite_rounded,
-                label: '${entry.voteCount} votes',
+              const SizedBox(height: 9),
+              Row(
+                children: [
+                  const CircleAvatar(
+                    radius: 14,
+                    backgroundColor: Color(0x52335C31),
+                    child: Icon(
+                      Icons.brush_rounded,
+                      size: 14,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Created by ${entry.submitterName}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _ArtworkStat(
+                    icon: Icons.emoji_events_rounded,
+                    label: 'Rank #${entry.currentRank}',
+                  ),
+                  _ArtworkStat(
+                    icon: Icons.favorite_rounded,
+                    label: '${entry.voteCount} votes',
+                  ),
+                ],
               ),
             ],
           ),
@@ -224,126 +290,27 @@ class _ArtworkStat extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
-        color: Colors.white.withAlpha(130),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: const Color(0xFFD9E2D6)),
+        color: const Color(0x8AFFFFFF),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.primaryContainer),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 15, color: _storyGreen),
-          const SizedBox(width: 7),
-          Text(label, style: const TextStyle(color: _storyInk, fontSize: 12)),
-        ],
-      ),
-    );
-  }
-}
-
-class _StoryCarousel extends StatefulWidget {
-  final ArtworkVotingEntryModel entry;
-
-  const _StoryCarousel({required this.entry});
-
-  @override
-  State<_StoryCarousel> createState() => _StoryCarouselState();
-}
-
-class _StoryCarouselState extends State<_StoryCarousel> {
-  final _controller = PageController(viewportFraction: .70);
-  int _page = 0;
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final entry = widget.entry;
-    final layers = [
-      entry.layer1Meaning,
-      entry.layer2Meaning,
-      entry.layer3Meaning,
-    ];
-    final layerStory = [
-      for (var i = 0; i < layers.length; i++)
-        if (layers[i].trim().isNotEmpty) 'Layer ${i + 1}: ${layers[i]}',
-    ].join('\n\n');
-    final cards = [
-      _StoryCard(
-        eyebrow: 'THE IDEA',
-        title: 'Design narrative',
-        body: entry.designDescription,
-        icon: Icons.draw_rounded,
-      ),
-      _StoryCard(
-        eyebrow: 'CULTURE',
-        title: 'Cultural roots',
-        body: entry.culturalInspiration,
-        icon: Icons.local_florist_rounded,
-        isCulture: true,
-      ),
-      _StoryCard(
-        eyebrow: 'THE DETAILS',
-        title: 'Layer meanings',
-        body: layerStory,
-        icon: Icons.layers_rounded,
-      ),
-    ];
-    return Column(
-      children: [
-        SizedBox(
-          height: 114 * MediaQuery.textScalerOf(context).scale(1).clamp(1, 2),
-          child: Padding(
-            padding: const EdgeInsets.only(left: 18),
-            child: PageView(
-              controller: _controller,
-              padEnds: false,
-              onPageChanged: (page) => setState(() => _page = page),
-              children: cards,
+          Icon(icon, size: 14, color: AppColors.primary),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
             ),
           ),
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(cards.length, (index) {
-            return Semantics(
-              label: 'Story ${index + 1} of ${cards.length}',
-              selected: _page == index,
-              button: true,
-              child: InkResponse(
-                radius: 16,
-                onTap: () => _controller.animateToPage(
-                  index,
-                  duration: const Duration(milliseconds: 250),
-                  curve: Curves.easeOut,
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 5,
-                    vertical: 9,
-                  ),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 180),
-                    width: 9,
-                    height: 9,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: _page == index
-                          ? _storyGreen
-                          : const Color(0xFFD4DED0),
-                    ),
-                  ),
-                ),
-              ),
-            );
-          }),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -353,14 +320,16 @@ class _StoryCard extends StatelessWidget {
   final String title;
   final String body;
   final IconData icon;
-  final bool isCulture;
+  final List<Color> colors;
+  final Color foreground;
 
   const _StoryCard({
     required this.eyebrow,
     required this.title,
     required this.body,
     required this.icon,
-    this.isCulture = false,
+    required this.colors,
+    required this.foreground,
   });
 
   @override
@@ -368,152 +337,74 @@ class _StoryCard extends StatelessWidget {
     final text = body.trim().isEmpty
         ? 'This part of the artwork’s story is waiting to be shared.'
         : body;
-    final foreground = isCulture ? const Color(0xFFCB810B) : _storyGreen;
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Material(
-        color: isCulture ? const Color(0xFFFFF8E6) : const Color(0xFFF0F5EC),
-        borderRadius: BorderRadius.circular(28),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: () => showModalBottomSheet<void>(
-            context: context,
-            showDragHandle: true,
-            isScrollControlled: true,
-            builder: (context) => SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 8, 24, 32),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        color: _storyInk,
-                        fontSize: 22,
-                        fontWeight: FontWeight.w700,
-                      ),
+    return Container(
+      width: MediaQuery.sizeOf(context).width * .78,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: colors,
+        ),
+        borderRadius: BorderRadius.circular(24),
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -12,
+            bottom: -18,
+            child: Icon(icon, size: 100, color: foreground.withAlpha(18)),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(7),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withAlpha(150),
+                      shape: BoxShape.circle,
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      text,
-                      style: const TextStyle(
-                        color: _storyInk,
-                        fontSize: 16,
-                        height: 1.5,
-                      ),
+                    child: Icon(icon, size: 17, color: foreground),
+                  ),
+                  const SizedBox(width: 9),
+                  Text(
+                    eyebrow,
+                    style: TextStyle(
+                      color: foreground.withAlpha(190),
+                      fontSize: 9,
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w900,
                     ),
-                  ],
+                  ),
+                ],
+              ),
+              const SizedBox(height: 15),
+              Text(
+                title,
+                style: TextStyle(
+                  color: foreground,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
-            ),
-          ),
-          child: Stack(
-            children: [
-              Positioned.fill(
-                child: _StoryCardBackground(isCulture: isCulture),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 9, 16, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        Container(
-                          width: 26,
-                          height: 26,
-                          decoration: const BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(icon, size: 17, color: foreground),
-                        ),
-                        const SizedBox(width: 6),
-                        Text(
-                          eyebrow,
-                          style: TextStyle(
-                            color: foreground,
-                            fontSize: 8,
-                            letterSpacing: .8,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: isCulture ? foreground : _storyInk,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: 55),
-                        child: Text(
-                          text,
-                          maxLines: 3,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: _storyInk,
-                            fontSize: 10.5,
-                            height: 1.4,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 8),
+              Expanded(
+                child: Text(
+                  text,
+                  maxLines: 5,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 13,
+                    height: 1.5,
+                  ),
                 ),
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Frame the supplied card artwork without its outer white margins.
-/// The original PNGs are kept intact; only their display bounds are cropped.
-class _StoryCardBackground extends StatelessWidget {
-  final bool isCulture;
-  const _StoryCardBackground({required this.isCulture});
-
-  @override
-  Widget build(BuildContext context) {
-    final source = isCulture
-        ? const Rect.fromLTWH(49, 171, 1350, 745)
-        : const Rect.fromLTWH(43, 116, 1366, 855);
-    return ExcludeSemantics(
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final scaleX = constraints.maxWidth / source.width;
-          final scaleY = constraints.maxHeight / source.height;
-          return ClipRect(
-            child: Stack(
-              children: [
-                Positioned(
-                  left: -source.left * scaleX,
-                  top: -source.top * scaleY,
-                  width: 1448 * scaleX,
-                  height: 1086 * scaleY,
-                  child: Image.asset(
-                    isCulture ? _cultureBackground : _ideaBackground,
-                    fit: BoxFit.fill,
-                    excludeFromSemantics: true,
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
+        ],
       ),
     );
   }
@@ -532,89 +423,44 @@ class _VoteBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      minimum: const EdgeInsets.fromLTRB(18, 0, 18, 16),
-      child: Center(
-        heightFactor: 1,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 564),
-          child: Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(32),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: hasVoted
-                    ? const [Color(0xFF6F926A), Color(0xFF406D49)]
-                    : const [
-                        Color(0xFF789774),
-                        Color(0xFF416D4C),
-                        Color(0xFF315B40),
-                      ],
+    return Material(
+      color: AppColors.surface,
+      elevation: 12,
+      shadowColor: Colors.black26,
+      child: SafeArea(
+        top: false,
+        minimum: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: hasVoted
+                  ? AppColors.successLight
+                  : AppColors.primary,
+              foregroundColor: hasVoted ? AppColors.success : Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
               ),
-              border: Border.all(color: const Color(0xFFACC2A7)),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x30496938),
-                  blurRadius: 16,
-                  offset: Offset(0, 7),
-                ),
-              ],
             ),
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(32),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: isVoting ? null : onVote,
-                child: Semantics(
-                  button: true,
-                  enabled: !isVoting,
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 13,
+            icon: isVoting
+                ? SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      color: hasVoted ? AppColors.success : Colors.white,
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (isVoting)
-                          const SizedBox.square(
-                            dimension: 19,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              color: Colors.white,
-                            ),
-                          )
-                        else
-                          Icon(
-                            hasVoted
-                                ? Icons.favorite_rounded
-                                : Icons.favorite_border_rounded,
-                            color: Colors.white,
-                            size: 21,
-                          ),
-                        const SizedBox(width: 12),
-                        Flexible(
-                          child: Text(
-                            hasVoted
-                                ? 'Voted (Tap to Unvote)'
-                                : 'Vote for This Artwork',
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                  )
+                : Icon(
+                    hasVoted
+                        ? Icons.check_circle_rounded
+                        : Icons.favorite_border_rounded,
                   ),
-                ),
-              ),
+            label: Text(
+              hasVoted ? 'Voted (Tap to Unvote)' : 'Vote for This Artwork',
+              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 15),
             ),
+            onPressed: isVoting ? null : onVote,
           ),
         ),
       ),
@@ -705,122 +551,154 @@ class _ExploreTiffinState extends State<_ExploreTiffin> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Row(
+          children: [
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Explore the artwork',
+                    style: TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Discover every side of the design',
+                    style: TextStyle(color: AppColors.textHint, fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: Text(
+                selectedItem.code,
+                key: ValueKey(selectedItem.code),
+                style: const TextStyle(
+                  color: AppColors.primary,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
         Container(
-          decoration: const BoxDecoration(
-            image: DecorationImage(
-              image: AssetImage(_storyBackground),
-              fit: BoxFit.fill,
+          height: 320,
+          width: double.infinity,
+          padding: const EdgeInsets.all(7),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [AppColors.accentLight, AppColors.primaryLight],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(27),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x26335C31),
+                blurRadius: 18,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            child: _TiffinImageViewer(
+              key: ValueKey(selectedItem.view),
+              item: selectedItem,
             ),
           ),
-          child: Column(
-            children: [
-              _ArtworkIntro(entry: widget.entry),
-              SizedBox(
-                height: (MediaQuery.sizeOf(context).width * .49).clamp(
-                  170,
-                  300,
-                ),
-                width: double.infinity,
-                child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 260),
-                  child: _TiffinImageViewer(
-                    key: ValueKey(selectedItem.view),
-                    item: selectedItem,
-                  ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            for (var index = 0; index < items.length; index++) ...[
+              Expanded(
+                child: _TiffinLayerButton(
+                  item: items[index],
+                  selected: items[index].view == _selected,
+                  onTap: () => setState(() => _selected = items[index].view),
                 ),
               ),
+              if (index != items.length - 1) const SizedBox(width: 6),
             ],
-          ),
+          ],
         ),
-        Padding(
-          padding: const EdgeInsets.fromLTRB(18, 4, 18, 0),
-          child: Row(
-            children: [
-              for (var index = 0; index < items.length; index++) ...[
-                Expanded(
-                  child: _TiffinLayerButton(
-                    item: items[index],
-                    selected: items[index].view == _selected,
-                    onTap: () => setState(() => _selected = items[index].view),
-                  ),
-                ),
-                if (index != items.length - 1) const SizedBox(width: 4),
-              ],
-            ],
-          ),
-        ),
-        if (selectedItem.isPanorama)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(22, 14, 22, 0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Story of ${selectedItem.title}',
-                  style: const TextStyle(
-                    color: _storyGreen,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  selectedItem.description.trim().isEmpty
-                      ? 'This layer’s story is waiting to be shared.'
-                      : selectedItem.description,
-                  style: const TextStyle(
-                    color: _storyInk,
-                    fontSize: 13,
-                    height: 1.45,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        Padding(
-          // Use some of the spare vertical room before the story carousel. This
-          // keeps the story section visually balanced above the fixed vote bar.
-          padding: const EdgeInsets.fromLTRB(20, 40, 16, 6),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                width: 4,
-                height: 24,
-                decoration: BoxDecoration(
-                  color: _storyGold,
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-              const SizedBox(width: 10),
-              const Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'The story within',
-                      style: TextStyle(
-                        color: _storyInk,
-                        fontSize: 19,
-                        fontWeight: FontWeight.w700,
-                        height: 1.2,
-                      ),
+        const SizedBox(height: 12),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 280),
+          curve: Curves.easeOutCubic,
+          alignment: Alignment.topCenter,
+          child: AnimatedSwitcher(
+            duration: const Duration(milliseconds: 260),
+            switchInCurve: Curves.easeOutCubic,
+            switchOutCurve: Curves.easeInCubic,
+            transitionBuilder: (child, animation) {
+              final slide = Tween<Offset>(
+                begin: const Offset(0, 0.06),
+                end: Offset.zero,
+              ).animate(animation);
+              return FadeTransition(
+                opacity: animation,
+                child: SlideTransition(position: slide, child: child),
+              );
+            },
+            child: selectedItem.view == _TiffinView.front
+                ? const SizedBox.shrink(key: ValueKey('front-no-meaning'))
+                : Container(
+                    key: ValueKey('${selectedItem.view}-meaning'),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: AppColors.accentContainer,
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(color: AppColors.accentLight),
                     ),
-                    SizedBox(height: 3),
-                    Text(
-                      'Discover the meaning behind each layer',
-                      style: TextStyle(
-                        color: Color(0xFF95929C),
-                        fontSize: 10.5,
-                      ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(
+                              Icons.auto_stories_rounded,
+                              size: 17,
+                              color: AppColors.accentDark,
+                            ),
+                            const SizedBox(width: 7),
+                            Text(
+                              'Story of ${selectedItem.title}',
+                              style: const TextStyle(
+                                color: AppColors.accentDark,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 5),
+                        Text(
+                          selectedItem.description.trim().isEmpty
+                              ? 'This layer’s story is waiting to be shared.'
+                              : selectedItem.description,
+                          maxLines: 4,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                            fontSize: 13,
+                            height: 1.45,
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            ],
+                  ),
           ),
         ),
-        _StoryCarousel(entry: widget.entry),
       ],
     );
   }
@@ -849,60 +727,39 @@ class _TiffinLayerButton extends StatelessWidget {
       button: true,
       selected: selected,
       label: 'Show ${item.title}',
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(22),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x154F6D3B),
-              blurRadius: 13,
-              offset: Offset(0, 5),
-            ),
-          ],
-        ),
-        child: Material(
-          color: Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(22),
-            side: BorderSide(
-              color: selected
-                  ? const Color(0xFF9CA626)
-                  : const Color(0xFFE5E7E1),
-            ),
+      child: Material(
+        color: selected ? AppColors.primaryLight : Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: selected ? AppColors.primaryLight : AppColors.divider,
+            width: selected ? 2 : 1,
           ),
-          clipBehavior: Clip.antiAlias,
-          child: Ink(
-            decoration: BoxDecoration(
-              gradient: RadialGradient(
-                center: const Alignment(0, .4),
-                radius: 1.2,
-                colors: selected
-                    ? const [Color(0xFFCFE5AF), Color(0xFFFFFFEF)]
-                    : const [Color(0xFFF5F7F2), Colors.white],
-              ),
-              borderRadius: BorderRadius.circular(22),
-            ),
-            child: InkWell(
-              onTap: onTap,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 6),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(icon, size: 18, color: _storyGreen),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.code,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: _storyInk,
-                        fontSize: 11,
-                        height: 1.2,
-                      ),
-                    ),
-                  ],
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: SizedBox(
+            height: 52,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  size: 16,
+                  color: selected ? AppColors.accentLight : AppColors.primary,
                 ),
-              ),
+                const SizedBox(height: 2),
+                Text(
+                  item.code,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: selected ? Colors.white : AppColors.primary,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
@@ -921,7 +778,7 @@ class _TiffinImageViewer extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: Material(
-        color: Colors.transparent,
+        color: AppColors.surfaceVariant,
         child: Stack(
           children: [
             Positioned.fill(
@@ -951,7 +808,7 @@ class _TiffinImageViewer extends StatelessWidget {
                       behavior: HitTestBehavior.opaque,
                       onTap: () => _openFullscreen(context),
                       child: Padding(
-                        padding: const EdgeInsets.fromLTRB(40, 6, 40, 10),
+                        padding: const EdgeInsets.all(14),
                         child: AppNetworkImage(
                           imageUrl: item.imageUrl,
                           width: double.infinity,
@@ -998,26 +855,35 @@ class _TiffinImageViewer extends StatelessWidget {
               ),
             if (!item.isPanorama)
               Positioned(
-                right: 20,
-                bottom: 18,
-                child: OutlinedButton.icon(
-                  onPressed: () => _openFullscreen(context),
-                  style: OutlinedButton.styleFrom(
-                    backgroundColor: const Color(0xCFE7EFDF),
-                    foregroundColor: _storyInk,
-                    side: const BorderSide(color: Color(0xFF9AB895)),
-                    minimumSize: const Size(0, 30),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    shape: const StadiumBorder(),
+                right: 12,
+                bottom: 12,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
                   ),
-                  icon: const Icon(Icons.zoom_out_map_rounded, size: 15),
-                  label: const Text(
-                    'Tap to expand',
-                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w400),
+                  decoration: BoxDecoration(
+                    color: const Color(0xD9335C31),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.zoom_out_map_rounded,
+                        size: 13,
+                        color: Colors.white,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'Tap to expand',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),

@@ -168,7 +168,7 @@ class _RegisterViewState extends State<RegisterView> {
                                       children: [
                                         _HeritageField(
                                           controller: _nameCtrl,
-                                          hint: 'Name',
+                                          hint: 'Display name',
                                           icon: Icons.person_outline_rounded,
                                           action: TextInputAction.next,
                                           autofillHints: const [
@@ -177,7 +177,7 @@ class _RegisterViewState extends State<RegisterView> {
                                           validator: (value) =>
                                               value == null ||
                                                   value.trim().isEmpty
-                                              ? 'Name is required'
+                                              ? 'Display name is required'
                                               : null,
                                         ),
                                         const SizedBox(height: 12),

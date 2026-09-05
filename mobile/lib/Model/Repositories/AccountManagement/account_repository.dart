@@ -193,9 +193,8 @@ class AccountRepository {
     final user = _api.requireUser();
     final result = await _cloudinary.uploadImage(
       file,
-      folder: 'mangkukkembara/profile/${user.id}',
+      folder: 'mangkukkembara/profiles/${user.id}',
       maxBytes: 5 * 1024 * 1024,
-      uniqueFilename: true,
     );
     return result.secureUrl;
   }
