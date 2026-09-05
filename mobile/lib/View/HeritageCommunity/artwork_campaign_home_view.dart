@@ -230,54 +230,12 @@ class _CampaignListState extends State<_CampaignList> {
                     itemCount: campaigns.length,
                     itemBuilder: (context, index) {
                       final campaign = campaigns[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 14),
-                        clipBehavior: Clip.antiAlias,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: const BorderSide(color: _CampaignColors.border),
-                        ),
-                        child: InkWell(
-                          onTap: () => Navigator.pushNamed(
-                            context,
-                            AppRoutes.campaignDetail,
-                            arguments: campaign.id,
-                          ),
-                          child: Padding(
-                            padding: const EdgeInsets.all(18),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        campaign.title,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .titleMedium
-                                            ?.copyWith(
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                      ),
-                                    ),
-                                    const Icon(Icons.chevron_right_rounded),
-                                  ],
-                                ),
-                                if (campaign.description.isNotEmpty) ...[
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    campaign.description,
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: AppColors.textSecondary,
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
+                      return _CampaignCard(
+                        campaign: campaign,
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          AppRoutes.campaignDetail,
+                          arguments: campaign.id,
                         ),
                       );
                     },
@@ -285,6 +243,146 @@ class _CampaignListState extends State<_CampaignList> {
                 ),
         ),
       ],
+    );
+  }
+}
+
+class _CampaignCard extends StatelessWidget {
+  final ArtworkCampaignModel campaign;
+  final VoidCallback onTap;
+
+  const _CampaignCard({required this.campaign, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final statusLabel = campaign.isCompleted ? 'ENDED' : 'OPENING';
+    final statusColor = campaign.isCompleted
+        ? const Color(0xFF53605D)
+        : const Color(0xFF986100);
+    final statusBackground = campaign.isCompleted
+        ? const Color(0xFFE5E9E7)
+        : const Color(0xFFFFE4A8);
+    return Container(
+      height: 148,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(color: const Color(0xFFD8DFD6)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x14335C31),
+            blurRadius: 10,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(17),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Stack(
+            children: [
+              Row(
+                children: [
+                  SizedBox(
+                    width: 112,
+                    height: double.infinity,
+                    child: ClipRect(
+                      child: Transform.scale(
+                        scale: 1.06,
+                        child: Image.asset(
+                          'asset/image/artwork_campaign_card.png',
+                          fit: BoxFit.cover,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 15, 10, 12),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  campaign.title,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    color: Color(0xFF14382D),
+                                    fontSize: 15,
+                                    height: 1.2,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                if (campaign.description.trim().isNotEmpty) ...[
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    campaign.description.trim(),
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      color: Color(0xFF7A858A),
+                                      fontSize: 10.5,
+                                      height: 1.3,
+                                    ),
+                                  ),
+                                ],
+                                const Spacer(),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 7),
+                          Container(
+                            width: 31,
+                            height: 31,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFE5F0E1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.chevron_right_rounded,
+                              color: Color(0xFF245C3C),
+                              size: 22,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Positioned(
+                left: 7,
+                top: 7,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 9,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusBackground,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1028,9 +1126,10 @@ class _WinnerArtworkCard extends StatelessWidget {
               ),
               Row(
                 children: [
-                  SizedBox(
-                    width: 120,
-                    height: 132,
+                  Container(
+                    width: 128,
+                    height: 142,
+                    color: const Color(0xFFF3F6F0),
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
