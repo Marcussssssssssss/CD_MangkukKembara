@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -135,8 +136,71 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
         title: 'MangkukKembara',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.light,
+        builder: (context, child) => MobileWebFrame(
+          enabled: kIsWeb,
+          child: child ?? const SizedBox.shrink(),
+        ),
         initialRoute: AppRoutes.accountLanding,
         onGenerateRoute: AppRoutes.generateRoute,
+      ),
+    );
+  }
+}
+
+/// Keeps the web build at a familiar phone width on larger browser windows.
+///
+/// The frame is applied above the Navigator, so routes, dialogs, snack bars,
+/// and bottom sheets all receive the same mobile-sized [MediaQuery]. Native
+/// Android and iOS builds are returned unchanged.
+class MobileWebFrame extends StatelessWidget {
+  const MobileWebFrame({
+    required this.enabled,
+    required this.child,
+    this.maxWidth = 430,
+    super.key,
+  });
+
+  final bool enabled;
+  final Widget child;
+  final double maxWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+
+    final mediaQuery = MediaQuery.of(context);
+
+    return ColoredBox(
+      color: const Color(0xFFE8E3D8),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final frameWidth = constraints.maxWidth.clamp(0, maxWidth).toDouble();
+          final frameSize = Size(frameWidth, constraints.maxHeight);
+
+          return Center(
+            child: Container(
+              width: frameWidth,
+              height: constraints.maxHeight,
+              clipBehavior: Clip.hardEdge,
+              decoration: BoxDecoration(
+                color: Theme.of(context).scaffoldBackgroundColor,
+                boxShadow: constraints.maxWidth > maxWidth
+                    ? const [
+                        BoxShadow(
+                          color: Color(0x33000000),
+                          blurRadius: 24,
+                          spreadRadius: 2,
+                        ),
+                      ]
+                    : null,
+              ),
+              child: MediaQuery(
+                data: mediaQuery.copyWith(size: frameSize),
+                child: child,
+              ),
+            ),
+          );
+        },
       ),
     );
   }
