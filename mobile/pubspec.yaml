@@ -64,6 +64,7 @@ flutter:
     - asset/image/campaign_background.png
     - asset/image/heritage_story_illustration.png
     - asset/image/heritage_background.png
+    - asset/image/artist_background.png
     - asset/image/nightmarket_tiffin_pin.png
     - asset/image/restaurant_tiffin_pin.png
 

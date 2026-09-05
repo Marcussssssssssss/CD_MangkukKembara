@@ -48,8 +48,9 @@ class _ArtistDetailViewState extends State<ArtistDetailView>
       child: Consumer<TiffinContentViewModel>(
         builder: (context, vm, _) => Scaffold(
           backgroundColor: _ArtistColors.cream,
+          extendBodyBehindAppBar: true,
           appBar: AppBar(
-            backgroundColor: _ArtistColors.cream,
+            backgroundColor: Colors.transparent,
             elevation: 0,
             surfaceTintColor: Colors.transparent,
             leading: IconButton(
@@ -68,19 +69,36 @@ class _ArtistDetailViewState extends State<ArtistDetailView>
               ),
             ),
           ),
-          body: vm.isLoading
-              ? const LoadingSpinner()
-              : vm.hasError || vm.artist == null
-              ? ErrorStateWidget(
-                  message: vm.errorMessage ?? 'Could not load this artist.',
-                  onRetry: () => _vm.loadArtist(widget.artistId),
+          body: Stack(
+            fit: StackFit.expand,
+            children: [
+              // NEW: Full-page artist heritage background.
+              Image.asset(
+                'asset/image/artist_background.png',
+                fit: BoxFit.cover,
+                alignment: Alignment.bottomCenter,
+              ),
+              if (vm.isLoading)
+                const Center(child: LoadingSpinner())
+              else if (vm.hasError || vm.artist == null)
+                SafeArea(
+                  child: ErrorStateWidget(
+                    message: vm.errorMessage ?? 'Could not load this artist.',
+                    onRetry: () => _vm.loadArtist(widget.artistId),
+                  ),
                 )
-              : RefreshIndicator(
-                  color: _ArtistColors.green,
-                  onRefresh: () =>
-                      _vm.loadArtist(widget.artistId, showLoading: false),
-                  child: _buildContent(vm.artist!),
+              else
+                SafeArea(
+                  top: false,
+                  child: RefreshIndicator(
+                    color: _ArtistColors.green,
+                    onRefresh: () =>
+                        _vm.loadArtist(widget.artistId, showLoading: false),
+                    child: _buildContent(vm.artist!),
+                  ),
                 ),
+            ],
+          ),
         ),
       ),
     );
@@ -88,7 +106,12 @@ class _ArtistDetailViewState extends State<ArtistDetailView>
 
   Widget _buildContent(ArtistModel artist) => SingleChildScrollView(
     physics: const AlwaysScrollableScrollPhysics(),
-    padding: const EdgeInsets.fromLTRB(20, 22, 20, 30),
+    padding: EdgeInsets.fromLTRB(
+      20,
+      MediaQuery.paddingOf(context).top + kToolbarHeight + 24,
+      20,
+      MediaQuery.paddingOf(context).bottom + 30,
+    ),
     child: Column(
       children: [
         // Artist Hero Section
@@ -122,29 +145,8 @@ class _ArtistHero extends StatelessWidget {
     final hasPhoto = photoUrl != null && photoUrl.isNotEmpty;
     return SizedBox(
       width: double.infinity,
-      child: Stack(
-        alignment: Alignment.center,
+      child: Column(
         children: [
-        Positioned(
-          top: 48,
-          left: 8,
-          child: Icon(
-            Icons.local_florist_outlined,
-            size: 92,
-            color: _ArtistColors.green.withValues(alpha: .07),
-          ),
-        ),
-        Positioned(
-          top: 12,
-          right: 8,
-          child: Icon(
-            Icons.account_balance_outlined,
-            size: 84,
-            color: _ArtistColors.green.withValues(alpha: .06),
-          ),
-        ),
-        Column(
-          children: [
             Container(
               width: 120,
               height: 120,
@@ -208,8 +210,6 @@ class _ArtistHero extends StatelessWidget {
                 fontWeight: FontWeight.w600,
               ),
             ),
-          ],
-        ),
         ],
       ),
     );
