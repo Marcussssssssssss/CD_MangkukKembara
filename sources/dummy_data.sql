@@ -888,6 +888,12 @@ values (
 -- ============================================================================
 -- 7. ARTWORK CAMPAIGN AND VOTING DATA
 -- ============================================================================
+-- The seed supplies stable AVS0001... IDs below. Suppress automatic standard
+-- session creation while inserting its campaigns so those references remain
+-- deterministic.
+alter table public.artwork_campaigns
+disable trigger create_artwork_campaign_voting_session_trigger;
+
 insert into public.artwork_campaigns (
         artwork_campaign_id,
         state_id,
@@ -978,6 +984,10 @@ values (
         'active',
         'P0001'
     );
+
+alter table public.artwork_campaigns
+enable trigger create_artwork_campaign_voting_session_trigger;
+
 insert into public.artwork_submissions (
         artwork_submission_id,
         artwork_campaign_id,
