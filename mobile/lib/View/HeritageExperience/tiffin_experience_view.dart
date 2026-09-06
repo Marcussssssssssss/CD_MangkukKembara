@@ -51,7 +51,7 @@ class _LayerHotspots {
     'HT0001': _LayerHotspots(  // Penang Street Flavours 2026
       layer1: _MarkerPosition(0.10, 0.38),
       layer2: _MarkerPosition(0.90, 0.55),
-      layer3: _MarkerPosition(0.10, 0.72),
+      layer3: _MarkerPosition(0.10, 0.75),
     ),
     'HT0002': _LayerHotspots(  // Melaka Peranakan Heritage 2026
       layer1: _MarkerPosition(0.10, 0.38),
