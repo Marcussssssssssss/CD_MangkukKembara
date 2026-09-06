@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:video_player/video_player.dart';
@@ -103,11 +106,24 @@ class _HeritageVideoViewState extends State<HeritageVideoView> {
   Future<void> _openFullscreen() async {
     final controller = _videoController;
     if (controller == null || !controller.value.isInitialized) return;
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => _FullscreenVideoPlayer(controller: controller),
-      ),
-    );
+
+    await SystemChrome.setPreferredOrientations(const [
+      DeviceOrientation.portraitUp,
+      DeviceOrientation.landscapeLeft,
+      DeviceOrientation.landscapeRight,
+    ]);
+    try {
+      if (!mounted) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(
+          builder: (_) => _FullscreenVideoPlayer(controller: controller),
+        ),
+      );
+    } finally {
+      await SystemChrome.setPreferredOrientations(const [
+        DeviceOrientation.portraitUp,
+      ]);
+    }
     if (mounted) setState(() {});
   }
 
@@ -131,7 +147,7 @@ class _HeritageVideoViewState extends State<HeritageVideoView> {
               onPressed: () => Navigator.maybePop(context),
             ),
             title: Text(
-              'Heritage Media',
+              'Heritage Video',
               style: GoogleFonts.playfairDisplay(
                 color: _MediaColors.green,
                 fontWeight: FontWeight.w700,
@@ -218,10 +234,7 @@ class _HeritageVideoViewState extends State<HeritageVideoView> {
                     height: 58,
                     child: ElevatedButton.icon(
                       onPressed: () => _openExternally(selected),
-                      icon: const Icon(
-                        Icons.open_in_new_rounded,
-                        size: 22,
-                      ),
+                      icon: const Icon(Icons.open_in_new_rounded, size: 22),
                       label: const Text('Open media'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: _MediaColors.green,
@@ -280,11 +293,42 @@ class _HeritageVideoViewState extends State<HeritageVideoView> {
             onOpenExternally: () => _openExternally(media),
           );
         }
-        return AspectRatio(
-          aspectRatio: 16 / 9,
+        return _ResponsiveVideoPlayer(
+          controller: controller,
+          onFullscreen: _openFullscreen,
+        );
+      },
+    );
+  }
+}
+
+class _ResponsiveVideoPlayer extends StatelessWidget {
+  const _ResponsiveVideoPlayer({
+    required this.controller,
+    required this.onFullscreen,
+  });
+
+  final VideoPlayerController controller;
+  final VoidCallback onFullscreen;
+
+  @override
+  Widget build(BuildContext context) {
+    final aspectRatio = _resolvedVideoAspectRatio(controller.value);
+    final maximumHeight = MediaQuery.sizeOf(context).height * .65;
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final naturalHeight = constraints.maxWidth / aspectRatio;
+        final playerHeight = naturalHeight > maximumHeight
+            ? maximumHeight
+            : naturalHeight;
+
+        return SizedBox(
+          width: constraints.maxWidth,
+          height: playerHeight,
           child: _VideoPlayerSurface(
             controller: controller,
-            onFullscreen: _openFullscreen,
+            onFullscreen: onFullscreen,
           ),
         );
       },
@@ -296,10 +340,20 @@ class _VideoPlayerSurface extends StatelessWidget {
   const _VideoPlayerSurface({
     required this.controller,
     required this.onFullscreen,
+    this.showControls = true,
+    this.onVideoTap,
+    this.onControlInteraction,
+    this.onSeekStart,
+    this.onSeekEnd,
   });
 
   final VideoPlayerController controller;
   final VoidCallback onFullscreen;
+  final bool showControls;
+  final VoidCallback? onVideoTap;
+  final VoidCallback? onControlInteraction;
+  final VoidCallback? onSeekStart;
+  final VoidCallback? onSeekEnd;
 
   @override
   Widget build(BuildContext context) => Material(
@@ -316,7 +370,7 @@ class _VideoPlayerSurface extends StatelessWidget {
           children: [
             Center(
               child: AspectRatio(
-                aspectRatio: value.aspectRatio > 0 ? value.aspectRatio : 16 / 9,
+                aspectRatio: _resolvedVideoAspectRatio(value),
                 child: VideoPlayer(controller),
               ),
             ),
@@ -324,11 +378,14 @@ class _VideoPlayerSurface extends StatelessWidget {
               child: Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: () =>
-                      value.isPlaying ? controller.pause() : controller.play(),
+                  onTap:
+                      onVideoTap ??
+                      () => value.isPlaying
+                          ? controller.pause()
+                          : controller.play(),
                   child: Center(
                     child: AnimatedOpacity(
-                      opacity: value.isPlaying ? 0 : 1,
+                      opacity: showControls && !value.isPlaying ? 1 : 0,
                       duration: const Duration(milliseconds: 180),
                       child: Container(
                         width: 64,
@@ -356,59 +413,80 @@ class _VideoPlayerSurface extends StatelessWidget {
               left: 12,
               right: 8,
               bottom: 5,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: .58),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.fromLTRB(10, 3, 4, 3),
-                  child: Row(
-                    children: [
-                      IconButton(
-                        tooltip: value.isPlaying ? 'Pause' : 'Play',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => value.isPlaying
-                            ? controller.pause()
-                            : controller.play(),
-                        icon: Icon(
-                          value.isPlaying
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
-                          color: Colors.white,
-                        ),
-                      ),
-                      Expanded(
-                        child: VideoProgressIndicator(
-                          controller,
-                          allowScrubbing: true,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          colors: const VideoProgressColors(
-                            playedColor: _MediaColors.gold,
-                            bufferedColor: Color(0x99FFFFFF),
-                            backgroundColor: Color(0x55FFFFFF),
+              child: IgnorePointer(
+                ignoring: !showControls,
+                child: AnimatedOpacity(
+                  opacity: showControls ? 1 : 0,
+                  duration: const Duration(milliseconds: 250),
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: .58),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 3, 4, 3),
+                      child: Row(
+                        children: [
+                          IconButton(
+                            tooltip: value.isPlaying ? 'Pause' : 'Play',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () {
+                              onControlInteraction?.call();
+                              value.isPlaying
+                                  ? controller.pause()
+                                  : controller.play();
+                            },
+                            icon: Icon(
+                              value.isPlaying
+                                  ? Icons.pause_rounded
+                                  : Icons.play_arrow_rounded,
+                              color: Colors.white,
+                            ),
                           ),
-                        ),
+                          Expanded(
+                            child: Listener(
+                              behavior: HitTestBehavior.translucent,
+                              onPointerDown: (_) => onSeekStart?.call(),
+                              onPointerUp: (_) => onSeekEnd?.call(),
+                              onPointerCancel: (_) => onSeekEnd?.call(),
+                              child: VideoProgressIndicator(
+                                controller,
+                                allowScrubbing: true,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
+                                colors: const VideoProgressColors(
+                                  playedColor: _MediaColors.gold,
+                                  bufferedColor: Color(0x99FFFFFF),
+                                  backgroundColor: Color(0x55FFFFFF),
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            '${_formatDuration(position)} / ${_formatDuration(duration)}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          IconButton(
+                            tooltip: 'Fullscreen',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () {
+                              onControlInteraction?.call();
+                              onFullscreen();
+                            },
+                            icon: const Icon(
+                              Icons.fullscreen_rounded,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '${_formatDuration(position)} / ${_formatDuration(duration)}',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      IconButton(
-                        tooltip: 'Fullscreen',
-                        visualDensity: VisualDensity.compact,
-                        onPressed: onFullscreen,
-                        icon: const Icon(
-                          Icons.fullscreen_rounded,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
                 ),
               ),
@@ -420,41 +498,155 @@ class _VideoPlayerSurface extends StatelessWidget {
   );
 }
 
-class _FullscreenVideoPlayer extends StatelessWidget {
+class _FullscreenVideoPlayer extends StatefulWidget {
   const _FullscreenVideoPlayer({required this.controller});
 
   final VideoPlayerController controller;
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Colors.black,
-    body: SafeArea(
-      child: Stack(
-        children: [
-          Center(
-            child: AspectRatio(
-              aspectRatio: controller.value.aspectRatio > 0
-                  ? controller.value.aspectRatio
-                  : 16 / 9,
-              child: _VideoPlayerSurface(
-                controller: controller,
-                onFullscreen: () => Navigator.maybePop(context),
+  State<_FullscreenVideoPlayer> createState() => _FullscreenVideoPlayerState();
+}
+
+class _FullscreenVideoPlayerState extends State<_FullscreenVideoPlayer> {
+  static const _controlsTimeout = Duration(seconds: 3);
+
+  Timer? _hideControlsTimer;
+  bool _showControls = true;
+  bool _isSeeking = false;
+  late bool _wasPlaying;
+
+  @override
+  void initState() {
+    super.initState();
+    _wasPlaying = widget.controller.value.isPlaying;
+    widget.controller.addListener(_handlePlaybackStateChange);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _restartAutoHide());
+  }
+
+  @override
+  void dispose() {
+    _hideControlsTimer?.cancel();
+    widget.controller.removeListener(_handlePlaybackStateChange);
+    super.dispose();
+  }
+
+  void _handlePlaybackStateChange() {
+    final isPlaying = widget.controller.value.isPlaying;
+    if (isPlaying == _wasPlaying) return;
+    _wasPlaying = isPlaying;
+    if (!mounted) return;
+
+    if (isPlaying) {
+      _restartAutoHide();
+    } else {
+      _hideControlsTimer?.cancel();
+      if (!_showControls) setState(() => _showControls = true);
+    }
+  }
+
+  void _restartAutoHide() {
+    _hideControlsTimer?.cancel();
+    if (!mounted) return;
+
+    if (!_showControls) setState(() => _showControls = true);
+    if (!widget.controller.value.isPlaying || _isSeeking) return;
+
+    _hideControlsTimer = Timer(_controlsTimeout, () {
+      if (!mounted || _isSeeking || !widget.controller.value.isPlaying) {
+        return;
+      }
+      setState(() => _showControls = false);
+    });
+  }
+
+  void _handleVideoTap() {
+    if (!_showControls) {
+      _restartAutoHide();
+      return;
+    }
+
+    final controller = widget.controller;
+    controller.value.isPlaying ? controller.pause() : controller.play();
+    _restartAutoHide();
+  }
+
+  void _handleSeekStart() {
+    _hideControlsTimer?.cancel();
+    _isSeeking = true;
+    if (!_showControls) setState(() => _showControls = true);
+  }
+
+  void _handleSeekEnd() {
+    _isSeeking = false;
+    _restartAutoHide();
+  }
+
+  void _closeFullscreen() {
+    _restartAutoHide();
+    Navigator.maybePop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewPadding = MediaQuery.viewPaddingOf(context);
+    final horizontalInset = viewPadding.left > viewPadding.right
+        ? viewPadding.left
+        : viewPadding.right;
+    final verticalInset = viewPadding.top > viewPadding.bottom
+        ? viewPadding.top
+        : viewPadding.bottom;
+
+    return Scaffold(
+      backgroundColor: Colors.black,
+      body: MouseRegion(
+        onEnter: (_) => _restartAutoHide(),
+        onHover: (_) => _restartAutoHide(),
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalInset,
+            vertical: verticalInset,
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Center(
+                child: AspectRatio(
+                  aspectRatio: _resolvedVideoAspectRatio(
+                    widget.controller.value,
+                  ),
+                  child: _VideoPlayerSurface(
+                    controller: widget.controller,
+                    onFullscreen: _closeFullscreen,
+                    showControls: _showControls,
+                    onVideoTap: _handleVideoTap,
+                    onControlInteraction: _restartAutoHide,
+                    onSeekStart: _handleSeekStart,
+                    onSeekEnd: _handleSeekEnd,
+                  ),
+                ),
               ),
-            ),
+              Positioned(
+                top: 8,
+                left: 8,
+                child: IgnorePointer(
+                  ignoring: !_showControls,
+                  child: AnimatedOpacity(
+                    opacity: _showControls ? 1 : 0,
+                    duration: const Duration(milliseconds: 250),
+                    child: IconButton.filledTonal(
+                      tooltip: 'Exit fullscreen',
+                      onPressed: _closeFullscreen,
+                      icon: const Icon(Icons.arrow_back_rounded),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-          Positioned(
-            top: 8,
-            left: 8,
-            child: IconButton.filledTonal(
-              tooltip: 'Exit fullscreen',
-              onPressed: () => Navigator.maybePop(context),
-              icon: const Icon(Icons.arrow_back_rounded),
-            ),
-          ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _VideoLoadingCard extends StatelessWidget {
@@ -542,6 +734,11 @@ String _formatDuration(Duration duration) {
   final minutes = duration.inMinutes.remainder(60).toString().padLeft(2, '0');
   final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
   return hours > 0 ? '$hours:$minutes:$seconds' : '$minutes:$seconds';
+}
+
+double _resolvedVideoAspectRatio(VideoPlayerValue value) {
+  final aspectRatio = value.aspectRatio;
+  return aspectRatio.isFinite && aspectRatio > 0 ? aspectRatio : 16 / 9;
 }
 
 abstract final class _MediaColors {
