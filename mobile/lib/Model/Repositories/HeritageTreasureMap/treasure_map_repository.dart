@@ -1,4 +1,5 @@
 import '../../Services/supabase_api_service.dart';
+import 'food_category_model.dart';
 import 'operating_hour_model.dart';
 import 'pasar_malam_model.dart';
 import 'vendor_tiffin_model.dart';
@@ -13,7 +14,7 @@ class TreasureMapRepository {
   Future<List<VendorModel>> fetchVendors({
     String? query,
     String? state,
-    String? foodCategory,
+    String? foodCategoryId,
     bool standaloneOnly = false,
   }) async {
     var request = _api.client
@@ -23,7 +24,10 @@ class TreasureMapRepository {
       states!inner(state_name),
       vendor_operating_hours(day_of_week, opening_time, closing_time, is_closed),
       vendor_foods(
-        heritage_foods(food_name, food_categories(category_name))
+        heritage_foods(
+          food_name, food_category_id,
+          food_categories(food_category_id, category_name)
+        )
       )
     ''')
         .eq('participation_status', 'active');
@@ -46,14 +50,9 @@ class TreasureMapRepository {
       return VendorModel.fromJson(json);
     }).toList();
 
-    if (foodCategory != null && foodCategory.isNotEmpty) {
+    if (foodCategoryId != null && foodCategoryId.isNotEmpty) {
       vendors = vendors
-          .where(
-            (vendor) => vendor.foodCategories.any(
-              (category) =>
-                  category.toLowerCase() == foodCategory.toLowerCase(),
-            ),
-          )
+          .where((vendor) => vendor.foodCategoryIds.contains(foodCategoryId))
           .toList();
     }
     if (query != null && query.trim().isNotEmpty) {
@@ -116,7 +115,12 @@ class TreasureMapRepository {
           .select('''
         *, states!inner(state_name),
         vendor_operating_hours(day_of_week, opening_time, closing_time, is_closed),
-        vendor_foods(heritage_foods(food_name, food_categories(category_name)))
+        vendor_foods(
+          heritage_foods(
+            food_name, food_category_id,
+            food_categories(food_category_id, category_name)
+          )
+        )
       ''')
           .eq('pasar_malam_id', pasarMalamId)
           .eq('participation_status', 'active')
@@ -147,15 +151,14 @@ class TreasureMapRepository {
     return rows.map((row) => row['state_name'] as String).toList();
   }
 
-  Future<List<String>> fetchFoodCategoryNames() async {
+  Future<List<FoodCategoryModel>> fetchFoodCategories() async {
     final rows = await _api.guard(
       () => _api.client
           .from('food_categories')
-          .select('category_name')
-          .eq('is_active', true)
+          .select('food_category_id, category_name')
           .order('category_name'),
     );
-    return rows.map((row) => row['category_name'] as String).toList();
+    return rows.map(FoodCategoryModel.fromJson).toList();
   }
 
   Future<VendorModel?> fetchVendorById(String id) async {
@@ -166,7 +169,12 @@ class TreasureMapRepository {
         *,
         states(state_name),
         vendor_operating_hours(day_of_week, opening_time, closing_time, is_closed),
-        vendor_foods(heritage_foods(food_name, food_categories(category_name)))
+        vendor_foods(
+          heritage_foods(
+            food_name, food_category_id,
+            food_categories(food_category_id, category_name)
+          )
+        )
       ''')
           .eq('vendor_id', id)
           .eq('participation_status', 'active')

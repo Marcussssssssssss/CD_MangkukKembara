@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:math' as math;
+import '../../Model/Repositories/HeritageTreasureMap/food_category_model.dart';
 import '../../Model/Repositories/HeritageTreasureMap/treasure_map_repository.dart';
 import '../../Model/Repositories/HeritageTreasureMap/vendor_model.dart';
 import '../../Model/Repositories/HeritageTreasureMap/pasar_malam_model.dart';
@@ -27,6 +28,8 @@ class TreasureMapViewModel extends ChangeNotifier {
   String _searchQuery = '';
   String _selectedState = 'All States';
   String _selectedFoodCategory = 'All';
+  String? _selectedFoodCategoryId;
+  List<FoodCategoryModel> _foodCategories = [];
   VendorModel? _previewVendor; // bottom sheet preview
   PasarMalamModel? _previewPasarMalam;
   List<VendorModel> _pasarMalamVendors = [];
@@ -51,6 +54,10 @@ class TreasureMapViewModel extends ChangeNotifier {
   bool get hasSearchQuery => _searchQuery.trim().isNotEmpty;
   String get selectedState => _selectedState;
   String get selectedFoodCategory => _selectedFoodCategory;
+  List<String> get foodCategoryNames => [
+    'All',
+    ..._foodCategories.map((category) => category.name),
+  ];
   VendorModel? get previewVendor => _previewVendor;
   PasarMalamModel? get previewPasarMalam => _previewPasarMalam;
   List<VendorModel> get pasarMalamVendors => _pasarMalamVendors;
@@ -72,12 +79,16 @@ class TreasureMapViewModel extends ChangeNotifier {
     _hasError = false;
     if (showLoading) notifyListeners();
     try {
-      final fetchedVendors = await _repo.fetchVendors();
+      await _loadFoodCategories();
+      final fetchedVendors = await _repo.fetchVendors(
+        foodCategoryId: _selectedFoodCategoryId,
+      );
       _mapVendors = HeritageTreasureMapSearch.filterVendors(
         fetchedVendors,
         query: _searchQuery,
         state: _selectedState,
         foodCategory: _selectedFoodCategory,
+        foodCategoryId: _selectedFoodCategoryId,
       );
       _vendors = _mapVendors
           .where(
@@ -216,12 +227,14 @@ class TreasureMapViewModel extends ChangeNotifier {
 
   void setFoodCategoryFilter(String category) {
     _selectedFoodCategory = category;
+    _selectedFoodCategoryId = _categoryIdForName(category);
     loadVendors();
   }
 
   void clearFilters() {
     _selectedState = 'All States';
     _selectedFoodCategory = 'All';
+    _selectedFoodCategoryId = null;
     _searchQuery = '';
     loadVendors();
   }
@@ -277,4 +290,17 @@ class TreasureMapViewModel extends ChangeNotifier {
   }
 
   Future<void> retry() => loadVendors();
+
+  Future<void> _loadFoodCategories() async {
+    if (_foodCategories.isNotEmpty) return;
+    _foodCategories = await _repo.fetchFoodCategories();
+  }
+
+  String? _categoryIdForName(String name) {
+    if (name == 'All') return null;
+    for (final category in _foodCategories) {
+      if (category.name == name) return category.id;
+    }
+    return null;
+  }
 }

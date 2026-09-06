@@ -17,6 +17,7 @@ class VendorModel {
   final int reviewCount;
   final bool isOpen;
   final List<String> foodCategories;
+  final List<String> foodCategoryIds;
   final List<String> heritageFoods;
   final double? distanceKm;
 
@@ -38,6 +39,7 @@ class VendorModel {
     this.reviewCount = 0,
     this.isOpen = true,
     this.foodCategories = const [],
+    this.foodCategoryIds = const [],
     this.heritageFoods = const [],
     this.distanceKm,
   });
@@ -54,6 +56,12 @@ class VendorModel {
         .map((category) => category['category_name'] as String?)
         .whereType<String>()
         .toSet()
+        .toList();
+    final categoryIds = foods
+        .map((food) => food['food_categories'])
+        .whereType<Map<String, dynamic>>()
+        .map((category) => category['food_category_id'] as String?)
+        .whereType<String>()
         .toList();
     final addressParts = <String?>[
       json['address_line'] as String?,
@@ -80,6 +88,7 @@ class VendorModel {
       reviewCount: (json['review_count'] as num? ?? 0).toInt(),
       isOpen: json['_is_open'] as bool? ?? false,
       foodCategories: categories,
+      foodCategoryIds: categoryIds,
       heritageFoods: foods
           .map((food) => food['food_name'] as String?)
           .whereType<String>()
@@ -113,6 +122,7 @@ class VendorModel {
     reviewCount: reviewCount ?? this.reviewCount,
     isOpen: isOpen,
     foodCategories: foodCategories,
+    foodCategoryIds: foodCategoryIds,
     heritageFoods: heritageFoods,
     distanceKm: distanceKm ?? this.distanceKm,
   );
