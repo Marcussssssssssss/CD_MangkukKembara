@@ -195,7 +195,8 @@ insert into public.heritage_foods (
         food_name,
         origin_summary,
         cultural_significance,
-        image_url
+        image_url,
+        is_active
     )
 values (
         'HF0001',
@@ -204,7 +205,8 @@ values (
         'Penang Char Kway Teow',
         'A wok-fried flat rice noodle dish associated with Penang hawker culture.',
         'Represents Penang food traditions shaped by migration and trade.',
-        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290630/Penang_Char_Kway_Teow_xwkaoq.jpg'
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290630/Penang_Char_Kway_Teow_xwkaoq.jpg',
+        true
     ),
     (
         'HF0002',
@@ -213,7 +215,8 @@ values (
         'Melaka Chicken Rice Ball',
         'Chicken rice served with rice shaped into small balls.',
         'Associated with Melaka food heritage and family-run eateries.',
-        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290629/Melaka_Chicken_Rice_Ball_egx2ky.jpg'
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290629/Melaka_Chicken_Rice_Ball_egx2ky.jpg',
+        true
     ),
     (
         'HF0003',
@@ -222,7 +225,8 @@ values (
         'Nasi Kerabu',
         'Blue-coloured rice served with herbs, vegetables, and side dishes.',
         'Highlights Kelantanese ingredients, colours, and communal eating.',
-        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290630/Nasi_Kerabu_h0zkda.jpg'
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290630/Nasi_Kerabu_h0zkda.jpg',
+        true
     ),
     (
         'HF0004',
@@ -231,19 +235,147 @@ values (
         'Sarawak Laksa',
         'Rice vermicelli served in an aromatic Sarawak-style broth.',
         'A well-known representation of Sarawak food identity.',
-        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290629/Sarawak_Laksa_yyvjsc.jpg'
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1786290629/Sarawak_Laksa_yyvjsc.jpg',
+        true
     ),
-    ('HF0005', 'FC0002', 'S0005', 'Laksa Johor', null, null, null),
-    ('HF0006', 'FC0002', 'S0006', 'Laksa Kuala Kedah', null, null, null),
-    ('HF0007', 'FC0003', 'S0007', 'Masak Lemak Cili Api', null, null, null),
-    ('HF0008', 'FC0003', 'S0008', 'Patin Masak Tempoyak', null, null, null),
-    ('HF0009', 'FC0002', 'S0009', 'Ipoh Sar Hor Fun', null, null, null),
-    ('HF0010', 'FC0002', 'S0010', 'Laksa Perlis', null, null, null),
-    ('HF0011', 'FC0003', 'S0011', 'Hinava', null, null, null),
-    ('HF0012', 'FC0003', 'S0012', 'Satay Kajang', null, null, null),
-    ('HF0013', 'FC0001', 'S0013', 'Nasi Dagang', null, null, null),
-    ('HF0014', 'FC0002', 'S0014', 'Kuala Lumpur Hokkien Mee', null, null, null),
-    ('HF0015', 'FC0004', 'S0015', 'Labuan Coconut Pudding', null, null, null);
+    ('HF0005', 'FC0002', 'S0005', 'Laksa Johor', 'A Johor noodle speciality served with spaghetti-like noodles in a rich fish-based coconut gravy.', 'A signature Johor dish that reflects the state''s distinctive Malay culinary traditions.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788704438/LaksaJohor_eogc5u.jpg', true),
+    ('HF0006', 'FC0002', 'S0006', 'Laksa Kuala Kedah', 'Rice noodles served in an aromatic fish gravy with cucumber, onion, herbs and regional garnishes.', 'A well-known northern speciality representing the traditional food culture of Kedah.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788704438/LaksaKualaKedah_yndv5k.jpg', true),
+    ('HF0007', 'FC0003', 'S0007', 'Masak Lemak Cili Api', 'Meat, poultry or fish simmered in coconut milk with turmeric and fiery bird''s-eye chilli.', 'A signature Negeri Sembilan preparation strongly connected with Minangkabau food heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788704437/MasakLemakCiliApi_vbhwas.jpg', true),
+    ('HF0008', 'FC0003', 'S0008', 'Patin Masak Tempoyak', 'Freshwater patin fish cooked in a rich gravy flavoured with fermented durian paste and spices.', 'Closely associated with Temerloh and Pahang''s river-based culinary heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788704437/PatinMasakTempoyak_tprmes.webp', true),
+    ('HF0009', 'FC0002', 'S0009', 'Ipoh Sar Hor Fun', 'Silky flat rice noodles served in a light, flavourful broth commonly accompanied by chicken or prawns.', 'Part of Ipoh''s long-established Chinese hawker and coffee-shop food heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788704438/IpohSarHorFun_jggbji.jpg', true),
+    ('HF0010', 'FC0002', 'S0010', 'Laksa Perlis', 'Rice noodles served with a savoury fish gravy and garnished with vegetables, herbs and boiled egg.', 'A signature northern noodle dish associated with Perlis food culture.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788704439/LaksaPerlis_auttwe.jpg', true),
+    ('HF0011', 'FC0003', 'S0011', 'Hinava', 'Fresh raw fish marinated with lime, chilli, shallots, ginger and traditional local ingredients.', 'A traditional dish closely associated with Sabah''s Kadazandusun community.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788704580/Hinava_jsmjuz.jpg', true),
+    ('HF0012', 'FC0003', 'S0012', 'Satay Kajang', 'Marinated meat skewers grilled over charcoal and served with a rich peanut sauce.', 'Kajang is nationally recognised for its satay tradition and represents Selangor''s popular street-food heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788704437/SatayKajang_egn57o.jpg', true),
+    ('HF0013', 'FC0001', 'S0013', 'Nasi Dagang', 'Fragrant rice cooked with coconut milk and served with fish curry and pickled vegetables.', 'A celebrated East Coast breakfast dish strongly associated with Terengganu food heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788704437/NasiDagang_forpmp.webp', true),
+    ('HF0014', 'FC0002', 'S0014', 'KL Hokkien Mee', 'Thick yellow noodles wok-fried in a rich dark soy sauce with vegetables, seafood or meat.', 'A long-established Chinese hawker dish associated with Kuala Lumpur''s multicultural food scene.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788704438/KLHokkienMee_vhqakw.jpg', true),
+    ('HF0015', 'FC0004', 'S0015', 'Coconut Pudding', 'A refreshing pudding prepared using coconut water and jelly and served chilled.', 'A speciality strongly associated with Labuan and its island food identity.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788704438/CoconutPudding_pgnxth.jpg', true),
+    ('HF0016', 'FC0002', 'S0001', 'Assam Laksa', 'Rice noodles served in a tangy fish broth flavoured with tamarind, herbs and chilli.', 'One of Penang''s best-known hawker dishes and an important part of the state''s street-food identity.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703303/AssamLaksa_zpt9b1.jpg', true),
+    ('HF0017', 'FC0001', 'S0001', 'Nasi Kandar', 'Steamed rice served with a selection of richly spiced curries, meats, seafood and vegetables.', 'Originating from Penang''s Indian Muslim community, it reflects the state''s multicultural trading heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703304/NasiKandar_ltdui0.webp', true),
+    ('HF0018', 'FC0002', 'S0001', 'Hokkien Mee', 'Noodles served in a deeply flavoured prawn broth with prawns, egg and vegetables.', 'A popular Penang hawker dish representing generations of Chinese Malaysian food culture.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703300/HokkienMee_uft5d8.jpg', true),
+    ('HF0019', 'FC0003', 'S0002', 'Satay Celup', 'Skewered ingredients cooked at the table in a hot, rich and spicy peanut-based satay sauce.', 'A distinctive communal dining tradition strongly associated with Melaka.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703302/SatayCelup_gnaqjx.jpg', true),
+    ('HF0020', 'FC0002', 'S0002', 'Nyonya Laksa', 'Rice noodles served in a fragrant coconut-based spicy broth with traditional garnishes.', 'Reflects Melaka''s Peranakan heritage and the blending of Chinese and Malay culinary traditions.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703306/NyonyaLaksa_iar418.jpg', true),
+    ('HF0021', 'FC0004', 'S0002', 'Nyonya Cendol', 'Shaved ice served with coconut milk, palm sugar syrup and green cendol strands.', 'A popular Peranakan-style dessert that complements Melaka''s rich Nyonya food heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703305/NyonyaCendol_yzyp2c.jpg', true),
+    ('HF0022', 'FC0001', 'S0003', 'Nasi Tumpang', 'Rice layered with fillings such as serunding, omelette, fish or meat and traditionally wrapped in banana leaf.', 'Historically prepared as a portable meal for farmers and travellers in Kelantan.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703305/NasiTumpang_tj0v5n.jpg', true),
+    ('HF0023', 'FC0002', 'S0003', 'Laksam', 'Thick rolled rice noodles served in a creamy fish and coconut-milk gravy.', 'A traditional Kelantanese breakfast dish reflecting the state''s preference for rich coconut-based flavours.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703302/Laksam_ooa0ws.webp', true),
+    ('HF0024', 'FC0004', 'S0003', 'Akok', 'A soft traditional kuih prepared with eggs, coconut milk and palm sugar.', 'A well-known Kelantanese sweet associated with traditional markets, celebrations and family recipes.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703303/Akok_iiuuqn.jpg', true),
+    ('HF0025', 'FC0002', 'S0004', 'Kolo Mee', 'Springy egg noodles tossed with seasoned oil and served with savoury meat or chicken toppings.', 'A cornerstone of Sarawak Chinese hawker culture and one of Kuching''s best-known everyday dishes.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703301/KoloMee_mylc3u.jpg', true),
+    ('HF0026', 'FC0003', 'S0004', 'Manok Pansoh', 'Chicken seasoned with herbs and traditionally cooked inside bamboo over an open fire.', 'An Indigenous Dayak speciality that reflects Sarawak''s traditional communal cooking practices.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703303/ManokPansoh_j8lvpv.jpg', true),
+    ('HF0027', 'FC0004', 'S0004', 'Kek Lapis Sarawak', 'A colourful cake constructed from many individually baked decorative layers.', 'An iconic Sarawak festive food showcasing craftsmanship, patience and cultural creativity.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703301/KekLapisSarawak_cuw4xb.webp', true),
+    ('HF0028', 'FC0001', 'S0005', 'Nasi Briyani Gam', 'Fragrant spiced rice and meat cooked together in a sealed pot so the flavours infuse the rice.', 'A recognised Johor speciality with strong historical associations with Batu Pahat.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703306/NasiBriyaniGam_utee69.jpg', true),
+    ('HF0029', 'FC0002', 'S0005', 'Mee Bandung', 'Noodles served in a thick savoury gravy commonly prepared with prawns, meat and egg.', 'A famous Johor noodle tradition strongly associated with Muar.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703303/MeeBandung_ycxqxd.jpg', true),
+    ('HF0030', 'FC0003', 'S0005', 'Otak-Otak', 'Seasoned fish paste wrapped in leaves and grilled over charcoal.', 'A popular Johor coastal speciality reflecting the importance of seafood in local food traditions.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703306/OtakOtak_ofi8wq.jpg', true),
+    ('HF0031', 'FC0003', 'S0006', 'Pekasam', 'Fish preserved through fermentation with salt and rice before being fried or cooked.', 'Reflects traditional preservation methods developed within Kedah''s agricultural and fishing communities.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703299/Pekasam_n9vzos.jpg', true),
+    ('HF0032', 'FC0001', 'S0006', 'Nasi Ulam', 'Rice served with an assortment of fresh herbs, vegetables and traditional seasonings.', 'Represents Kedah''s close relationship with agriculture, herbs and rural Malay food traditions.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703306/NasiUlam_d7vzoi.jpg', true),
+    ('HF0033', 'FC0003', 'S0006', 'Gulai Rebung', 'Bamboo shoots cooked in a rich, savoury traditional curry.', 'Uses locally available produce and reflects the rural food traditions of Kedah.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703300/GulaiRebung_sezp7c.jpg', true),
+    ('HF0034', 'FC0004', 'S0007', 'Apam Johol', 'A traditional steamed cake associated with Johol and traditionally prepared using aromatic wrapping leaves.', 'Preserves a distinctive local kuih tradition within Negeri Sembilan.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703304/ApamJohol_ymnrrf.jpg', true),
+    ('HF0035', 'FC0001', 'S0007', 'Lemang', 'Glutinous rice and coconut milk cooked slowly inside bamboo over an open fire.', 'Closely connected with communal cooking and festive celebrations in Negeri Sembilan and wider Malay culture.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703302/Lemang_rzp2ui.jpg', true),
+    ('HF0036', 'FC0003', 'S0007', 'Satay Tulang Jelebu', 'Marinated chicken meat and soft cartilage grilled on skewers over charcoal.', 'A distinctive Jelebu speciality representing regional creativity within Negeri Sembilan cuisine.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703302/SatayTulangJelebu_ycctcb.webp', true),
+    ('HF0037', 'FC0003', 'S0008', 'Sambal Hitam', 'A dark savoury sambal traditionally prepared using belimbing buluh, chilli, anchovies and onions.', 'A distinctive Pahang condiment demonstrating traditional preservation and slow-cooking techniques.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703301/SambalHitam_rnwwrr.jpg', true),
+    ('HF0038', 'FC0004', 'S0008', 'Puding Raja', 'A rich dessert combining bananas, dried fruits, nuts and a creamy custard-like sauce.', 'Historically associated with Pahang royal cuisine and particularly the town of Pekan.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703300/PudingRaja_cwcpzl.jpg', true),
+    ('HF0039', 'FC0003', 'S0008', 'Opor Pahang', 'Meat slowly cooked with spices and coconut milk until rich and relatively dry.', 'A traditional Pahang speciality reflecting the state''s ceremonial Malay cooking heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703306/OporPahang_qtfht9.jpg', true),
+    ('HF0040', 'FC0003', 'S0009', 'Rendang Tok', 'Beef slow-cooked with coconut milk and spices until dark, concentrated and tender.', 'A traditional Perak Malay dish associated with celebrations and ceremonial cooking.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703301/RendangTok_c4uagp.webp', true),
+    ('HF0041', 'FC0004', 'S0009', 'Heong Peng', 'A flaky baked pastry with a sweet, aromatic malt and sugar filling.', 'A well-known traditional biscuit associated with Ipoh and Perak''s Chinese bakery heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703300/HeongPeng_dyh40h.jpg', true),
+    ('HF0042', 'FC0001', 'S0009', 'Hainanese Chicken Rice', 'Poached or roasted chicken served with fragrant rice, chilli sauce and ginger condiments.', 'Part of Ipoh''s long-established Chinese Malaysian coffee-shop and food culture.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703300/HainaneseChickenRice_ozwes6.jpg', true),
+    ('HF0043', 'FC0004', 'S0010', 'Pulut Harumanis', 'Coconut-flavoured glutinous rice served with slices of fragrant Harumanis mango.', 'Celebrates the Harumanis mango, one of the agricultural products most strongly associated with Perlis.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703299/PulutHarumanis_xfdeid.jpg', true),
+    ('HF0044', 'FC0003', 'S0010', 'Pekasam Puyu', 'Climbing perch preserved through traditional fermentation using salt and rice.', 'Reflects Perlis'' northern food-preservation practices and agricultural village traditions.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703300/PekasamPuyu_kfa8up.jpg', true),
+    ('HF0045', 'FC0004', 'S0010', 'Kuih Karas', 'A delicate crispy traditional sweet made from fine rice-flour batter.', 'A traditional Perlis snack commonly connected with festive and community food preparation.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703302/KuihKaras_zgh4ux.jpg', true),
+    ('HF0046', 'FC0002', 'S0011', 'Tuaran Mee', 'Springy egg noodles stir-fried with vegetables, egg and savoury toppings.', 'A famous Sabahan hawker dish originating from the Tuaran area.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703302/TuaranMee_mhfjw0.jpg', true),
+    ('HF0047', 'FC0003', 'S0011', 'Ambuyat', 'A sticky starch-based dish made primarily from sago and eaten with flavourful dipping sauces.', 'Represents Borneo''s traditional reliance on sago and communal eating practices.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703303/Ambuyat_vmiozj.webp', true),
+    ('HF0048', 'FC0003', 'S0011', 'Tuhau', 'A fragrant wild-ginger preparation commonly mixed with chilli, lime and other seasonings.', 'A distinctive indigenous Sabahan food associated especially with Kadazandusun culinary traditions.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703302/Tuhau_gspbeo.jpg', true),
+    ('HF0049', 'FC0003', 'S0012', 'Bak Kut Teh', 'Meat slowly simmered in a fragrant herbal broth with spices and garlic.', 'Closely associated with Klang and an important part of Selangor''s Chinese Malaysian food heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703303/BakKutTeh_otlauq.jpg', true),
+    ('HF0050', 'FC0001', 'S0012', 'Nasi Ambeng', 'Rice served communally with dishes such as chicken, fried noodles, sambal and serunding.', 'A Javanese-Malay communal dish officially recognised as part of Selangor''s food heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703303/NasiAmbeng_exmyda.jpg', true),
+    ('HF0051', 'FC0003', 'S0012', 'Pecal', 'Boiled or fresh vegetables served with a rich, savoury peanut sauce.', 'Reflects the influence of Javanese communities on Selangor''s multicultural food traditions.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703306/Pecal_hlfz2q.jpg', true),
+    ('HF0052', 'FC0003', 'S0013', 'Keropok Lekor', 'A chewy fish-based snack made by combining ground fish with starch before boiling or frying.', 'An iconic Terengganu coastal food closely linked to the state''s fishing communities.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703301/KeropokLekor_bi9js7.jpg', true),
+    ('HF0053', 'FC0003', 'S0013', 'Satar', 'Spiced boneless fish wrapped in banana leaves and grilled over charcoal.', 'A traditional Terengganu seafood speciality reflecting the state''s strong coastal identity.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703301/Satar_lltkjt.webp', true),
+    ('HF0054', 'FC0002', 'S0013', 'Laksam', 'Rolled rice noodles served in a creamy fish and coconut-milk gravy.', 'A traditional East Coast breakfast dish with a distinctive Terengganu preparation.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703302/Laksam_ooa0ws.webp', true),
+    ('HF0055', 'FC0001', 'S0014', 'Nasi Lemak', 'Fragrant coconut rice served with sambal, anchovies, peanuts, cucumber and egg.', 'A Malaysian staple strongly represented in Kuala Lumpur''s traditional Malay areas such as Kampung Baru.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703305/NasiLemak_qoppmi.jpg', true),
+    ('HF0056', 'FC0002', 'S0014', 'Curry Laksa', 'Noodles served in a rich, spicy coconut curry broth with assorted toppings.', 'Represents Kuala Lumpur''s multicultural hawker tradition and blending of Malaysian culinary influences.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703305/CurryLaksa_byesar.jpg', true),
+    ('HF0057', 'FC0003', 'S0014', 'Murtabak', 'Pan-fried stuffed bread filled with seasoned meat, egg and onions and served with curry or pickles.', 'An important part of Kuala Lumpur''s Indian Muslim and mamak food culture.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703303/Murtabak_e3oqat.jpg', true),
+    ('HF0058', 'FC0001', 'S0015', 'Lamban', 'Sweetened steamed rice wrapped in coconut leaves and traditionally served with peanut sauce.', 'A traditional Labuan speciality representing the island''s local Malay food heritage.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703302/Lamban_lrp67e.jpg', true),
+    ('HF0059', 'FC0004', 'S0015', 'Punjung', 'A small cone-shaped rice-flour dessert containing a sweet jelly filling and wrapped in banana leaves.', 'A traditional Labuan kuih preserving local methods of leaf-wrapped dessert preparation.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703299/Punjung_mmoiyb.jpg', true),
+    ('HF0060', 'FC0004', 'S0015', 'Jelurut', 'A soft jelly-like dessert prepared from rice flour, sugar and coconut milk.', 'A recognised Labuan traditional sweet reflecting the island''s coconut-based dessert culture.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703303/Jelurut_w8lklr.jpg', true),
+    ('HF0061', 'FC0001', 'S0016', 'Nasi Lemak', 'Fragrant coconut rice served with sambal, anchovies, peanuts, cucumber and egg.', 'A nationally recognised Malaysian dish widely served in Putrajaya and representative of Malay food culture.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703305/NasiLemak_qoppmi.jpg', true),
+    ('HF0062', 'FC0003', 'S0016', 'Rendang', 'Meat slowly cooked with coconut milk, spices and aromatics until rich and concentrated.', 'A major Malaysian festive and ceremonial dish widely represented in Putrajaya''s local dining scene.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703300/Rendang_wny8zd.jpg', true),
+    ('HF0063', 'FC0003', 'S0016', 'Roti John', 'A griddled bread sandwich filled with seasoned egg, meat and onions and finished with sauces.', 'A popular Malaysian street and night-market food representative of contemporary local food culture.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703301/RotiJohn_rgzmnh.jpg', true),
+    ('HF0064', 'FC0004', 'S0016', 'Cendol', 'Shaved ice with coconut milk, green cendol strands and palm-sugar syrup.', 'A classic Malaysian dessert commonly served across the country, including Putrajaya.', 'https://res.cloudinary.com/hv2ectij/image/upload/v1788703304/Cendol_gywsjg.jpg', true);
+
+do $$
+begin
+    if (select count(*) from public.heritage_foods) <> 64 then
+        raise exception 'Seed verification failed: expected exactly 64 Heritage Foods';
+    end if;
+
+    if exists (
+        select 1
+        from generate_series(1, 64) expected(number)
+        left join public.heritage_foods food
+            on food.heritage_food_id = 'HF' || lpad(expected.number::text, 4, '0')
+        where food.heritage_food_id is null
+    ) then
+        raise exception 'Seed verification failed: expected Heritage Food IDs HF0001 through HF0064';
+    end if;
+
+    if (select count(distinct state_id) from public.heritage_foods) <> 16 then
+        raise exception 'Seed verification failed: all 16 states and Federal Territories must have Heritage Foods';
+    end if;
+
+    if exists (
+        select 1
+        from public.states state
+        left join public.heritage_foods food on food.state_id = state.state_id
+        group by state.state_id
+        having count(food.heritage_food_id) <> 4
+    ) then
+        raise exception 'Seed verification failed: every state must have exactly four Heritage Foods';
+    end if;
+
+    if exists (
+        select 1 from public.heritage_foods
+        where origin_summary is null or btrim(origin_summary) = ''
+    ) then
+        raise exception 'Seed verification failed: Heritage Food origin summaries must not be blank';
+    end if;
+
+    if exists (
+        select 1 from public.heritage_foods
+        where cultural_significance is null or btrim(cultural_significance) = ''
+    ) then
+        raise exception 'Seed verification failed: Heritage Food cultural significance must not be blank';
+    end if;
+
+    if exists (
+        select 1 from public.heritage_foods
+        where image_url is null or btrim(image_url) = ''
+    ) then
+        raise exception 'Seed verification failed: Heritage Food image URLs must not be blank';
+    end if;
+
+    if exists (
+        select 1 from public.heritage_foods
+        where is_active is distinct from true
+    ) then
+        raise exception 'Seed verification failed: all Heritage Foods must be active';
+    end if;
+
+    if exists (
+        select heritage_food_id
+        from public.heritage_foods
+        group by heritage_food_id
+        having count(*) > 1
+    ) then
+        raise exception 'Seed verification failed: duplicate Heritage Food IDs found';
+    end if;
+
+    if exists (
+        select food_name, state_id
+        from public.heritage_foods
+        group by food_name, state_id
+        having count(*) > 1
+    ) then
+        raise exception 'Seed verification failed: duplicate Heritage Food names found within a state';
+    end if;
+end;
+$$;
 -- ============================================================================
 -- 4. ARTWORKS AND HERITAGE TIFFINS
 -- profile_id identifies the tourist/profile who created the artwork.
