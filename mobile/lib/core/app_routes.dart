@@ -162,8 +162,15 @@ abstract final class AppRoutes {
           settings,
         );
       case postDetail:
+        final postArgs = settings.arguments is PostDetailArguments
+            ? settings.arguments as PostDetailArguments
+            : null;
         return _build(
-          PostDetailView(postId: settings.arguments as String? ?? ''),
+          PostDetailView(
+            postId: postArgs?.post.id ?? settings.arguments as String? ?? '',
+            initialPost: postArgs?.post,
+            onPostChanged: postArgs?.onPostChanged,
+          ),
           settings,
         );
       case createPost:
@@ -181,7 +188,10 @@ abstract final class AppRoutes {
         final campaignId = settings.arguments is String
             ? settings.arguments as String
             : null;
-        return _build(ArtworkCampaignHomeView(campaignId: campaignId), settings);
+        return _build(
+          ArtworkCampaignHomeView(campaignId: campaignId),
+          settings,
+        );
       case campaignDetail:
         return _build(
           ArtworkCampaignDetailView(
@@ -193,7 +203,9 @@ abstract final class AppRoutes {
         final args = settings.arguments;
         return _build(
           ArtworkVotingDetailView(
-            entryId: args is Map ? args['entryId'] as String? ?? '' : args as String? ?? '',
+            entryId: args is Map
+                ? args['entryId'] as String? ?? ''
+                : args as String? ?? '',
             initialLayer: args is Map ? args['initialLayer'] as int? ?? 0 : 0,
           ),
           settings,

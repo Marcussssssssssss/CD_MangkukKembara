@@ -83,18 +83,14 @@ class PostCard extends StatelessWidget {
               // Vendor tag
               Row(
                 children: [
-                  Icon(
-                    Icons.storefront_rounded,
-                    size: 14,
-                    color: primary,
-                  ),
+                  Icon(Icons.storefront_rounded, size: 14, color: primary),
                   const SizedBox(width: 4),
                   Expanded(
                     child: Text(
                       '${post.vendorName} · ${post.vendorState}',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                        color: primary,
-                      ),
+                      style: Theme.of(
+                        context,
+                      ).textTheme.labelMedium?.copyWith(color: primary),
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
@@ -167,9 +163,7 @@ class PostCard extends StatelessWidget {
                         ? Icons.favorite_rounded
                         : Icons.favorite_outline_rounded,
                     label: '${post.likeCount}',
-                    color: post.isLikedByCurrentUser
-                        ? AppColors.error
-                        : muted,
+                    color: post.isLikedByCurrentUser ? AppColors.error : muted,
                     onTap: onLike,
                   ),
                   const SizedBox(width: 16),
@@ -237,14 +231,27 @@ class _ActionButton extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(icon, size: 18, color: color),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 220),
+            switchInCurve: Curves.easeOutBack,
+            switchOutCurve: Curves.easeIn,
+            transitionBuilder: (child, animation) => ScaleTransition(
+              scale: animation,
+              child: FadeTransition(opacity: animation, child: child),
+            ),
+            child: Icon(icon, key: ValueKey(icon), size: 18, color: color),
+          ),
           const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              color: color,
-              fontWeight: FontWeight.w600,
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 180),
+            child: Text(
+              label,
+              key: ValueKey(label),
+              style: TextStyle(
+                fontSize: 13,
+                color: color,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
         ],

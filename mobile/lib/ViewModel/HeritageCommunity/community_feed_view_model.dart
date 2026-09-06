@@ -25,6 +25,7 @@ class CommunityFeedViewModel extends ChangeNotifier {
   String _searchQuery = '';
   String _sort = 'Popular';
   int _loadRevision = 0;
+  final Set<String> _likesInFlight = <String>{};
   double _vendorAverageRating;
 
   List<CommunityPostModel> get posts => _posts;
@@ -36,6 +37,14 @@ class CommunityFeedViewModel extends ChangeNotifier {
   String get sort => _sort;
   bool get isEmpty => _state == CommunityFeedState.empty;
   double get vendorAverageRating => _vendorAverageRating;
+  bool isTogglingLike(String postId) => _likesInFlight.contains(postId);
+
+  void updatePost(CommunityPostModel updatedPost) {
+    final index = _posts.indexWhere((post) => post.id == updatedPost.id);
+    if (index == -1) return;
+    _posts[index] = updatedPost;
+    notifyListeners();
+  }
 
   Future<void> loadPosts({bool showLoading = true}) async {
     _loadRevision++;
@@ -85,16 +94,33 @@ class CommunityFeedViewModel extends ChangeNotifier {
     String userId,
     bool currentlyLiked,
   ) async {
+    if (_likesInFlight.contains(postId)) return;
+    final idx = _posts.indexWhere((post) => post.id == postId);
+    if (idx == -1) return;
+
+    final previous = _posts[idx];
+    _likesInFlight.add(postId);
+    _errorMessage = null;
+    _posts[idx] = previous.copyWith(
+      isLikedByCurrentUser: !currentlyLiked,
+      likeCount: previous.likeCount + (currentlyLiked ? -1 : 1),
+    );
+    notifyListeners();
+
     try {
       final updated = await _repo.toggleLike(postId, userId, currentlyLiked);
-      final idx = _posts.indexWhere((p) => p.id == postId);
-      if (idx != -1) {
-        _posts[idx] = updated;
+      final currentIndex = _posts.indexWhere((post) => post.id == postId);
+      if (currentIndex != -1) {
+        _posts[currentIndex] = updated;
         notifyListeners();
       }
     } catch (error) {
+      final currentIndex = _posts.indexWhere((post) => post.id == postId);
+      if (currentIndex != -1) _posts[currentIndex] = previous;
       _errorMessage = error.toString();
       notifyListeners();
+    } finally {
+      _likesInFlight.remove(postId);
     }
   }
 

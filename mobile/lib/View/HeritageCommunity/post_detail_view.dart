@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../Model/Repositories/HeritageCommunity/community_comment_model.dart';
+import '../../Model/Repositories/HeritageCommunity/community_post_model.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../ViewModel/HeritageCommunity/post_detail_view_model.dart';
 import '../../core/app_colors.dart';
@@ -11,11 +12,25 @@ import '../Widgets/error_state_widget.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/rating_bar.dart';
 
+class PostDetailArguments {
+  final CommunityPostModel post;
+  final ValueChanged<CommunityPostModel>? onPostChanged;
+
+  const PostDetailArguments({required this.post, this.onPostChanged});
+}
+
 /// C3. Community Post Details View.
 class PostDetailView extends StatefulWidget {
   final String postId;
+  final CommunityPostModel? initialPost;
+  final ValueChanged<CommunityPostModel>? onPostChanged;
 
-  const PostDetailView({super.key, required this.postId});
+  const PostDetailView({
+    super.key,
+    required this.postId,
+    this.initialPost,
+    this.onPostChanged,
+  });
 
   @override
   State<PostDetailView> createState() => _PostDetailViewState();
@@ -30,7 +45,7 @@ class _PostDetailViewState extends State<PostDetailView> {
   @override
   void initState() {
     super.initState();
-    _vm = PostDetailViewModel();
+    _vm = PostDetailViewModel(initialPost: widget.initialPost);
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _vm.loadPost(widget.postId),
     );
@@ -338,7 +353,12 @@ class _PostDetailViewState extends State<PostDetailView> {
       await Navigator.pushNamed(context, AppRoutes.login);
       return;
     }
-    await vm.toggleLike(auth.currentUser!.id);
+    final operation = vm.toggleLike(auth.currentUser!.id);
+    final optimisticPost = vm.post;
+    if (optimisticPost != null) widget.onPostChanged?.call(optimisticPost);
+    await operation;
+    final settledPost = vm.post;
+    if (settledPost != null) widget.onPostChanged?.call(settledPost);
     if (mounted && vm.errorMessage != null) {
       _showError(vm.errorMessage!);
     }
@@ -442,18 +462,25 @@ class _BottomAction extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            if (busy)
-              const SizedBox.square(
-                dimension: 22,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              )
-            else
-              Icon(icon, size: 24, color: color),
-            Text(
-              '$count',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: FontWeight.w700,
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              switchInCurve: Curves.easeOutBack,
+              switchOutCurve: Curves.easeIn,
+              transitionBuilder: (child, animation) => ScaleTransition(
+                scale: animation,
+                child: FadeTransition(opacity: animation, child: child),
+              ),
+              child: Icon(icon, key: ValueKey(icon), size: 24, color: color),
+            ),
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 180),
+              child: Text(
+                '$count',
+                key: ValueKey(count),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: color,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],

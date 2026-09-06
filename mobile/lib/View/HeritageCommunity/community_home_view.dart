@@ -13,6 +13,7 @@ import '../Widgets/post_card.dart';
 import '../Widgets/rating_bar.dart';
 import 'artwork_campaign_home_view.dart';
 import 'heritage_community_style.dart';
+import 'post_detail_view.dart';
 
 /// Map-inspired palette used only by the Community landing page.
 abstract final class _CommunityPageColors {
@@ -235,14 +236,17 @@ class _CommunityHomeViewState extends State<CommunityHomeView> {
                         onTap: () => Navigator.pushNamed(
                           context,
                           AppRoutes.postDetail,
-                          arguments: post.id,
+                          arguments: PostDetailArguments(
+                            post: post,
+                            onPostChanged: vm.updatePost,
+                          ),
                         ),
                         onLike: () async {
                           if (!auth.isLoggedIn) {
                             await Navigator.pushNamed(context, AppRoutes.login);
                             return;
                           }
-                          vm.toggleLike(
+                          await vm.toggleLike(
                             post.id,
                             auth.currentUser!.id,
                             post.isLikedByCurrentUser,
