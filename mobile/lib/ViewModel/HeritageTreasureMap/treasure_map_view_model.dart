@@ -83,14 +83,15 @@ class TreasureMapViewModel extends ChangeNotifier {
       final fetchedVendors = await _repo.fetchVendors(
         foodCategoryId: _selectedFoodCategoryId,
       );
-      _mapVendors = HeritageTreasureMapSearch.filterVendors(
+      final filteredVendors = HeritageTreasureMapSearch.filterVendors(
         fetchedVendors,
         query: _searchQuery,
         state: _selectedState,
         foodCategory: _selectedFoodCategory,
         foodCategoryId: _selectedFoodCategoryId,
       );
-      _vendors = _mapVendors
+      _vendors = filteredVendors.toList();
+      _mapVendors = filteredVendors
           .where(
             (vendor) =>
                 vendor.pasarMalamId == null || _searchQuery.trim().isNotEmpty,
