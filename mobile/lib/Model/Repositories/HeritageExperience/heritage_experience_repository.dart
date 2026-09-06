@@ -57,6 +57,15 @@ class HeritageExperienceRepository {
     return rows.map((row) => row['heritage_tiffin_id'] as String).toSet();
   }
 
+  /// Checks the authenticated profile's persisted collection for one tiffin.
+  /// Guests have no collection, so they remain in preview mode.
+  Future<bool> isTiffinCollected(String tiffinId) async {
+    final user = _api.currentUser;
+    if (user == null) return false;
+    final collectedIds = await fetchCollectedTiffinIds(user.id);
+    return collectedIds.contains(tiffinId);
+  }
+
   /// Returns only active tiffins collected by the authenticated user.
   Future<List<HeritageTiffinModel>> fetchCollectedTiffins(
     String userId, {

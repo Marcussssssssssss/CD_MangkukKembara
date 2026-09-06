@@ -22,6 +22,7 @@ class TiffinContentViewModel extends ChangeNotifier {
   HeritageFoodModel? _food;
   bool _isLoading = false;
   bool _hasError = false;
+  bool _isCollected = false;
   String? _errorMessage;
   int _currentStoryIndex = 0;
 
@@ -34,6 +35,7 @@ class TiffinContentViewModel extends ChangeNotifier {
   HeritageFoodModel? get food => _food;
   bool get isLoading => _isLoading;
   bool get hasError => _hasError;
+  bool get isCollected => _isCollected;
   String? get errorMessage => _errorMessage;
   int get currentStoryIndex => _currentStoryIndex;
   HeritageStoryModel? get currentStory =>
@@ -41,19 +43,22 @@ class TiffinContentViewModel extends ChangeNotifier {
   bool get hasPreviousStory => _currentStoryIndex > 0;
   bool get hasNextStory => _currentStoryIndex < _stories.length - 1;
 
-  Future<void> loadTiffin(
-    String tiffinId, {
-    Set<String>? collectedIds,
-    bool showLoading = true,
-  }) async {
+  Future<void> loadTiffin(String tiffinId, {bool showLoading = true}) async {
     if (_isLoading) return;
     _isLoading = true;
     _hasError = false;
     _errorMessage = null;
+    _isCollected = false;
+    _artist = null;
+    _artwork = null;
+    _stories = [];
+    _media = [];
     if (showLoading) notifyListeners();
     try {
       _tiffin = await _repo.fetchTiffinById(tiffinId);
       if (_tiffin != null) {
+        _isCollected = await _repo.isTiffinCollected(tiffinId);
+        if (!_isCollected) return;
         if (_tiffin!.artistId != null) {
           _artist = await _repo.fetchArtistById(_tiffin!.artistId!);
         }

@@ -14,11 +14,12 @@ class VendorTiffinModel {
 
   factory VendorTiffinModel.fromJson(Map<String, dynamic> json) {
     final tiffin = json['heritage_tiffins'] as Map<String, dynamic>?;
+    final artwork = tiffin?['artworks'] as Map<String, dynamic>?;
     return VendorTiffinModel(
       vendorId: json['vendor_id'] as String,
       tiffinId: json['heritage_tiffin_id'] as String,
       tiffinEditionName: tiffin?['edition_name'] as String? ?? '',
-      coverImageUrl: tiffin?['cover_image_url'] as String?,
+      coverImageUrl: artwork?['image_url'] as String?,
     );
   }
 }
