@@ -27,6 +27,7 @@ class AuthViewModel extends ChangeNotifier {
   AuthUserModel? _currentUser;
   ProfileModel? _profile;
   bool _isInitialized = false;
+  bool _wasAuthenticatedBeforeRecovery = false;
 
   // ── Getters ───────────────────────────────────────────────────────────────────
 
@@ -40,6 +41,7 @@ class AuthViewModel extends ChangeNotifier {
   AuthUserModel? get currentUser => _currentUser;
   ProfileModel? get profile => _profile;
   bool get isInitialized => _isInitialized;
+  bool get wasAuthenticatedBeforeRecovery => _wasAuthenticatedBeforeRecovery;
   String get displayName =>
       _profile?.displayName ?? _currentUser?.email ?? 'Guest';
 
@@ -108,14 +110,23 @@ class AuthViewModel extends ChangeNotifier {
 
   void _handleAuthEvent(AuthChangeEvent event) {
     if (event == AuthChangeEvent.passwordRecovery) {
-      _currentUser = null;
-      _profile = null;
-      _isLoggedIn = false;
-      _isInitialized = true;
-      notifyListeners();
+      _wasAuthenticatedBeforeRecovery = _isLoggedIn;
+      if (!_isLoggedIn) {
+        _currentUser = null;
+        _profile = null;
+        _isInitialized = true;
+        notifyListeners();
+      }
       return;
     }
     _restoreCurrentSession();
+  }
+
+  /// Call after an authenticated user successfully resets their password.
+  /// Refreshes the session and restores the auth state.
+  Future<void> finalizeAuthenticatedRecovery() async {
+    _wasAuthenticatedBeforeRecovery = false;
+    await _restoreCurrentSession();
   }
 
   // ── Logout ────────────────────────────────────────────────────────────────────

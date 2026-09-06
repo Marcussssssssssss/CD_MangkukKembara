@@ -234,9 +234,13 @@ abstract final class AppRoutes {
       case changePassword:
         return _build(const ChangePasswordView(), settings);
       case resetPassword:
+        final args = settings.arguments is ResetPasswordArguments
+            ? settings.arguments as ResetPasswordArguments
+            : null;
         return _build(
           ResetPasswordView(
-            recoverySessionVerified: settings.arguments == true,
+            recoverySessionVerified: args?.recoverySessionVerified ?? false,
+            wasAuthenticated: args?.wasAuthenticated ?? false,
           ),
           settings,
         );
@@ -297,4 +301,13 @@ class BottomTabTransition {
   final int tabIndex;
 
   const BottomTabTransition(this.tabIndex);
+}
+
+class ResetPasswordArguments {
+  final bool recoverySessionVerified;
+  final bool wasAuthenticated;
+  const ResetPasswordArguments({
+    this.recoverySessionVerified = false,
+    this.wasAuthenticated = false,
+  });
 }
