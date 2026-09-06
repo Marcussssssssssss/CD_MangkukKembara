@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../Model/Repositories/AccountManagement/account_repository.dart';
+import '../../core/app_exception.dart';
 
 /// View model for forgot password and reset password flows.
 class PasswordRecoveryViewModel extends ChangeNotifier {
@@ -24,7 +25,8 @@ class PasswordRecoveryViewModel extends ChangeNotifier {
       hasMinLength && hasUppercase && hasLowercase && hasNumber && hasSpecial;
 
   bool get isLoading => _isLoading;
-  String? get errorMessage => _errorMessage;
+  String? get errorMessage =>
+      _errorMessage == null ? null : _friendlyError(_errorMessage!);
   String? get successMessage => _successMessage;
   bool get isCurrentPasswordVerified => _isCurrentPasswordVerified;
 
@@ -41,8 +43,8 @@ class PasswordRecoveryViewModel extends ChangeNotifier {
     try {
       await _repo.sendPasswordResetEmail(email);
       _successMessage = 'Reset link sent to $email. Check your inbox.';
-    } catch (e) {
-      _errorMessage = e.toString();
+    } catch (error) {
+      _errorMessage = _friendlyError(error);
     } finally {
       _isLoading = false;
       notifyListeners();
@@ -64,8 +66,8 @@ class PasswordRecoveryViewModel extends ChangeNotifier {
       _successMessage = 'Password changed successfully.';
       notifyListeners();
       return true;
-    } catch (e) {
-      _errorMessage = e.toString().replaceFirst('Exception: ', '');
+    } catch (error) {
+      _errorMessage = _friendlyError(error);
       notifyListeners();
       return false;
     } finally {
@@ -105,7 +107,7 @@ class PasswordRecoveryViewModel extends ChangeNotifier {
       _successMessage = 'Password reset successfully.';
       return true;
     } catch (error) {
-      _errorMessage = error.toString();
+      _errorMessage = _friendlyError(error);
       return false;
     } finally {
       _isLoading = false;
@@ -113,9 +115,30 @@ class PasswordRecoveryViewModel extends ChangeNotifier {
     }
   }
 
+  Future<void> endRecoverySession() => _repo.logout();
+
   void clearMessages() {
     _errorMessage = null;
     _successMessage = null;
     notifyListeners();
+  }
+
+  String _friendlyError(Object error) {
+    if (error is AppException) return error.message;
+
+    final details = error.toString().toLowerCase();
+    if (details.contains('socket') ||
+        details.contains('network') ||
+        details.contains('host lookup') ||
+        details.contains('timed out')) {
+      return 'We could not connect to the service. Check your internet connection and try again.';
+    }
+    if (error is String &&
+        !details.contains('exception') &&
+        !details.contains('error:') &&
+        !details.contains('uri=')) {
+      return error;
+    }
+    return 'We could not complete that request. Please try again.';
   }
 }
