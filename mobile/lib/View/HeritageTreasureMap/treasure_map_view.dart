@@ -995,7 +995,7 @@ class _PasarMalamListCard extends StatelessWidget {
       child: ListTile(
         leading: const CircleAvatar(
           backgroundColor: AppColors.accentContainer,
-          child: Icon(Icons.nightlife_rounded, color: AppColors.accentDark),
+          child: Icon(Icons.festival_rounded, color: AppColors.accentDark),
         ),
         title: Text(
           market.name,
@@ -1083,7 +1083,7 @@ class _PasarMalamPreviewSheet extends StatelessWidget {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: const Icon(
-                                    Icons.nightlife_rounded,
+                                    Icons.festival_rounded,
                                     color: AppColors.accentDark,
                                     size: 26,
                                   ),
