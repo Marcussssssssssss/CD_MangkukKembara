@@ -18,6 +18,7 @@ Future<void> main() async {
   await Supabase.initialize(
     url: BackendConfig.supabaseUrl,
     publishableKey: BackendConfig.supabaseAnonKey,
+    authOptions: const FlutterAuthClientOptions(detectSessionInUri: false),
   );
   runApp(const MangkukKembaraApp());
 }
@@ -36,6 +37,8 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<Uri>? _deepLinkSubscription;
   final _appLinks = AppLinks();
+  String? _handledAuthLink;
+  bool _requirePasswordLoginAfterConfirmation = false;
   late bool _hadAuthenticatedSession;
   String? _lastKnownEmail;
 
@@ -48,16 +51,26 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
     final initialUser = Supabase.instance.client.auth.currentSession?.user;
     _hadAuthenticatedSession = initialUser != null;
     _lastKnownEmail = initialUser?.email;
-    _listenForRecoveryLinks();
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
       state,
-    ) {
+    ) async {
       if (state.event == AuthChangeEvent.passwordRecovery) {
         _navigatorKey.currentState?.pushNamedAndRemoveUntil(
           AppRoutes.resetPassword,
-          (route) => route.isFirst,
+          (route) => false,
+          arguments: true,
         );
       } else if (state.event == AuthChangeEvent.signedIn) {
+        if (_requirePasswordLoginAfterConfirmation) {
+          _requirePasswordLoginAfterConfirmation = false;
+          await Supabase.instance.client.auth.signOut();
+          _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+            AppRoutes.login,
+            (route) => false,
+          );
+          _showMessage('Email confirmed. Please log in to continue.');
+          return;
+        }
         final user = state.session?.user;
         if (_hadAuthenticatedSession) {
           if (user?.email != null &&
@@ -70,36 +83,51 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
         }
         _hadAuthenticatedSession = true;
         _lastKnownEmail = user?.email;
-        _navigatorKey.currentState?.pushNamedAndRemoveUntil(
-          AppRoutes.treasureMap,
-          (route) => false,
-        );
       } else if (state.event == AuthChangeEvent.signedOut) {
         _hadAuthenticatedSession = false;
         _lastKnownEmail = null;
       }
     });
+    _listenForRecoveryLinks();
   }
 
   Future<void> _listenForRecoveryLinks() async {
     final initialLink = await _appLinks.getInitialLink();
-    _openPasswordRecovery(initialLink);
+    await _handleAuthLink(initialLink);
     _deepLinkSubscription = _appLinks.uriLinkStream.listen(
-      _openPasswordRecovery,
+      (link) => unawaited(_handleAuthLink(link)),
     );
   }
 
-  void _openPasswordRecovery(Uri? link) {
-    if (link?.scheme != 'io.mangkukkembara.app' ||
-        link?.host != 'reset-password') {
+  Future<void> _handleAuthLink(Uri? link) async {
+    if (link == null ||
+        link.scheme != 'io.mangkukkembara.app' ||
+        (link.host != 'reset-password' && link.host != 'email-confirmed')) {
       return;
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _navigatorKey.currentState?.pushNamedAndRemoveUntil(
-        AppRoutes.resetPassword,
-        (route) => false,
-      );
-    });
+    final uri = link;
+    final parameters = <String, String>{
+      ...uri.queryParameters,
+      ...Uri.splitQueryString(uri.fragment),
+    };
+    final hasAuthParameter =
+        parameters.containsKey('access_token') ||
+        parameters.containsKey('code') ||
+        parameters.containsKey('error');
+    if (!hasAuthParameter || _handledAuthLink == uri.toString()) {
+      return;
+    }
+    _handledAuthLink = uri.toString();
+    _requirePasswordLoginAfterConfirmation =
+        uri.host == 'email-confirmed' && parameters['type'] != 'email_change';
+    try {
+      await Supabase.instance.client.auth.getSessionFromUrl(uri);
+    } catch (_) {
+      _requirePasswordLoginAfterConfirmation = false;
+      if (uri.host == 'reset-password') {
+        _showMessage('This password-reset link is invalid or has expired.');
+      }
+    }
   }
 
   void _showMessage(

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../ViewModel/AccountManagement/register_view_model.dart';
 import '../../core/app_routes.dart';
+import '../../core/email_address_validator.dart';
 import '../../core/constants.dart';
 
 /// Registration screen styled to match the heritage-travel login screen.
@@ -191,18 +192,8 @@ class _RegisterViewState extends State<RegisterView> {
                                           autofillHints: const [
                                             AutofillHints.email,
                                           ],
-                                          validator: (value) {
-                                            if (value == null ||
-                                                value.trim().isEmpty) {
-                                              return 'Email is required';
-                                            }
-                                            if (!RegExp(
-                                              r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$',
-                                            ).hasMatch(value)) {
-                                              return 'Enter a valid email';
-                                            }
-                                            return null;
-                                          },
+                                          validator:
+                                              EmailAddressValidator.validate,
                                         ),
                                         const SizedBox(height: 12),
                                         _HeritageField(

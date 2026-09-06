@@ -1,4 +1,5 @@
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/app_exception.dart';
 import '../../../core/backend_config.dart';
@@ -20,7 +21,8 @@ class AccountRepository {
     return user == null ? null : AuthUserModel.fromSupabase(user);
   }
 
-  Stream<void> get authChanges => _api.authStateChanges.map((_) {});
+  Stream<AuthChangeEvent> get authChanges =>
+      _api.authStateChanges.map((state) => state.event);
 
   Future<AuthUserModel> login(String email, String password) async {
     final response = await _api.signIn(email: email, password: password);
