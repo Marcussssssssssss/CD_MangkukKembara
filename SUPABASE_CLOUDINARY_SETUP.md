@@ -189,7 +189,10 @@ Expected result: zero rows.
 - Editing an account email asks for the current password, leaves the old email
   active, and sends verification messages according to Supabase Auth's secure
   email-change setting. In the hosted Supabase dashboard, keep **Secure email
-  change** enabled and allow-list the `EMAIL_CONFIRMATION_REDIRECT` URL.
+  change** enabled and allow-list the `EMAIL_CONFIRMATION_REDIRECT` URL. To
+  support the in-app OTP step, include `{{ .Token }}` in the hosted
+  **Change email address** template. The current-email confirmation can remain
+  a confirmation link.
 - A verified user can log in and is routed to the Treasure Map.
 - My Account loads the authenticated user's linked profile without a
   single-object coercion error.

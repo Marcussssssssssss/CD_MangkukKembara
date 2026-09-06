@@ -27,6 +27,7 @@ dependencies:
 
   # Backend, signed media uploads, and device integrations
   supabase_flutter: ^2.16.0
+  app_links: ^7.2.1
   http: ^1.6.0
   http_parser: ^4.1.2
   image_picker: ^1.2.3
