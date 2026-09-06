@@ -31,7 +31,7 @@ class HeritageTiffinModel {
       state: state?['state_name'] as String? ?? '',
       stateCode: state?['state_code'] as String? ?? '',
       summary: json['description'] as String? ?? '',
-      coverImageUrl: json['cover_image_url'] as String?,
+      coverImageUrl: artwork?['image_url'] as String?,
       isActive: json['status'] == 'active',
       artistId: artwork?['profile_id'] as String?,
       artworkId: json['artwork_id'] as String?,
