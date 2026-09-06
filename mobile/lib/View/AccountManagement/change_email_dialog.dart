@@ -20,6 +20,10 @@ class _ChangeEmailDialogState extends State<ChangeEmailDialog> {
   final _passwordController = TextEditingController();
   late final EmailChangeViewModel _viewModel;
   bool _obscurePassword = true;
+  bool _isOtpStep = false;
+  bool _isCurrentEmailOtpStep = false;
+  String? _pendingEmail;
+  final _otpController = TextEditingController();
 
   @override
   void initState() {
@@ -31,6 +35,7 @@ class _ChangeEmailDialogState extends State<ChangeEmailDialog> {
   void dispose() {
     _emailController.dispose();
     _passwordController.dispose();
+    _otpController.dispose();
     _viewModel.dispose();
     super.dispose();
   }
@@ -42,7 +47,35 @@ class _ChangeEmailDialogState extends State<ChangeEmailDialog> {
       currentPassword: _passwordController.text,
     );
     _passwordController.clear();
-    if (pendingEmail != null && mounted) Navigator.pop(context, pendingEmail);
+    if (pendingEmail != null && mounted) {
+      setState(() {
+        _pendingEmail = pendingEmail;
+        _isOtpStep = true;
+      });
+    }
+  }
+
+  Future<void> _verifyOtp() async {
+    if (!_formKey.currentState!.validate() || _pendingEmail == null) return;
+    final verified = await _viewModel.verifyEmailOtp(
+      email: _isCurrentEmailOtpStep ? widget.currentEmail : _pendingEmail!,
+      token: _otpController.text,
+    );
+    if (!verified || !mounted) return;
+    if (!_isCurrentEmailOtpStep) {
+      _otpController.clear();
+      setState(() => _isCurrentEmailOtpStep = true);
+      return;
+    }
+    Navigator.pop(context, _pendingEmail);
+  }
+
+  Future<void> _resendOtp() async {
+    final email = _isCurrentEmailOtpStep
+        ? widget.currentEmail
+        : _pendingEmail;
+    if (email == null) return;
+    await _viewModel.resendEmailOtp(email: email);
   }
 
   @override
@@ -51,7 +84,13 @@ class _ChangeEmailDialogState extends State<ChangeEmailDialog> {
       value: _viewModel,
       child: Consumer<EmailChangeViewModel>(
         builder: (context, viewModel, _) => AlertDialog(
-          title: const Text('Change email address'),
+          title: Text(
+            !_isOtpStep
+                ? 'Change email address'
+                : _isCurrentEmailOtpStep
+                ? 'Verify current email'
+                : 'Verify new email',
+          ),
           content: Form(
             key: _formKey,
             child: SingleChildScrollView(
@@ -60,57 +99,89 @@ class _ChangeEmailDialogState extends State<ChangeEmailDialog> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Your current email (${widget.currentEmail}) stays active until the new address is verified.',
+                    _isOtpStep
+                        ? _isCurrentEmailOtpStep
+                            ? 'Enter the OTP sent to ${widget.currentEmail} to complete the email change.'
+                            : 'Enter the OTP sent to $_pendingEmail. Then enter the separate OTP sent to ${widget.currentEmail}.'
+                        : 'Your current email (${widget.currentEmail}) stays active until the new address is verified.',
                     style: const TextStyle(color: AppColors.textSecondary),
                   ),
                   const SizedBox(height: 18),
-                  TextFormField(
-                    controller: _emailController,
-                    enabled: !viewModel.isSubmitting,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.newUsername],
-                    autocorrect: false,
-                    textCapitalization: TextCapitalization.none,
-                    decoration: const InputDecoration(
-                      labelText: 'New email',
-                      prefixIcon: Icon(Icons.alternate_email_rounded),
+                  if (!_isOtpStep) ...[
+                    TextFormField(
+                      controller: _emailController,
+                      enabled: !viewModel.isSubmitting,
+                      keyboardType: TextInputType.emailAddress,
+                      autofillHints: const [AutofillHints.newUsername],
+                      autocorrect: false,
+                      textCapitalization: TextCapitalization.none,
+                      decoration: const InputDecoration(
+                        labelText: 'New email',
+                        prefixIcon: Icon(Icons.alternate_email_rounded),
+                      ),
+                      validator: (value) =>
+                          EmailAddressValidator.validateChange(
+                            value,
+                            currentEmail: widget.currentEmail,
+                          ),
                     ),
-                    validator: (value) => EmailAddressValidator.validateChange(
-                      value,
-                      currentEmail: widget.currentEmail,
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  TextFormField(
-                    controller: _passwordController,
-                    enabled: !viewModel.isSubmitting,
-                    obscureText: _obscurePassword,
-                    autofillHints: const [AutofillHints.password],
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _submit(),
-                    decoration: InputDecoration(
-                      labelText: 'Current password',
-                      prefixIcon: const Icon(Icons.lock_outline_rounded),
-                      suffixIcon: IconButton(
-                        tooltip: _obscurePassword
-                            ? 'Show password'
-                            : 'Hide password',
-                        onPressed: viewModel.isSubmitting
-                            ? null
-                            : () => setState(
-                                () => _obscurePassword = !_obscurePassword,
-                              ),
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_outlined
-                              : Icons.visibility_off_outlined,
+                    const SizedBox(height: 14),
+                    TextFormField(
+                      controller: _passwordController,
+                      enabled: !viewModel.isSubmitting,
+                      obscureText: _obscurePassword,
+                      autofillHints: const [AutofillHints.password],
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _submit(),
+                      decoration: InputDecoration(
+                        labelText: 'Current password',
+                        prefixIcon: const Icon(Icons.lock_outline_rounded),
+                        suffixIcon: IconButton(
+                          tooltip: _obscurePassword
+                              ? 'Show password'
+                              : 'Hide password',
+                          onPressed: viewModel.isSubmitting
+                              ? null
+                              : () => setState(
+                                  () => _obscurePassword = !_obscurePassword,
+                                ),
+                          icon: Icon(
+                            _obscurePassword
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                          ),
                         ),
                       ),
+                      validator: (value) => value == null || value.isEmpty
+                          ? 'Current password is required'
+                          : null,
                     ),
-                    validator: (value) => value == null || value.isEmpty
-                        ? 'Current password is required'
-                        : null,
-                  ),
+                  ] else
+                    TextFormField(
+                      controller: _otpController,
+                      enabled: !viewModel.isSubmitting,
+                      keyboardType: TextInputType.number,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _verifyOtp(),
+                      maxLength: 6,
+                      decoration: const InputDecoration(
+                        labelText: '6-digit OTP',
+                        prefixIcon: Icon(Icons.password_rounded),
+                        counterText: '',
+                      ),
+                      validator: (value) =>
+                          value == null || value.trim().length != 6
+                          ? 'Enter the 6-digit OTP'
+                          : null,
+                    ),
+                  if (_isOtpStep)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: viewModel.isSubmitting ? null : _resendOtp,
+                        child: const Text('Resend OTP'),
+                      ),
+                    ),
                   if (viewModel.errorMessage != null) ...[
                     const SizedBox(height: 14),
                     Text(
@@ -133,7 +204,11 @@ class _ChangeEmailDialogState extends State<ChangeEmailDialog> {
               child: const Text('Cancel'),
             ),
             FilledButton(
-              onPressed: viewModel.isSubmitting ? null : _submit,
+              onPressed: viewModel.isSubmitting
+                  ? null
+                  : _isOtpStep
+                  ? _verifyOtp
+                  : _submit,
               child: viewModel.isSubmitting
                   ? const SizedBox(
                       width: 18,
@@ -143,7 +218,13 @@ class _ChangeEmailDialogState extends State<ChangeEmailDialog> {
                         color: Colors.white,
                       ),
                     )
-                  : const Text('Send verification'),
+                  : Text(
+                      !_isOtpStep
+                          ? 'Send OTP'
+                          : _isCurrentEmailOtpStep
+                          ? 'Complete change'
+                          : 'Verify new email',
+                    ),
             ),
           ],
         ),

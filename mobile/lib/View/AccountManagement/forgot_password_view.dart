@@ -232,22 +232,39 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
       child: Consumer<PasswordRecoveryViewModel>(
         builder: (context, vm, _) => Scaffold(
           backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: AppColors.background,
+            foregroundColor: AppColors.primary,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            leading: BackButton(
+              onPressed: () => Navigator.pushReplacementNamed(
+                context,
+                AppRoutes.forgotPassword,
+              ),
+            ),
+          ),
           body: Form(
             key: _formKey,
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                const AuthBranding(
-                  subtitle: 'Set a new password',
-                  imageAsset: 'asset/image/mangkuk_kembara_logo_green.png',
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 52),
                 const Icon(
                   Icons.password_rounded,
                   size: 56,
                   color: AppColors.primary,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+                Text(
+                  'Set a new password',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 40),
                 TextFormField(
                   controller: _passwordCtrl,
                   obscureText: _obscurePassword,

@@ -80,6 +80,24 @@ class SupabaseApiService {
     ),
   );
 
+  Future<AuthResponse> verifyEmailChangeOtp({
+    required String email,
+    required String token,
+  }) => guard(
+    () => client.auth.verifyOTP(
+      email: email.trim().toLowerCase(),
+      token: token.trim(),
+      type: OtpType.emailChange,
+    ),
+  );
+
+  Future<void> resendEmailChangeOtp(String email) => guard(
+    () => client.auth.resend(
+      type: OtpType.emailChange,
+      email: email.trim().toLowerCase(),
+    ),
+  );
+
   /// Calls the four-view artwork submission RPC.
   ///
   /// Keeping this operation here ensures repositories do not need to own the
