@@ -74,7 +74,8 @@ class TreasureMapRepository {
       *, states!inner(state_name),
       pasar_malam_operating_hours(
         day_of_week, opening_time, closing_time, is_closed
-      )
+      ),
+      vendors(vendor_id, participation_status)
     ''')
         .eq('is_active', true);
     if (state != null && state.isNotEmpty) {

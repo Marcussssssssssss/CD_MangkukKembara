@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../core/app_colors.dart';
 import '../../Model/Repositories/HeritageTreasureMap/vendor_model.dart';
+import 'app_network_image.dart';
 import 'rating_bar.dart';
 
 /// Vendor card used in list views and search results.
@@ -24,6 +25,7 @@ class VendorCard extends StatelessWidget {
             // Cover
             Container(
               height: 100,
+              clipBehavior: Clip.antiAlias,
               decoration: BoxDecoration(
                 color: coverColor,
                 borderRadius: const BorderRadius.vertical(
@@ -32,12 +34,17 @@ class VendorCard extends StatelessWidget {
               ),
               child: Stack(
                 children: [
-                  Center(
-                    child: Icon(
-                      Icons.restaurant_rounded,
-                      size: 48,
-                      color: Colors.white.withAlpha(100),
-                    ),
+                  Positioned.fill(
+                    child:
+                        vendor.coverImageUrl != null &&
+                            vendor.coverImageUrl!.isNotEmpty
+                        ? AppNetworkImage(
+                            imageUrl: vendor.coverImageUrl,
+                            fit: BoxFit.cover,
+                            targetOptimizationWidth: 720,
+                            errorWidget: const _VendorCoverFallback(),
+                          )
+                        : const _VendorCoverFallback(),
                   ),
                   Positioned(
                     top: 10,
@@ -142,6 +149,24 @@ class VendorCard extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _VendorCoverFallback extends StatelessWidget {
+  const _VendorCoverFallback();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: AppColors.primary,
+      child: Center(
+        child: Icon(
+          Icons.restaurant_rounded,
+          size: 48,
+          color: Colors.white.withAlpha(100),
         ),
       ),
     );
