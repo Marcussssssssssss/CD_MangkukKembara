@@ -58,7 +58,10 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
         _navigatorKey.currentState?.pushNamedAndRemoveUntil(
           AppRoutes.resetPassword,
           (route) => false,
-          arguments: true,
+          arguments: ResetPasswordArguments(
+            recoverySessionVerified: true,
+            wasAuthenticated: _hadAuthenticatedSession,
+          ),
         );
       } else if (state.event == AuthChangeEvent.signedIn) {
         if (_requirePasswordLoginAfterConfirmation) {

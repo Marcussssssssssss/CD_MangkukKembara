@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
+import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../ViewModel/AccountManagement/password_recovery_view_model.dart';
 import '../../core/email_address_validator.dart';
 import '../Widgets/auth_branding.dart';
@@ -190,10 +191,12 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
 /// Password form shown after Supabase validates a recovery deep link.
 class ResetPasswordView extends StatefulWidget {
   final bool recoverySessionVerified;
+  final bool wasAuthenticated;
 
   const ResetPasswordView({
     super.key,
     this.recoverySessionVerified = false,
+    this.wasAuthenticated = false,
   });
 
   @override
@@ -222,13 +225,23 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
   }
 
   Future<void> _leaveRecovery() async {
-    await _vm.endRecoverySession();
-    if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      AppRoutes.forgotPassword,
-      (route) => false,
-    );
+    if (widget.wasAuthenticated) {
+      await context.read<AuthViewModel>().finalizeAuthenticatedRecovery();
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.profile,
+        (route) => route.settings.name == AppRoutes.treasureMap,
+      );
+    } else {
+      await _vm.endRecoverySession();
+      if (!mounted) return;
+      Navigator.pushNamedAndRemoveUntil(
+        context,
+        AppRoutes.forgotPassword,
+        (route) => false,
+      );
+    }
   }
 
   @override
@@ -350,13 +363,23 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
                             _passwordCtrl.text,
                           );
                           if (success && context.mounted) {
-                            await vm.endRecoverySession();
-                            if (!context.mounted) return;
-                            Navigator.pushNamedAndRemoveUntil(
-                              context,
-                              AppRoutes.login,
-                              (route) => false,
-                            );
+                            if (widget.wasAuthenticated) {
+                              await context.read<AuthViewModel>().finalizeAuthenticatedRecovery();
+                              if (!context.mounted) return;
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                AppRoutes.profile,
+                                (route) => route.settings.name == AppRoutes.treasureMap,
+                              );
+                            } else {
+                              await vm.endRecoverySession();
+                              if (!context.mounted) return;
+                              Navigator.pushNamedAndRemoveUntil(
+                                context,
+                                AppRoutes.login,
+                                (route) => false,
+                              );
+                            }
                           }
                         },
                   child: vm.isLoading
