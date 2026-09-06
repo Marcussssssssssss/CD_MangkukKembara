@@ -300,7 +300,7 @@ class _TreasureMapViewState extends State<TreasureMapView> {
             child: _LabeledFilterDropdown(
               label: 'Food category',
               value: vm.selectedFoodCategory,
-              values: AppConstants.foodCategories,
+              values: vm.foodCategoryNames,
               onChanged: vm.setFoodCategoryFilter,
             ),
           ),

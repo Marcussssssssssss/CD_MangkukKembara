@@ -29,19 +29,6 @@ abstract final class AppConstants {
     'Wilayah Persekutuan Putrajaya',
   ];
 
-  static const List<String> foodCategories = [
-    'All',
-    'Rice',
-    'Noodles',
-    'Bread',
-    'Snacks',
-    'Dessert',
-    'Seafood',
-    'Grilled',
-    'Curry',
-    'Soup',
-  ];
-
   static const List<String> postSortOptions = ['Popular', 'New'];
   static const List<String> artworkSortOptions = [
     'Popular',
