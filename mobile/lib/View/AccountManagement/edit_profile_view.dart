@@ -357,7 +357,7 @@ ZW|Zimbabwe
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Verification sent to $pendingEmail. Confirm the new inbox first, then approve the same change from your current inbox.',
+          'Email changed successfully.',
         ),
         duration: const Duration(seconds: 20),
       ),
@@ -606,30 +606,6 @@ ZW|Zimbabwe
                               ),
                               child: Text(auth.currentUser?.email ?? ''),
                             ),
-                            if (auth.currentUser?.pendingEmail != null) ...[
-                              const SizedBox(height: 8),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(
-                                    Icons.schedule_send_outlined,
-                                    size: 17,
-                                    color: AppColors.warning,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Pending verification: ${auth.currentUser!.pendingEmail}',
-                                      style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
                             const SizedBox(height: 16),
 
                             _label('Country Code'),

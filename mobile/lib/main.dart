@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:app_links/app_links.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -33,6 +34,8 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
   final _navigatorKey = GlobalKey<NavigatorState>();
   final _messengerKey = GlobalKey<ScaffoldMessengerState>();
   StreamSubscription<AuthState>? _authSubscription;
+  StreamSubscription<Uri>? _deepLinkSubscription;
+  final _appLinks = AppLinks();
   late bool _hadAuthenticatedSession;
   String? _lastKnownEmail;
 
@@ -45,11 +48,7 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
     final initialUser = Supabase.instance.client.auth.currentSession?.user;
     _hadAuthenticatedSession = initialUser != null;
     _lastKnownEmail = initialUser?.email;
-    if (_hasPendingEmail(initialUser)) {
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => _showPendingEmailNotice(initialUser!),
-      );
-    }
+    _listenForRecoveryLinks();
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((
       state,
     ) {
@@ -61,14 +60,10 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
       } else if (state.event == AuthChangeEvent.signedIn) {
         final user = state.session?.user;
         if (_hadAuthenticatedSession) {
-          if (_hasPendingEmail(user)) {
-            _showPendingEmailNotice(user!);
-          } else if (user?.email != null &&
+          if (user?.email != null &&
               _lastKnownEmail != null &&
               user!.email != _lastKnownEmail) {
-            _showMessage(
-              'Email address changed successfully to ${user.email}.',
-            );
+            _showMessage('Email changed successfully.');
           }
           _lastKnownEmail = user?.email ?? _lastKnownEmail;
           return;
@@ -86,16 +81,25 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
     });
   }
 
-  bool _hasPendingEmail(User? user) =>
-      user?.newEmail != null && user!.newEmail!.trim().isNotEmpty;
-
-  void _showPendingEmailNotice(User user) {
-    final oldEmail = user.email ?? 'your old email address';
-    final newEmail = user.newEmail!;
-    _showMessage(
-      'Email change is not complete yet. If you confirmed $newEmail, now open $oldEmail and approve the email change there too.',
-      duration: const Duration(seconds: 20),
+  Future<void> _listenForRecoveryLinks() async {
+    final initialLink = await _appLinks.getInitialLink();
+    _openPasswordRecovery(initialLink);
+    _deepLinkSubscription = _appLinks.uriLinkStream.listen(
+      _openPasswordRecovery,
     );
+  }
+
+  void _openPasswordRecovery(Uri? link) {
+    if (link?.scheme != 'io.mangkukkembara.app' ||
+        link?.host != 'reset-password') {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _navigatorKey.currentState?.pushNamedAndRemoveUntil(
+        AppRoutes.resetPassword,
+        (route) => false,
+      );
+    });
   }
 
   void _showMessage(
@@ -120,6 +124,7 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
   @override
   void dispose() {
     _authSubscription?.cancel();
+    _deepLinkSubscription?.cancel();
     super.dispose();
   }
 

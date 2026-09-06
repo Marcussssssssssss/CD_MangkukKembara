@@ -133,6 +133,19 @@ class AccountRepository {
     return response.user!.newEmail ?? normalizedEmail;
   }
 
+  /// Verifies an email-change OTP for either the proposed or current address.
+  /// With secure email change enabled, both addresses receive separate OTPs.
+  Future<void> verifyEmailChangeOtp({
+    required String newEmail,
+    required String token,
+  }) async {
+    await _api.verifyEmailChangeOtp(email: newEmail, token: token);
+  }
+
+  Future<void> resendEmailChangeOtp({required String email}) async {
+    await _api.resendEmailChangeOtp(email);
+  }
+
   /// Re-authenticates the current user before allowing a password change.
   Future<void> verifyCurrentPassword(String currentPassword) async {
     final user = _api.requireUser();
