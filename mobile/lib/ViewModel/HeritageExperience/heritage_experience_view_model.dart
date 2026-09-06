@@ -8,6 +8,7 @@ class HeritageExperienceViewModel extends ChangeNotifier {
   HeritageExperienceViewModel({HeritageExperienceRepository? repo})
     : _repo = repo ?? HeritageExperienceRepository();
 
+  List<HeritageTiffinModel> _allTiffins = [];
   List<HeritageTiffinModel> _tiffins = [];
   Set<String> _collectedIds = {};
   bool _isLoading = false;
@@ -43,16 +44,16 @@ class HeritageExperienceViewModel extends ChangeNotifier {
     if (showLoading) notifyListeners();
     try {
       if (_userId == null) {
+        _allTiffins = [];
         _tiffins = [];
         _collectedIds = {};
         _totalActiveCount = 0;
       } else {
         _collectedIds = await _repo.fetchCollectedTiffinIds(_userId!);
-        _tiffins = await _repo.fetchCollectedTiffins(
-          _userId!,
-          state: _selectedState == 'All States' ? null : _selectedState,
-        );
+        // Fetch ALL collected tiffins once (no state filter) and cache them.
+        _allTiffins = await _repo.fetchCollectedTiffins(_userId!);
         _totalActiveCount = await _repo.fetchTotalActiveTiffinCount();
+        _applyStateFilter();
       }
     } catch (error) {
       _hasError = true;
@@ -63,9 +64,23 @@ class HeritageExperienceViewModel extends ChangeNotifier {
     }
   }
 
+  /// Derives [_tiffins] from the cached [_allTiffins] using the current
+  /// [_selectedState]. Pure in-memory operation — no DB call.
+  void _applyStateFilter() {
+    if (_selectedState == 'All States') {
+      _tiffins = List.of(_allTiffins);
+    } else {
+      _tiffins = _allTiffins
+          .where((t) => t.state == _selectedState)
+          .toList();
+    }
+  }
+
   void setStateFilter(String state) {
+    if (_selectedState == state) return;
     _selectedState = state;
-    if (!_isLoading) _loadCurrentCollection();
+    _applyStateFilter();
+    notifyListeners();
   }
 
   Future<void> retry({String? userId}) => loadTiffins(userId: userId);

@@ -18,6 +18,10 @@ class TreasureMapViewModel extends ChangeNotifier {
 
   // ── State ─────────────────────────────────────────────────────────────────────
 
+  /// Unfiltered caches populated on initial/refresh load.
+  List<VendorModel> _allVendors = [];
+  List<PasarMalamModel> _allPasarMalam = [];
+
   List<VendorModel> _vendors = [];
   List<VendorModel> _mapVendors = [];
   List<PasarMalamModel> _pasarMalam = [];
@@ -80,28 +84,11 @@ class TreasureMapViewModel extends ChangeNotifier {
     if (showLoading) notifyListeners();
     try {
       await _loadFoodCategories();
-      final fetchedVendors = await _repo.fetchVendors(
-        foodCategoryId: _selectedFoodCategoryId,
-      );
-      final filteredVendors = HeritageTreasureMapSearch.filterVendors(
-        fetchedVendors,
-        query: _searchQuery,
-        state: _selectedState,
-        foodCategory: _selectedFoodCategory,
-        foodCategoryId: _selectedFoodCategoryId,
-      );
-      _vendors = filteredVendors.toList();
-      _mapVendors = filteredVendors
-          .where(
-            (vendor) =>
-                vendor.pasarMalamId == null || _searchQuery.trim().isNotEmpty,
-          )
-          .toList();
+      // Fetch ALL vendors and pasar malam (unfiltered) and cache them.
+      _allVendors = await _repo.fetchVendors();
+      _allPasarMalam = await _repo.fetchPasarMalam();
+      _applyFilters();
       await _sortVendors();
-      _pasarMalam = await _repo.fetchPasarMalam(
-        query: _searchQuery.isEmpty ? null : _searchQuery,
-        state: HeritageTreasureMapSearch.databaseStateName(_selectedState),
-      );
     } catch (e) {
       _hasError = true;
       _errorMessage = 'Failed to load vendors. Please check your connection.';
@@ -112,6 +99,44 @@ class TreasureMapViewModel extends ChangeNotifier {
         loadVendors(showLoading: showLoading);
       }
     }
+  }
+
+  /// Derives [_vendors], [_mapVendors] and [_pasarMalam] from the cached
+  /// [_allVendors] / [_allPasarMalam] using the current filter settings.
+  /// Pure in-memory operation — no DB call, no [_isLoading] flip.
+  void _applyFilters() {
+    // Vendors
+    final filteredVendors = HeritageTreasureMapSearch.filterVendors(
+      _allVendors,
+      query: _searchQuery,
+      state: _selectedState,
+      foodCategory: _selectedFoodCategory,
+      foodCategoryId: _selectedFoodCategoryId,
+    );
+    _vendors = filteredVendors.toList();
+    _mapVendors = filteredVendors
+        .where(
+          (vendor) =>
+              vendor.pasarMalamId == null || _searchQuery.trim().isNotEmpty,
+        )
+        .toList();
+
+    // Pasar Malam
+    final normalizedState =
+        HeritageTreasureMapSearch.databaseStateName(_selectedState);
+    final normalizedQuery = _searchQuery.trim().toLowerCase();
+    _pasarMalam = _allPasarMalam.where((market) {
+      if (normalizedState != null &&
+          market.state.toLowerCase() != normalizedState.toLowerCase()) {
+        return false;
+      }
+      if (normalizedQuery.isNotEmpty &&
+          !market.name.toLowerCase().contains(normalizedQuery) &&
+          !market.state.toLowerCase().contains(normalizedQuery)) {
+        return false;
+      }
+      return true;
+    }).toList();
   }
 
   void setViewMode(MapViewMode mode) {
@@ -138,6 +163,45 @@ class TreasureMapViewModel extends ChangeNotifier {
       _vendors.sort(_compareByName);
       _locationMessage =
           'Location is unavailable. Vendors are shown alphabetically.';
+      return;
+    }
+    _vendors =
+        _vendors
+            .map(
+              (vendor) => vendor.copyWith(
+                distanceKm: _distanceKm(
+                  position.latitude,
+                  position.longitude,
+                  vendor.latitude,
+                  vendor.longitude,
+                ),
+              ),
+            )
+            .toList()
+          ..sort((a, b) {
+            final distance = (a.distanceKm ?? double.infinity).compareTo(
+              b.distanceKm ?? double.infinity,
+            );
+            return distance == 0 ? _compareByName(a, b) : distance;
+          });
+  }
+
+  /// Synchronous re-sort using the already-cached [_position].
+  /// Called by local filter methods that don't need the async location lookup
+  /// (it was resolved during the initial [_sortVendors] call).
+  void _sortVendorsSync() {
+    _locationMessage = null;
+    if (_vendorSort == 'Most Rated') {
+      _vendors.sort(_compareMostRated);
+      return;
+    }
+    final position = _position;
+    if (position == null) {
+      _vendors.sort(_compareByName);
+      if (_locationChecked) {
+        _locationMessage =
+            'Location is unavailable. Vendors are shown alphabetically.';
+      }
       return;
     }
     _vendors =
@@ -218,18 +282,39 @@ class TreasureMapViewModel extends ChangeNotifier {
 
   void setSearchQuery(String q) {
     _searchQuery = q;
-    loadVendors();
+    // Filter locally from cached data — no DB call, no loading flash.
+    if (_allVendors.isNotEmpty || _allPasarMalam.isNotEmpty) {
+      _applyFilters();
+      _sortVendorsSync();
+      notifyListeners();
+    } else {
+      loadVendors();
+    }
   }
 
   void setStateFilter(String state) {
+    if (_selectedState == state) return;
     _selectedState = state;
-    loadVendors();
+    if (_allVendors.isNotEmpty || _allPasarMalam.isNotEmpty) {
+      _applyFilters();
+      _sortVendorsSync();
+      notifyListeners();
+    } else {
+      loadVendors();
+    }
   }
 
   void setFoodCategoryFilter(String category) {
+    if (_selectedFoodCategory == category) return;
     _selectedFoodCategory = category;
     _selectedFoodCategoryId = _categoryIdForName(category);
-    loadVendors();
+    if (_allVendors.isNotEmpty || _allPasarMalam.isNotEmpty) {
+      _applyFilters();
+      _sortVendorsSync();
+      notifyListeners();
+    } else {
+      loadVendors();
+    }
   }
 
   void clearFilters() {
@@ -237,7 +322,13 @@ class TreasureMapViewModel extends ChangeNotifier {
     _selectedFoodCategory = 'All';
     _selectedFoodCategoryId = null;
     _searchQuery = '';
-    loadVendors();
+    if (_allVendors.isNotEmpty || _allPasarMalam.isNotEmpty) {
+      _applyFilters();
+      _sortVendorsSync();
+      notifyListeners();
+    } else {
+      loadVendors();
+    }
   }
 
   void showVendorPreview(VendorModel vendor) {
