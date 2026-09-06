@@ -35,7 +35,6 @@ import '../View/AccountManagement/register_view.dart';
 import '../View/AccountManagement/forgot_password_view.dart'; // also contains ChangePasswordView
 import '../View/AccountManagement/profile_view.dart';
 import '../View/AccountManagement/edit_profile_view.dart';
-import '../View/AccountManagement/email_verification_view.dart';
 import '../View/AccountManagement/my_artwork_submissions_view.dart';
 import '../View/AccountManagement/my_reviews_view.dart';
 
@@ -77,7 +76,6 @@ abstract final class AppRoutes {
   static const String editProfile = '/edit-profile';
   static const String changePassword = '/change-password';
   static const String resetPassword = '/reset-password';
-  static const String emailVerification = '/email-verification';
   static const String myReviews = '/my-reviews';
   static const String myArtworkSubmissions = '/my-artwork-submissions';
 
@@ -86,7 +84,12 @@ abstract final class AppRoutes {
     switch (settings.name) {
       // Module A
       case treasureMap:
-        return _build(const TreasureMapView(), settings);
+        return _build(
+          TreasureMapView(
+            initialFoodQuery: settings.arguments as String? ?? '',
+          ),
+          settings,
+        );
       case vendorSearch:
         return _build(
           VendorSearchResultView(query: settings.arguments as String? ?? ''),
@@ -159,8 +162,15 @@ abstract final class AppRoutes {
           settings,
         );
       case postDetail:
+        final postArgs = settings.arguments is PostDetailArguments
+            ? settings.arguments as PostDetailArguments
+            : null;
         return _build(
-          PostDetailView(postId: settings.arguments as String? ?? ''),
+          PostDetailView(
+            postId: postArgs?.post.id ?? settings.arguments as String? ?? '',
+            initialPost: postArgs?.post,
+            onPostChanged: postArgs?.onPostChanged,
+          ),
           settings,
         );
       case createPost:
@@ -175,7 +185,13 @@ abstract final class AppRoutes {
           settings,
         );
       case artworkCampaign:
-        return _build(const ArtworkCampaignHomeView(), settings);
+        final campaignId = settings.arguments is String
+            ? settings.arguments as String
+            : null;
+        return _build(
+          ArtworkCampaignHomeView(campaignId: campaignId),
+          settings,
+        );
       case campaignDetail:
         return _build(
           ArtworkCampaignDetailView(
@@ -187,7 +203,9 @@ abstract final class AppRoutes {
         final args = settings.arguments;
         return _build(
           ArtworkVotingDetailView(
-            entryId: args is Map ? args['entryId'] as String? ?? '' : args as String? ?? '',
+            entryId: args is Map
+                ? args['entryId'] as String? ?? ''
+                : args as String? ?? '',
             initialLayer: args is Map ? args['initialLayer'] as int? ?? 0 : 0,
           ),
           settings,
@@ -216,10 +234,10 @@ abstract final class AppRoutes {
       case changePassword:
         return _build(const ChangePasswordView(), settings);
       case resetPassword:
-        return _build(const ResetPasswordView(), settings);
-      case emailVerification:
         return _build(
-          EmailVerificationView(email: settings.arguments as String? ?? ''),
+          ResetPasswordView(
+            recoverySessionVerified: settings.arguments == true,
+          ),
           settings,
         );
       case myReviews:

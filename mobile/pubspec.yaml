@@ -27,6 +27,7 @@ dependencies:
 
   # Backend, signed media uploads, and device integrations
   supabase_flutter: ^2.16.0
+  app_links: ^7.2.1
   http: ^1.6.0
   http_parser: ^4.1.2
   image_picker: ^1.2.3
@@ -35,6 +36,7 @@ dependencies:
   image: ^4.9.2
   mobile_scanner: ^7.4.0
   url_launcher: ^6.3.2
+  video_player: ^2.14.0
   geolocator: ^14.0.2
   google_maps_flutter: ^2.13.1
   cached_network_image: ^3.4.1
@@ -62,8 +64,13 @@ flutter:
     - asset/image/tiffin_background_yellow.png
     - asset/image/profile_background_green.png
     - asset/image/campaign_background.png
+    - asset/image/artwork_campaign_card.png
     - asset/image/heritage_story_illustration.png
+    - asset/image/artwork_story_background.png
+    - asset/image/artwork_story_idea.png
+    - asset/image/artwork_story_culture.png
     - asset/image/heritage_background.png
+    - asset/image/artist_background.png
     - asset/image/nightmarket_tiffin_pin.png
     - asset/image/restaurant_tiffin_pin.png
 

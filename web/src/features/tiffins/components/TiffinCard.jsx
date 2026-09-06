@@ -24,14 +24,14 @@ export default function TiffinCard({ tiffin, onView, onEdit, onDeactivate, refer
   return (
     <div className="flex flex-col overflow-hidden rounded-xl border border-surface-200 bg-white shadow-sm transition-shadow hover:shadow-md">
       {/* Image Area */}
-      <div 
-        className="relative h-48 w-full bg-surface-100"
+      <div
+        className="relative flex h-48 w-full items-center justify-center bg-surface-100 p-3"
       >
         {artworkImageUrl ? (
           <img 
             src={artworkImageUrl}
             alt={edition_name}
-            className="h-full w-full object-cover"
+            className="h-full w-full object-contain"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary-100 to-surface-200">

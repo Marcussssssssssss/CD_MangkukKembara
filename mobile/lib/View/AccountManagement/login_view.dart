@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../core/app_routes.dart';
+import '../../core/email_address_validator.dart';
 
 /// A heritage-travel login page that keeps the existing authentication flow.
 class LoginView extends StatefulWidget {
@@ -163,18 +164,7 @@ class _LoginViewState extends State<LoginView> {
                                         autofillHints: const [
                                           AutofillHints.email,
                                         ],
-                                        validator: (value) {
-                                          if (value == null ||
-                                              value.trim().isEmpty) {
-                                            return 'Email is required';
-                                          }
-                                          if (!RegExp(
-                                            r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$',
-                                          ).hasMatch(value)) {
-                                            return 'Enter a valid email';
-                                          }
-                                          return null;
-                                        },
+                                        validator: EmailAddressValidator.validate,
                                       ),
                                       const SizedBox(height: 12),
                                       _HeritageField(

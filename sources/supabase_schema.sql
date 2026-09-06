@@ -628,6 +628,47 @@ where parent_voting_session_id is not null;
 create index ix_artwork_voting_sessions_campaign
 on public.artwork_voting_sessions (artwork_campaign_id);
 
+-- Campaign voting uses the same period as artwork submission. Creating the
+-- standard session here ensures approved submissions always have a session in
+-- which they can be published.
+create or replace function public.create_artwork_campaign_voting_session()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+    insert into public.artwork_voting_sessions (
+        artwork_campaign_id,
+        voting_start_at,
+        voting_end_at,
+        status,
+        session_type,
+        parent_voting_session_id
+    )
+    values (
+        new.artwork_campaign_id,
+        new.submission_start_at,
+        new.submission_end_at,
+        case
+            when new.submission_end_at <= now() then 'closed'
+            when new.submission_start_at > now() then 'scheduled'
+            else 'active'
+        end,
+        'standard',
+        null
+    )
+    on conflict (artwork_campaign_id) where session_type = 'standard'
+    do nothing;
+
+    return new;
+end;
+$$;
+
+create trigger create_artwork_campaign_voting_session_trigger
+after insert on public.artwork_campaigns
+for each row execute function public.create_artwork_campaign_voting_session();
+
 create table public.artwork_voting_entries (
     artwork_voting_entry_id varchar(7) primary key,
     artwork_voting_session_id varchar(7) not null references public.artwork_voting_sessions(artwork_voting_session_id) on delete cascade,
@@ -1569,7 +1610,7 @@ end;
 $$;
 
 create trigger publish_approved_artworks_for_session_trigger
-after update of status
+after insert or update of status
 on public.artwork_voting_sessions
 for each row execute function public.publish_approved_artworks_for_session();
 

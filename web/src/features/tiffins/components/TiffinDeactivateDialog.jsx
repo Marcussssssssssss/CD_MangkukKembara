@@ -10,7 +10,7 @@ export default function TiffinDeactivateDialog({
   if (!tiffin) return null;
 
   return (
-    <Modal open={isOpen} onClose={onClose} title="Deactivate Tiffin Edition" size="sm">
+    <Modal open={isOpen} onClose={onClose} title="Deactivate Tiffin Edition" size="sm" closeOnBackdrop={false}>
       <div className="p-6">
         <p className="text-surface-600">
           Are you sure you want to deactivate <span className="font-semibold text-surface-900">{tiffin.edition_name}</span>?

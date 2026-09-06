@@ -2,7 +2,6 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import AdminLayout from './layouts/AdminLayout';
 import ProtectedRoute from './components/ProtectedRoute';
 import LoginPage from './pages/LoginPage';
-import DashboardPage from './pages/DashboardPage';
 import ManageTiffinsPage from './pages/ManageTiffinsPage';
 import ManageVendorsPage from './pages/ManageVendorsPage';
 import HeritageCommunityPage from './pages/HeritageCommunityPage';
@@ -33,7 +32,7 @@ function App() {
           </ProtectedRoute>
         }
       >
-        <Route path="/dashboard" element={<DashboardPage />} />
+        <Route path="/dashboard" element={<Navigate to="/tiffins" replace />} />
         <Route path="/tiffins" element={<ManageTiffinsPage />} />
         <Route path="/vendors" element={<ManageVendorsPage />} />
         <Route path="/community" element={<HeritageCommunityPage />} />

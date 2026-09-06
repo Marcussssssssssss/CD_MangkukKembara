@@ -1,5 +1,6 @@
 import { useMemo, useRef, useState } from 'react';
 import Modal from '../../../components/Modal';
+import EditSaveConfirmation from '../../../components/EditSaveConfirmation';
 import {
   ALLOWED_IMAGE_TYPES,
   ALLOWED_VIDEO_TYPES,
@@ -50,11 +51,6 @@ function initialFormState(tiffin) {
   };
 }
 
-function suggestedEditionName(artwork, releaseYear) {
-  if (!artwork?.title || !releaseYear) return '';
-  return `${artwork.title} — ${releaseYear} Edition`;
-}
-
 export default function TiffinForm(props) {
   if (!props.isOpen || !props.referenceData) return null;
 
@@ -76,11 +72,11 @@ function TiffinFormContent({
   const [heritageVideoFile, setHeritageVideoFile] = useState(null);
   const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isConfirmingSave, setIsConfirmingSave] = useState(false);
   const [isFoodCreatorOpen, setIsFoodCreatorOpen] = useState(false);
   const videoInputRef = useRef(null);
   const stepHeadingRef = useRef(null);
   const foodCreatorTriggerRef = useRef(null);
-  const lastSuggestedEditionRef = useRef(null);
 
   const isEditing = !!tiffin;
   const { states, foods, categories, artworks } = referenceData;
@@ -130,17 +126,6 @@ function TiffinFormContent({
         state_id: value,
         heritage_food_id: prev.state_id === value ? prev.heritage_food_id : '',
       }));
-    } else if (name === 'release_year') {
-      const nextSuggestion = suggestedEditionName(selectedArtwork, value);
-      setFormData(prev => ({
-        ...prev,
-        release_year: value,
-        edition_name: !prev.edition_name.trim()
-          || prev.edition_name === lastSuggestedEditionRef.current
-          ? nextSuggestion
-          : prev.edition_name,
-      }));
-      lastSuggestedEditionRef.current = nextSuggestion;
     } else {
       setFormData(prev => ({ ...prev, [name]: value }));
     }
@@ -149,18 +134,12 @@ function TiffinFormContent({
 
   const handleArtworkSelect = (artwork) => {
     const nextStateId = artwork.campaign_state_id || '';
-    const nextSuggestion = suggestedEditionName(artwork, formData.release_year);
     setFormData(prev => ({
       ...prev,
       artwork_id: artwork.artwork_id,
       state_id: nextStateId,
       heritage_food_id: prev.state_id === nextStateId ? prev.heritage_food_id : '',
-      edition_name: !prev.edition_name.trim()
-        || prev.edition_name === lastSuggestedEditionRef.current
-        ? nextSuggestion
-        : prev.edition_name,
     }));
-    lastSuggestedEditionRef.current = nextSuggestion;
     setErrors(prev => ({
       ...prev,
       artwork_id: null,
@@ -255,9 +234,7 @@ function TiffinFormContent({
     focusStepHeading();
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-
+  const validateBeforeSave = () => {
     const validationErrors = {
       ...validateStep(1),
       ...validateStep(2),
@@ -276,8 +253,14 @@ function TiffinFormContent({
           : 3;
       setCurrentStep(firstInvalidStep);
       focusStepHeading();
-      return;
+      return false;
     }
+
+    return true;
+  };
+
+  const saveTiffin = async () => {
+    setIsConfirmingSave(false);
 
     setIsSaving(true);
     setErrors({});
@@ -290,15 +273,27 @@ function TiffinFormContent({
     }
   };
 
+  const handleSaveRequest = () => {
+    if (!validateBeforeSave()) return;
+
+    if (isEditing) {
+      setIsConfirmingSave(true);
+      return;
+    }
+
+    saveTiffin();
+  };
+
   return (
     <>
       <Modal
       open={isOpen}
-      onClose={isSaving || isFoodCreatorOpen ? undefined : onClose}
+      onClose={isSaving || isFoodCreatorOpen || isConfirmingSave ? undefined : onClose}
       title={isEditing ? 'Edit Heritage Tiffin' : 'Create Heritage Tiffin'}
       size="xl"
+      closeOnBackdrop={false}
     >
-      <form onSubmit={handleSubmit} noValidate className="flex max-h-[85vh] flex-col">
+      <form onSubmit={event => event.preventDefault()} noValidate className="flex min-h-0 flex-1 flex-col">
         <StepIndicator currentStep={currentStep} />
 
         <div className="flex-1 overflow-y-auto p-6">
@@ -381,7 +376,8 @@ function TiffinFormContent({
               </button>
             ) : (
               <button
-                type="submit"
+                type="button"
+                onClick={handleSaveRequest}
                 disabled={isSaving}
                 className="rounded-lg bg-primary-600 px-5 py-2 text-sm font-medium text-white hover:bg-primary-700 disabled:opacity-50"
               >
@@ -401,6 +397,15 @@ function TiffinFormContent({
           onCreate={handleHeritageFoodCreated}
         />
       )}
+
+      <EditSaveConfirmation
+        open={isEditing && isConfirmingSave}
+        entityName="Tiffin"
+        recordName={formData.edition_name}
+        isSaving={isSaving}
+        onCancel={() => setIsConfirmingSave(false)}
+        onConfirm={saveTiffin}
+      />
     </>
   );
 }
@@ -573,7 +578,7 @@ function TiffinDetailsStep({
             value={formData.edition_name}
             onChange={onChange}
             maxLength={150}
-            placeholder={suggestedEditionName(artwork, formData.release_year) || 'Enter the official Tiffin release name'}
+            placeholder="Enter the Tiffin edition name"
             aria-invalid={Boolean(errors.edition_name)}
             aria-describedby={errors.edition_name ? 'tiffin-edition-name-error' : undefined}
             className={inputClass(errors.edition_name)}
@@ -736,9 +741,10 @@ function HeritageFoodDialog({ state, categories, onClose, onCreate }) {
       onClose={isCreating ? undefined : onClose}
       title="Add Heritage Food"
       size="md"
+      closeOnBackdrop={false}
     >
-      <form onSubmit={handleCreate} noValidate className="flex max-h-[85vh] flex-col">
-        <div className="overflow-y-auto p-6">
+      <form onSubmit={handleCreate} noValidate className="flex min-h-0 flex-1 flex-col">
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
           <div className="rounded-lg border border-surface-200 bg-surface-50 px-4 py-3">
             <p className="text-xs font-semibold uppercase tracking-wider text-surface-500">State</p>
             <p className="mt-1 text-sm font-semibold text-surface-900">

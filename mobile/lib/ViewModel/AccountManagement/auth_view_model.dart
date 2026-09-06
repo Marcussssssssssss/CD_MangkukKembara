@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../core/app_exception.dart';
 import '../../Model/Repositories/AccountManagement/account_repository.dart';
 import '../../Model/Repositories/AccountManagement/auth_user_model.dart';
@@ -15,9 +16,7 @@ class AuthViewModel extends ChangeNotifier {
   AuthViewModel({AccountRepository? repo})
     : _repo = repo ?? AccountRepository() {
     _restoreCurrentSession();
-    _authSubscription = _repo.authChanges.listen(
-      (_) => _restoreCurrentSession(),
-    );
+    _authSubscription = _repo.authChanges.listen(_handleAuthEvent);
   }
 
   // ── State ─────────────────────────────────────────────────────────────────────
@@ -84,11 +83,13 @@ class AuthViewModel extends ChangeNotifier {
         _errorMessage = null;
       } catch (error) {
         _errorMessage = _friendlyLoginError(error);
-        _currentUser = null;
-        try {
-          await _repo.logout();
-        } catch (_) {
-          // The session remains treated as logged out locally.
+        if (!_isTemporaryConnectionFailure(error)) {
+          _currentUser = null;
+          try {
+            await _repo.logout();
+          } catch (_) {
+            // The session remains treated as logged out locally.
+          }
         }
       }
     } else {
@@ -96,6 +97,25 @@ class AuthViewModel extends ChangeNotifier {
     }
     _isInitialized = true;
     notifyListeners();
+  }
+
+  Future<void> retrySessionRestore() async {
+    _isInitialized = false;
+    _errorMessage = null;
+    notifyListeners();
+    await _restoreCurrentSession();
+  }
+
+  void _handleAuthEvent(AuthChangeEvent event) {
+    if (event == AuthChangeEvent.passwordRecovery) {
+      _currentUser = null;
+      _profile = null;
+      _isLoggedIn = false;
+      _isInitialized = true;
+      notifyListeners();
+      return;
+    }
+    _restoreCurrentSession();
   }
 
   // ── Logout ────────────────────────────────────────────────────────────────────
@@ -127,11 +147,27 @@ class AuthViewModel extends ChangeNotifier {
     _errorMessage = null;
   }
 
+  bool _isTemporaryConnectionFailure(Object error) {
+    final cause = error is AppException ? error.cause : null;
+    final details = '$error ${cause ?? ''}'.toLowerCase();
+    return details.contains('socket') ||
+        details.contains('network') ||
+        details.contains('host lookup') ||
+        details.contains('connection refused') ||
+        details.contains('timed out') ||
+        details.contains('clientexception');
+  }
+
   /// Keeps implementation details (such as HTTP, socket, and DNS errors) out
   /// of the login interface while preserving errors the app intentionally
   /// exposes to its users.
   String _friendlyLoginError(Object error) {
-    if (error is AppException) return error.message;
+    if (error is AppException) {
+      if (_isTemporaryConnectionFailure(error)) {
+        return 'We could not connect to the service. Check your internet connection and try again.';
+      }
+      return error.message;
+    }
 
     // Values already produced by this view model are safe to show. Keeping
     // them intact also makes the getter above safe for asynchronous updates.

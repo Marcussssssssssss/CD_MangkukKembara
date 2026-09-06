@@ -78,8 +78,8 @@ export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGener
   };
 
   return (
-    <Modal open={isOpen} onClose={onClose} title="Tiffin Details" size="lg">
-      <div className="flex flex-col md:flex-row">
+    <Modal open={isOpen} onClose={onClose} title="Tiffin Details" size="lg" closeOnBackdrop={false}>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto md:flex-row md:overflow-hidden">
         {/* Left Side: Image */}
         <div className="w-full md:w-1/3 shrink-0">
           <div 
@@ -100,7 +100,7 @@ export default function TiffinDetails({ tiffin, isOpen, onClose, onEdit, onGener
         </div>
 
         {/* Right Side: Details */}
-        <div className="flex-1 overflow-y-auto p-6 md:max-h-[70vh]">
+        <div className="min-w-0 flex-1 p-6 md:min-h-0 md:overflow-y-auto">
           <div className="flex items-start justify-between gap-4">
             <h3 className="text-2xl font-bold text-surface-900">{tiffin.edition_name}</h3>
             <span className={`shrink-0 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${statusColors[tiffin.status] || 'bg-surface-100 text-surface-700'}`}>

@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
 import '../../ViewModel/AccountManagement/password_recovery_view_model.dart';
+import '../../core/email_address_validator.dart';
 import '../Widgets/auth_branding.dart';
 
 /// D5. Forgot Password View.
@@ -37,21 +38,33 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
       child: Consumer<PasswordRecoveryViewModel>(
         builder: (ctx, vm, _) => Scaffold(
           backgroundColor: AppColors.background,
-          body: SafeArea(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(24),
-              child: Form(
+          appBar: AppBar(
+            backgroundColor: AppColors.background,
+            foregroundColor: AppColors.primary,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            leading: BackButton(
+              onPressed: () {
+                final navigator = Navigator.of(ctx);
+                if (navigator.canPop()) {
+                  navigator.pop();
+                } else {
+                  navigator.pushReplacementNamed(AppRoutes.login);
+                }
+              },
+            ),
+          ),
+          body: AuthPageLayout(
+            child: Transform.translate(
+              offset: const Offset(0, -64),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 480),
+                child: Form(
                 key: _formKey,
                 child: Column(
+                  mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Center(
-                      child: AuthBranding(
-                        subtitle: 'Recover your password',
-                        imageAsset: 'asset/image/mangkuk_kembara_logo_green.png',
-                      ),
-                    ),
-                    const SizedBox(height: 24),
                     const Icon(
                       Icons.lock_open_rounded,
                       size: 56,
@@ -88,17 +101,7 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                         hintText: 'Your registered email',
                         prefixIcon: Icon(Icons.email_outlined),
                       ),
-                      validator: (v) {
-                        if (v == null || v.trim().isEmpty) {
-                          return 'Email is required';
-                        }
-                        if (!RegExp(
-                          r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$',
-                        ).hasMatch(v)) {
-                          return 'Enter a valid email';
-                        }
-                        return null;
-                      },
+                      validator: EmailAddressValidator.validate,
                     ),
 
                     if (vm.errorMessage != null) ...[
@@ -172,19 +175,10 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
                       ),
                     ),
 
-                    const SizedBox(height: 16),
-                    Center(
-                      child: TextButton(
-                        onPressed: () => Navigator.pushReplacementNamed(
-                          ctx,
-                          AppRoutes.login,
-                        ),
-                        child: const Text('Back to Login'),
-                      ),
-                    ),
                   ],
                 ),
               ),
+            ),
             ),
           ),
         ),
@@ -195,7 +189,12 @@ class _ForgotPasswordViewState extends State<ForgotPasswordView> {
 
 /// Password form shown after Supabase validates a recovery deep link.
 class ResetPasswordView extends StatefulWidget {
-  const ResetPasswordView({super.key});
+  final bool recoverySessionVerified;
+
+  const ResetPasswordView({
+    super.key,
+    this.recoverySessionVerified = false,
+  });
 
   @override
   State<ResetPasswordView> createState() => _ResetPasswordViewState();
@@ -222,6 +221,16 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
     super.dispose();
   }
 
+  Future<void> _leaveRecovery() async {
+    await _vm.endRecoverySession();
+    if (!mounted) return;
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      AppRoutes.forgotPassword,
+      (route) => false,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return ChangeNotifierProvider.value(
@@ -229,22 +238,36 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
       child: Consumer<PasswordRecoveryViewModel>(
         builder: (context, vm, _) => Scaffold(
           backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: AppColors.background,
+            foregroundColor: AppColors.primary,
+            surfaceTintColor: Colors.transparent,
+            elevation: 0,
+            leading: BackButton(
+              onPressed: _leaveRecovery,
+            ),
+          ),
           body: Form(
             key: _formKey,
             child: ListView(
               padding: const EdgeInsets.all(24),
               children: [
-                const AuthBranding(
-                  subtitle: 'Set a new password',
-                  imageAsset: 'asset/image/mangkuk_kembara_logo_green.png',
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 52),
                 const Icon(
                   Icons.password_rounded,
                   size: 56,
                   color: AppColors.primary,
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
+                Text(
+                  'Set a new password',
+                  textAlign: TextAlign.center,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 40),
                 TextFormField(
                   controller: _passwordCtrl,
                   obscureText: _obscurePassword,
@@ -312,15 +335,27 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
                   onPressed: vm.isLoading
                       ? null
                       : () async {
+                          if (!widget.recoverySessionVerified) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Open a valid password-reset link from your email.',
+                                ),
+                              ),
+                            );
+                            return;
+                          }
                           if (!_formKey.currentState!.validate()) return;
                           final success = await vm.resetPassword(
                             _passwordCtrl.text,
                           );
                           if (success && context.mounted) {
+                            await vm.endRecoverySession();
+                            if (!context.mounted) return;
                             Navigator.pushNamedAndRemoveUntil(
                               context,
-                              AppRoutes.profile,
-                              (route) => route.isFirst,
+                              AppRoutes.login,
+                              (route) => false,
                             );
                           }
                         },

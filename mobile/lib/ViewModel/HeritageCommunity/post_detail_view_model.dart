@@ -6,8 +6,11 @@ import '../../Model/Repositories/HeritageCommunity/community_comment_model.dart'
 /// View model for the post detail view.
 class PostDetailViewModel extends ChangeNotifier {
   final HeritageCommunityRepository _repo;
-  PostDetailViewModel({HeritageCommunityRepository? repo})
-    : _repo = repo ?? HeritageCommunityRepository();
+  PostDetailViewModel({
+    HeritageCommunityRepository? repo,
+    CommunityPostModel? initialPost,
+  }) : _repo = repo ?? HeritageCommunityRepository(),
+       _post = initialPost;
 
   CommunityPostModel? _post;
   List<CommunityCommentModel> _comments = [];

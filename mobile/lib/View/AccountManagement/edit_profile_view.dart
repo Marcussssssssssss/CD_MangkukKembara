@@ -31,11 +31,7 @@ class _EditProfileViewState extends State<EditProfileView> {
   bool _isOtherCity = false;
 
   static const _otherCityOption = '__other_city__';
-  static const _genderOptions = <String>{
-    'male',
-    'female',
-    'prefer_not_to_say',
-  };
+  static const _genderOptions = <String>{'male', 'female', 'prefer_not_to_say'};
 
   /// ISO 3166-1 alpha-2 countries and territories. The persisted value is
   /// always the code to keep the profile data compact and standardised.
@@ -310,7 +306,8 @@ ZW|Zimbabwe
     await _vm.loadProfile(auth.currentUser!.id, showLoading: showLoading);
     if (_vm.profile != null) {
       _nameCtrl.text = _vm.profile!.displayName;
-      _country = _countries.any((country) => country.code == _vm.profile!.country)
+      _country =
+          _countries.any((country) => country.code == _vm.profile!.country)
           ? _vm.profile!.country
           : null;
       final savedCity = _vm.profile!.city;
@@ -360,7 +357,7 @@ ZW|Zimbabwe
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          'Verification sent to $pendingEmail. Confirm the new inbox first, then approve the same change from your current inbox.',
+          'Email changed successfully.',
         ),
         duration: const Duration(seconds: 20),
       ),
@@ -371,10 +368,8 @@ ZW|Zimbabwe
     final code = await showModalBottomSheet<String>(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _CountryPicker(
-        countries: _countries,
-        selectedCode: _country,
-      ),
+      builder: (_) =>
+          _CountryPicker(countries: _countries, selectedCode: _country),
     );
     if (code == null || !mounted) return;
     setState(() {
@@ -576,7 +571,7 @@ ZW|Zimbabwe
                             ),
                             const SizedBox(height: 24),
 
-                            _label('Display Name *'),
+                            _label('Name *'),
                             TextFormField(
                               controller: _nameCtrl,
                               autovalidateMode:
@@ -585,7 +580,7 @@ ZW|Zimbabwe
                               maxLengthEnforcement:
                                   MaxLengthEnforcement.enforced,
                               decoration: const InputDecoration(
-                                hintText: 'Your display name',
+                                hintText: 'Your name',
                                 prefixIcon: Icon(Icons.person_outline_rounded),
                                 helperText: '2–50 characters',
                               ),
@@ -593,7 +588,7 @@ ZW|Zimbabwe
                               validator: (value) {
                                 final name = value?.trim() ?? '';
                                 if (name.length < 2 || name.length > 50) {
-                                  return 'Display name must be 2–50 characters';
+                                  return 'Name must be 2–50 characters';
                                 }
                                 return null;
                               },
@@ -611,30 +606,6 @@ ZW|Zimbabwe
                               ),
                               child: Text(auth.currentUser?.email ?? ''),
                             ),
-                            if (auth.currentUser?.pendingEmail != null) ...[
-                              const SizedBox(height: 8),
-                              Row(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  const Icon(
-                                    Icons.schedule_send_outlined,
-                                    size: 17,
-                                    color: AppColors.warning,
-                                  ),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Text(
-                                      'Pending verification: ${auth.currentUser!.pendingEmail}',
-                                      style: const TextStyle(
-                                        color: AppColors.textSecondary,
-                                        fontSize: 12,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
                             const SizedBox(height: 16),
 
                             _label('Country Code'),
@@ -648,7 +619,10 @@ ZW|Zimbabwe
                                 ),
                                 child: Text(
                                   _countries
-                                          .where((country) => country.code == _country)
+                                          .where(
+                                            (country) =>
+                                                country.code == _country,
+                                          )
                                           .firstOrNull
                                           ?.label ??
                                       'Select country (optional)',
@@ -671,18 +645,16 @@ ZW|Zimbabwe
                                   prefixIcon: const Icon(
                                     Icons.location_city_rounded,
                                   ),
-                                  suffixIcon: const Icon(
-                                    Icons.search_rounded,
-                                  ),
+                                  suffixIcon: const Icon(Icons.search_rounded),
                                   enabled: _country != null,
                                 ),
                                 child: Text(
                                   _isOtherCity
                                       ? 'Other / Not listed'
                                       : _city ??
-                                          (_country == null
-                                              ? 'Select a country first'
-                                              : 'Select city (optional)'),
+                                            (_country == null
+                                                ? 'Select a country first'
+                                                : 'Select city (optional)'),
                                   style: TextStyle(
                                     color: _country == null
                                         ? AppColors.textHint
@@ -733,8 +705,13 @@ ZW|Zimbabwe
                                   final selected = await showDatePicker(
                                     context: context,
                                     firstDate: DateTime(now.year - 120),
-                                    lastDate: DateTime(now.year - 13, now.month, now.day),
-                                    initialDate: _dateOfBirth ?? DateTime(now.year - 18),
+                                    lastDate: DateTime(
+                                      now.year - 13,
+                                      now.month,
+                                      now.day,
+                                    ),
+                                    initialDate:
+                                        _dateOfBirth ?? DateTime(now.year - 18),
                                   );
                                   if (selected != null && mounted) {
                                     setState(() => _dateOfBirth = selected);
@@ -746,9 +723,13 @@ ZW|Zimbabwe
                                     prefixIcon: const Icon(Icons.cake_outlined),
                                     errorText: state.errorText,
                                   ),
-                                  child: Text(_dateOfBirth == null
-                                      ? 'Select date of birth (optional)'
-                                      : DateFormat('d MMMM yyyy').format(_dateOfBirth!)),
+                                  child: Text(
+                                    _dateOfBirth == null
+                                        ? 'Select date of birth (optional)'
+                                        : DateFormat(
+                                            'd MMMM yyyy',
+                                          ).format(_dateOfBirth!),
+                                  ),
                                 ),
                               ),
                             ),
@@ -763,11 +744,21 @@ ZW|Zimbabwe
                                 hintText: 'Select gender (optional)',
                               ),
                               items: const [
-                                DropdownMenuItem(value: 'male', child: Text('Male')),
-                                DropdownMenuItem(value: 'female', child: Text('Female')),
-                                DropdownMenuItem(value: 'prefer_not_to_say', child: Text('Prefer not to say')),
+                                DropdownMenuItem(
+                                  value: 'male',
+                                  child: Text('Male'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'female',
+                                  child: Text('Female'),
+                                ),
+                                DropdownMenuItem(
+                                  value: 'prefer_not_to_say',
+                                  child: Text('Prefer not to say'),
+                                ),
                               ],
-                              onChanged: (value) => setState(() => _gender = value),
+                              onChanged: (value) =>
+                                  setState(() => _gender = value),
                             ),
 
                             if (vm.errorMessage != null) ...[
@@ -821,15 +812,10 @@ class _CountryOption {
   String get label => '$name - $code';
 
   static List<_CountryOption> fromDelimited(String data) {
-    final countries = data
-        .trim()
-        .split('\n')
-        .map((line) {
-          final parts = line.split('|');
-          return _CountryOption(code: parts.first, name: parts.last);
-        })
-        .toList()
-      ..sort((a, b) => a.name.compareTo(b.name));
+    final countries = data.trim().split('\n').map((line) {
+      final parts = line.split('|');
+      return _CountryOption(code: parts.first, name: parts.last);
+    }).toList()..sort((a, b) => a.name.compareTo(b.name));
     assert(countries.length == 249, 'Expected all 249 ISO country codes.');
     return countries;
   }
@@ -868,7 +854,8 @@ class _CountryPickerState extends State<_CountryPicker> {
     final malaysia = widget.countries.firstWhere(
       (country) => country.code == 'MY',
     );
-    final showSuggestion = query.isEmpty ||
+    final showSuggestion =
+        query.isEmpty ||
         malaysia.name.toLowerCase().contains(query) ||
         malaysia.code.toLowerCase().contains(query);
 
@@ -978,7 +965,10 @@ class _CountryTile extends StatelessWidget {
     trailing: Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(country.code, style: const TextStyle(color: AppColors.textSecondary)),
+        Text(
+          country.code,
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
         if (selected) ...[
           const SizedBox(width: 8),
           const Icon(Icons.check_circle_rounded, color: AppColors.primary),
@@ -1062,11 +1052,12 @@ class _CityPickerState extends State<_CityPicker> {
                   if (snapshot.connectionState != ConnectionState.done) {
                     return const Center(child: CircularProgressIndicator());
                   }
-                  final cities = (snapshot.data ?? const <City>[])
-                      .map((city) => city.name)
-                      .toSet()
-                      .toList()
-                    ..sort();
+                  final cities =
+                      (snapshot.data ?? const <City>[])
+                          .map((city) => city.name)
+                          .toSet()
+                          .toList()
+                        ..sort();
                   final query = _query.trim().toLowerCase();
                   final matches = cities
                       .where((city) => city.toLowerCase().contains(query))

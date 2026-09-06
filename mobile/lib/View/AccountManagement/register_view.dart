@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../ViewModel/AccountManagement/register_view_model.dart';
 import '../../core/app_routes.dart';
+import '../../core/email_address_validator.dart';
 import '../../core/constants.dart';
 
 /// Registration screen styled to match the heritage-travel login screen.
@@ -168,7 +169,7 @@ class _RegisterViewState extends State<RegisterView> {
                                       children: [
                                         _HeritageField(
                                           controller: _nameCtrl,
-                                          hint: 'Display name',
+                                          hint: 'Name',
                                           icon: Icons.person_outline_rounded,
                                           action: TextInputAction.next,
                                           autofillHints: const [
@@ -177,7 +178,7 @@ class _RegisterViewState extends State<RegisterView> {
                                           validator: (value) =>
                                               value == null ||
                                                   value.trim().isEmpty
-                                              ? 'Display name is required'
+                                              ? 'Name is required'
                                               : null,
                                         ),
                                         const SizedBox(height: 12),
@@ -191,18 +192,8 @@ class _RegisterViewState extends State<RegisterView> {
                                           autofillHints: const [
                                             AutofillHints.email,
                                           ],
-                                          validator: (value) {
-                                            if (value == null ||
-                                                value.trim().isEmpty) {
-                                              return 'Email is required';
-                                            }
-                                            if (!RegExp(
-                                              r'^[\w\-\.]+@([\w\-]+\.)+[\w\-]{2,4}$',
-                                            ).hasMatch(value)) {
-                                              return 'Enter a valid email';
-                                            }
-                                            return null;
-                                          },
+                                          validator:
+                                              EmailAddressValidator.validate,
                                         ),
                                         const SizedBox(height: 12),
                                         _HeritageField(

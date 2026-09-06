@@ -36,6 +36,43 @@ class EmailChangeViewModel extends ChangeNotifier {
     }
   }
 
+  Future<bool> verifyEmailOtp({
+    required String email,
+    required String token,
+  }) async {
+    if (_isSubmitting) return false;
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repo.verifyEmailChangeOtp(newEmail: email, token: token);
+      return true;
+    } catch (error) {
+      _errorMessage = _friendlyError(error);
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
+  Future<bool> resendEmailOtp({required String email}) async {
+    if (_isSubmitting) return false;
+    _isSubmitting = true;
+    _errorMessage = null;
+    notifyListeners();
+    try {
+      await _repo.resendEmailChangeOtp(email: email);
+      return true;
+    } catch (error) {
+      _errorMessage = _friendlyError(error);
+      return false;
+    } finally {
+      _isSubmitting = false;
+      notifyListeners();
+    }
+  }
+
   String _friendlyError(Object error) {
     final message = error.toString().replaceFirst('Exception: ', '');
     final normalized = message.toLowerCase();

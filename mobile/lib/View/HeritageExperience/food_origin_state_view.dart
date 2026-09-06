@@ -3,6 +3,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../Model/Repositories/HeritageExperience/heritage_food_model.dart';
+import '../../Model/Repositories/HeritageTreasureMap/treasure_map_repository.dart';
+import '../../Model/Repositories/HeritageTreasureMap/vendor_model.dart';
 import '../../ViewModel/HeritageExperience/tiffin_content_view_model.dart';
 import '../../core/app_routes.dart';
 import '../Widgets/empty_state_widget.dart';
@@ -21,6 +23,8 @@ class FoodOriginStateView extends StatefulWidget {
 
 class _FoodOriginStateViewState extends State<FoodOriginStateView> {
   late final TiffinContentViewModel _vm;
+  final _vendorRepository = TreasureMapRepository();
+  bool _isOpeningVendor = false;
 
   @override
   void initState() {
@@ -29,6 +33,75 @@ class _FoodOriginStateViewState extends State<FoodOriginStateView> {
     WidgetsBinding.instance.addPostFrameCallback(
       (_) => _vm.loadFoodForTiffin(widget.foodId),
     );
+  }
+
+  /// Opens an active vendor already linked to this exact heritage food.
+  Future<void> _openFoodVendor(HeritageFoodModel food) async {
+    if (_isOpeningVendor) return;
+
+    setState(() => _isOpeningVendor = true);
+    try {
+      final vendors = await _vendorRepository.fetchVendors(query: food.name);
+      final matches = vendors.where(
+        (vendor) => vendor.heritageFoods.any(
+          (vendorFood) => vendorFood.toLowerCase() == food.name.toLowerCase(),
+        ),
+      ).toList();
+
+      // A food can be sold by several vendors. Prefer the one located in the
+      // food's origin state, then use its name/description to select the most
+      // specific match instead of taking an arbitrary first result.
+      final stateMatches = food.originStateName == null
+          ? matches
+          : matches
+                .where(
+                  (vendor) =>
+                      vendor.state.toLowerCase() ==
+                      food.originStateName!.toLowerCase(),
+                )
+                .toList();
+      final candidates = stateMatches.isEmpty ? matches : stateMatches;
+      candidates.sort(
+        (a, b) => _vendorFoodRelevance(b, food).compareTo(
+          _vendorFoodRelevance(a, food),
+        ),
+      );
+      final matchingVendor = candidates.isEmpty ? null : candidates.first;
+
+      if (!mounted) return;
+      if (matchingVendor == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No active vendor is linked to this heritage food yet.'),
+          ),
+        );
+        return;
+      }
+
+      await Navigator.pushNamed(
+        context,
+        AppRoutes.vendorDetail,
+        arguments: matchingVendor.id,
+      );
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Unable to open the vendor right now.')),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isOpeningVendor = false);
+    }
+  }
+
+  int _vendorFoodRelevance(VendorModel vendor, HeritageFoodModel food) {
+    final searchableText = '${vendor.name} ${vendor.description}'.toLowerCase();
+    return food.name
+        .toLowerCase()
+        .split(RegExp(r'\\s+'))
+        .where((term) => term.isNotEmpty)
+        .where(searchableText.contains)
+        .length;
   }
 
   @override
@@ -169,11 +242,9 @@ class _FoodOriginStateViewState extends State<FoodOriginStateView> {
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        onPressed: () => Navigator.pushNamedAndRemoveUntil(
-                          context,
-                          AppRoutes.treasureMap,
-                          (route) => false,
-                        ),
+                        onPressed: _isOpeningVendor
+                            ? null
+                            : () => _openFoodVendor(food),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.transparent,
                           foregroundColor: Colors.white,

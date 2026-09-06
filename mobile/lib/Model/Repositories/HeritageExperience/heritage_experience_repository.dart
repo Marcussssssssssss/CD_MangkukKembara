@@ -18,7 +18,7 @@ class HeritageExperienceRepository {
     var request = _api.client
         .from('heritage_tiffins')
         .select('''
-      *, states!inner(state_name, state_code), artworks(profile_id)
+      *, states!inner(state_name, state_code), artworks(profile_id, image_url)
     ''')
         .eq('status', 'active');
     if (state != null && state.isNotEmpty) {
@@ -33,7 +33,7 @@ class HeritageExperienceRepository {
       () => _api.client
           .from('heritage_tiffins')
           .select('''
-        *, states(state_name, state_code), artworks(profile_id)
+        *, states(state_name, state_code), artworks(profile_id, image_url)
       ''')
           .eq('heritage_tiffin_id', id)
           .eq('status', 'active')
@@ -66,7 +66,9 @@ class HeritageExperienceRepository {
     if (ids.isEmpty) return [];
     var request = _api.client
         .from('heritage_tiffins')
-        .select('*, states!inner(state_name, state_code), artworks(profile_id)')
+        .select(
+          '*, states!inner(state_name, state_code), artworks(profile_id, image_url)',
+        )
         .eq('status', 'active')
         .inFilter('heritage_tiffin_id', ids.toList());
     if (state != null && state.isNotEmpty) {

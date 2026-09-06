@@ -1,4 +1,5 @@
 import 'package:image_picker/image_picker.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/app_exception.dart';
 import '../../../core/backend_config.dart';
@@ -20,7 +21,8 @@ class AccountRepository {
     return user == null ? null : AuthUserModel.fromSupabase(user);
   }
 
-  Stream<void> get authChanges => _api.authStateChanges.map((_) {});
+  Stream<AuthChangeEvent> get authChanges =>
+      _api.authStateChanges.map((state) => state.event);
 
   Future<AuthUserModel> login(String email, String password) async {
     final response = await _api.signIn(email: email, password: password);
@@ -133,6 +135,19 @@ class AccountRepository {
     return response.user!.newEmail ?? normalizedEmail;
   }
 
+  /// Verifies an email-change OTP for either the proposed or current address.
+  /// With secure email change enabled, both addresses receive separate OTPs.
+  Future<void> verifyEmailChangeOtp({
+    required String newEmail,
+    required String token,
+  }) async {
+    await _api.verifyEmailChangeOtp(email: newEmail, token: token);
+  }
+
+  Future<void> resendEmailChangeOtp({required String email}) async {
+    await _api.resendEmailChangeOtp(email);
+  }
+
   /// Re-authenticates the current user before allowing a password change.
   Future<void> verifyCurrentPassword(String currentPassword) async {
     final user = _api.requireUser();
@@ -193,8 +208,9 @@ class AccountRepository {
     final user = _api.requireUser();
     final result = await _cloudinary.uploadImage(
       file,
-      folder: 'mangkukkembara/profiles/${user.id}',
+      folder: 'mangkukkembara/profile/${user.id}',
       maxBytes: 5 * 1024 * 1024,
+      uniqueFilename: true,
     );
     return result.secureUrl;
   }

@@ -1,9 +1,9 @@
 abstract final class EmailAddressValidator {
   static String normalize(String value) => value.trim().toLowerCase();
 
-  static String? validateChange(String? value, {required String currentEmail}) {
+  static String? validate(String? value) {
     final email = normalize(value ?? '');
-    if (email.isEmpty) return 'New email is required';
+    if (email.isEmpty) return 'Email is required';
     if (email.length > 254) return 'Email address is too long';
 
     final at = email.lastIndexOf('@');
@@ -19,6 +19,15 @@ abstract final class EmailAddressValidator {
         !RegExp(r"^[a-z0-9.!#$%&'*+/=?^_`{|}~-]+$").hasMatch(local) ||
         !_isValidDomain(domain)) {
       return 'Enter a valid email address';
+    }
+    return null;
+  }
+
+  static String? validateChange(String? value, {required String currentEmail}) {
+    final email = normalize(value ?? '');
+    final validationError = validate(value);
+    if (validationError != null) {
+      return email.isEmpty ? 'New email is required' : validationError;
     }
     if (email == normalize(currentEmail)) {
       return 'Use an email different from your current one';
