@@ -1,32 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 
 import '../../Model/Repositories/HeritageCommunity/artwork_campaign_model.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../ViewModel/HeritageCommunity/artwork_campaign_view_model.dart';
 import '../../ViewModel/HeritageCommunity/artwork_voting_view_model.dart';
-import '../../core/app_colors.dart';
 import '../../core/app_routes.dart';
 import '../Widgets/app_network_image.dart';
 import '../Widgets/empty_state_widget.dart';
 import '../Widgets/error_state_widget.dart';
 import '../Widgets/loading_widget.dart';
-import '../Widgets/map_home_button.dart';
 
 /// Visual tokens for the refreshed artwork campaign experience.
 abstract final class _CampaignColors {
-  static const Color background = Color(0xFFF9FBF7);
-  static const Color border = Color(0xFFCCD6C8);
-  static const Color darkGreen = Color(0xFF335C31);
-  static const Color yellow = Color(0xFFF9B10E);
+  static const Color background = Color(0xFFF8FAF7);
+  static const Color border = Color(0xFFE8ECE6);
+  static const Color darkGreen = Color(0xFF1E3B2B);
+  static const Color forestGreen = Color(0xFF234E35);
+  static const Color textDark = Color(0xFF192A1E);
+  static const Color textMuted = Color(0xFF7A887E);
+  static const Color gold = Color(0xFFF4B333);
+  static const Color darkGold = Color(0xFFDE9010);
+  static const Color softGold = Color(0xFFFEF3D6);
   static const Color softYellow = Color(0xFFFEF5E4);
-  static const Color text = Color(0xFF283427);
+  static const Color paleMint = Color(0xFFE5EFE4);
 }
 
 /// C5. Artwork Campaign Home View.
 class ArtworkCampaignHomeView extends StatelessWidget {
-  const ArtworkCampaignHomeView({super.key});
+  final String? campaignId;
+
+  const ArtworkCampaignHomeView({super.key, this.campaignId});
 
   @override
   Widget build(BuildContext context) {
@@ -36,22 +43,34 @@ class ArtworkCampaignHomeView extends StatelessWidget {
         backgroundColor: _CampaignColors.background,
         foregroundColor: _CampaignColors.darkGreen,
         surfaceTintColor: Colors.transparent,
+        scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.dark.copyWith(
           statusBarColor: _CampaignColors.background,
           statusBarIconBrightness: Brightness.dark,
           statusBarBrightness: Brightness.light,
         ),
         elevation: 0,
-        title: const Text(
+        title: Text(
           'Campaign Artwork',
-          style: TextStyle(
+          style: GoogleFonts.playfairDisplay(
             color: _CampaignColors.darkGreen,
-            fontWeight: FontWeight.w800,
+            fontWeight: FontWeight.w700,
+            fontSize: 21,
           ),
         ),
-        leading: const MapHomeButton(color: _CampaignColors.darkGreen),
+        leading: IconButton(
+          icon: const Icon(Icons.chevron_left_rounded, size: 28),
+          color: _CampaignColors.darkGreen,
+          onPressed: () {
+            if (Navigator.canPop(context)) {
+              Navigator.pop(context);
+            } else {
+              Navigator.pushReplacementNamed(context, AppRoutes.community);
+            }
+          },
+        ),
       ),
-      body: const ArtworkCampaignPanel(),
+      body: ArtworkCampaignPanel(campaignId: campaignId),
     );
   }
 }
@@ -93,9 +112,9 @@ class _ArtworkCampaignPanelState extends State<ArtworkCampaignPanel>
       value: _vm,
       child: Consumer<ArtworkCampaignViewModel>(
         builder: (ctx, vm, _) {
-          final campaign = widget.campaignId == null
-              ? null
-              : vm.campaignById(widget.campaignId!);
+          final campaign = widget.campaignId != null
+              ? vm.campaignById(widget.campaignId!)
+              : (vm.campaigns.length == 1 ? vm.campaigns.first : null);
           return ColoredBox(
             color: _CampaignColors.background,
             child: AnimatedSwitcher(
@@ -121,7 +140,7 @@ class _ArtworkCampaignPanelState extends State<ArtworkCampaignPanel>
                             'There is no live or completed artwork campaign yet.',
                       ),
                     )
-                  : widget.campaignId == null
+                  : (widget.campaignId == null && vm.campaigns.length > 1)
                   ? _CampaignList(
                       key: const ValueKey('campaign-list'),
                       campaigns: vm.campaigns,
@@ -470,17 +489,10 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
             physics: const AlwaysScrollableScrollPhysics(),
             slivers: [
               SliverToBoxAdapter(child: _CampaignHeader(campaign: campaign)),
-              if (vm.entries.isNotEmpty)
-                SliverToBoxAdapter(
-                  child: _ArtworkGalleryHeader(
-                    isCompleted: campaign.isCompleted,
-                    sort: vm.sort,
-                    onSortChanged: _vm.setSort,
-                  ),
-                ),
               ..._buildCampaignSlivers(context, vm),
-              if (showSubmitButton)
-                const SliverToBoxAdapter(child: SizedBox(height: 88)),
+              SliverToBoxAdapter(
+                child: SizedBox(height: showSubmitButton ? 96 : 32),
+              ),
             ],
           ),
         ),
@@ -491,9 +503,13 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
             child: FloatingActionButton.extended(
               onPressed: () => _openSubmission(context, auth),
               icon: const Icon(Icons.add_rounded),
-              label: const Text('Submit Artwork'),
+              label: const Text(
+                'Submit Artwork',
+                style: TextStyle(fontWeight: FontWeight.w700),
+              ),
               backgroundColor: _CampaignColors.darkGreen,
               foregroundColor: Colors.white,
+              elevation: 4,
             ),
           ),
       ],
@@ -509,7 +525,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
         SliverFillRemaining(
           hasScrollBody: false,
           child: EmptyStateWidget(
-            icon: Icons.image_search_outlined,
+            icon: Icons.palette_outlined,
             title: 'No artwork designs yet',
             subtitle: 'No approved artwork is available in this campaign.',
           ),
@@ -517,27 +533,180 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
       ];
     }
 
+    final campaign = widget.campaign;
+    final isCompleted = campaign.isCompleted;
+    final entries = vm.entries;
+    final winnerEntry = entries.first;
+    final otherEntries = entries.skip(1).toList();
+
     return [
-      SliverPadding(
-        padding: const EdgeInsets.only(bottom: 24),
-        sliver: SliverList(
-          delegate: SliverChildBuilderDelegate((_, index) {
-            final entry = vm.entries[index];
-            return _ArtworkEntryCard(
-              entry: entry,
-              isWinner: widget.campaign.isCompleted && entry.currentRank == 1,
-              onOpen: () async {
-                await Navigator.pushNamed(
-                  context,
-                  AppRoutes.artworkVotingDetail,
-                  arguments: entry.id,
-                );
-                if (mounted) await _refresh();
-              },
-            );
-          }, childCount: vm.entries.length),
+      if (isCompleted) ...[
+        // Section 1: Winning artwork
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, 20, 16, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Winning artwork',
+                  style: TextStyle(
+                    color: _CampaignColors.textDark,
+                    fontSize: 17.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                SizedBox(height: 2),
+                Text(
+                  'Selected by the community',
+                  style: TextStyle(
+                    color: _CampaignColors.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
-      ),
+        SliverToBoxAdapter(
+          child: _WinnerArtworkCard(
+            entry: winnerEntry,
+            onOpen: () async {
+              await Navigator.pushNamed(
+                context,
+                AppRoutes.artworkVotingDetail,
+                arguments: winnerEntry.id,
+              );
+              if (mounted) await _refresh();
+            },
+          ),
+        ),
+        if (otherEntries.isNotEmpty) ...[
+          // Section 2: Other artwork
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: Text(
+                'Other artwork',
+                style: TextStyle(
+                  color: _CampaignColors.textDark,
+                  fontSize: 17.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final entry = otherEntries[index];
+                return _StandardArtworkCard(
+                  entry: entry,
+                  onOpen: () async {
+                    await Navigator.pushNamed(
+                      context,
+                      AppRoutes.artworkVotingDetail,
+                      arguments: entry.id,
+                    );
+                    if (mounted) await _refresh();
+                  },
+                );
+              },
+              childCount: otherEntries.length,
+            ),
+          ),
+        ],
+      ] else ...[
+        // Active Campaign: Featured submissions
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Featured submissions',
+                      style: TextStyle(
+                        color: _CampaignColors.textDark,
+                        fontSize: 17.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    Text(
+                      '${entries.length} ${entries.length == 1 ? "entry" : "entries"}',
+                      style: const TextStyle(
+                        color: _CampaignColors.textMuted,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 2),
+                const Text(
+                  'Community-voted artwork',
+                  style: TextStyle(
+                    color: _CampaignColors.textMuted,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        SliverToBoxAdapter(
+          child: _WinnerArtworkCard(
+            entry: winnerEntry,
+            onOpen: () async {
+              await Navigator.pushNamed(
+                context,
+                AppRoutes.artworkVotingDetail,
+                arguments: winnerEntry.id,
+              );
+              if (mounted) await _refresh();
+            },
+          ),
+        ),
+        if (otherEntries.isNotEmpty) ...[
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(16, 16, 16, 10),
+              child: Text(
+                'Other artwork',
+                style: TextStyle(
+                  color: _CampaignColors.textDark,
+                  fontSize: 17.5,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+          ),
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, index) {
+                final entry = otherEntries[index];
+                return _StandardArtworkCard(
+                  entry: entry,
+                  onOpen: () async {
+                    await Navigator.pushNamed(
+                      context,
+                      AppRoutes.artworkVotingDetail,
+                      arguments: entry.id,
+                    );
+                    if (mounted) await _refresh();
+                  },
+                );
+              },
+              childCount: otherEntries.length,
+            ),
+          ),
+        ],
+      ],
     ];
   }
 
@@ -555,88 +724,6 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
   }
 }
 
-class _ArtworkGalleryHeader extends StatelessWidget {
-  final bool isCompleted;
-  final String sort;
-  final ValueChanged<String> onSortChanged;
-
-  const _ArtworkGalleryHeader({
-    required this.isCompleted,
-    required this.sort,
-    required this.onSortChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (isCompleted) return const SizedBox.shrink();
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
-      child: Container(
-        padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF7F9F5),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _CampaignColors.border),
-        ),
-        child: Row(
-          children: [
-            const Icon(
-              Icons.tune_rounded,
-              size: 17,
-              color: _CampaignColors.darkGreen,
-            ),
-            const SizedBox(width: 7),
-            const Text(
-              'Discover by',
-              style: TextStyle(
-                color: _CampaignColors.darkGreen,
-                fontSize: 11,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            const Spacer(),
-            SegmentedButton<String>(
-              segments: const [
-                ButtonSegment(
-                  value: 'Most Voted',
-                  label: Text('Popular'),
-                  icon: Icon(Icons.local_fire_department_rounded),
-                ),
-                ButtonSegment(
-                  value: 'New',
-                  label: Text('New'),
-                  icon: Icon(Icons.auto_awesome_rounded),
-                ),
-              ],
-              selected: {sort},
-              onSelectionChanged: (selection) => onSortChanged(selection.first),
-              showSelectedIcon: false,
-              style: ButtonStyle(
-                visualDensity: VisualDensity.compact,
-                backgroundColor: WidgetStateProperty.resolveWith(
-                  (states) => states.contains(WidgetState.selected)
-                      ? _CampaignColors.darkGreen
-                      : Colors.white,
-                ),
-                foregroundColor: WidgetStateProperty.resolveWith(
-                  (states) => states.contains(WidgetState.selected)
-                      ? Colors.white
-                      : _CampaignColors.darkGreen,
-                ),
-                iconSize: const WidgetStatePropertyAll(14),
-                textStyle: const WidgetStatePropertyAll(
-                  TextStyle(fontSize: 10, fontWeight: FontWeight.w800),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 class _CampaignHeader extends StatelessWidget {
   final ArtworkCampaignModel campaign;
 
@@ -644,101 +731,472 @@ class _CampaignHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final statusIcon = campaign.isCompleted
-        ? Icons.event_busy_rounded
-        : Icons.how_to_vote_rounded;
-    final statusTitle = campaign.isCompleted ? 'Campaign Completed' : 'Active';
-    return GestureDetector(
-      onTap: () => _showCampaignDetails(context),
-      child: Container(
-        width: double.infinity,
-        margin: const EdgeInsets.fromLTRB(16, 14, 16, 0),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: const [
-            BoxShadow(
-              color: Color(0x28335C31),
-              blurRadius: 16,
-              offset: Offset(0, 7),
-            ),
-          ],
-        ),
-        foregroundDecoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: AppColors.primary, width: 1.5),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: Image.asset(
-                'asset/image/tiffin_background_yellow.png',
-                fit: BoxFit.cover,
-                alignment: Alignment.center,
-              ),
-            ),
-            const Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFEAF2E6), Color(0xFFD6E5D1)],
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      decoration: BoxDecoration(
+        color: _CampaignColors.paleMint,
+        borderRadius: BorderRadius.circular(24),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showCampaignDetails(context),
+          child: Stack(
+            children: [
+              // Top-right soft circular background watermarks
+              Positioned(
+                top: -26,
+                right: -24,
+                child: Container(
+                  width: 124,
+                  height: 124,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFD6E4D5).withValues(alpha: 0.65),
                   ),
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          campaign.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 22,
-                            height: 1.15,
-                            fontWeight: FontWeight.w900,
+              Positioned(
+                top: -6,
+                right: 36,
+                child: Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFFD6E4D5).withValues(alpha: 0.35),
+                  ),
+                ),
+              ),
+              // Info button on top-right
+              Positioned(
+                top: 14,
+                right: 14,
+                child: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.info_outline_rounded,
+                    color: _CampaignColors.darkGreen,
+                    size: 22,
+                  ),
+                ),
+              ),
+              // Content
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 18, 56, 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      campaign.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: _CampaignColors.textDark,
+                        fontSize: 18.5,
+                        fontWeight: FontWeight.w800,
+                        height: 1.2,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.92),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: const Color(0xFFD2DFD1)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(1.5),
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFE2EFE0),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.check_rounded,
+                              size: 11,
+                              color: Color(0xFF2C5E3B),
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            campaign.isCompleted
+                                ? 'Campaign completed'
+                                : 'Campaign active',
+                            style: const TextStyle(
+                              color: Color(0xFF2C5E3B),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      _formatDateRange(
+                        campaign.submissionStartDate,
+                        campaign.submissionDeadline,
+                      ),
+                      style: const TextStyle(
+                        color: Color(0xFF6E7C71),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _formatDateRange(DateTime? start, DateTime? end) {
+    if (start != null && end != null) {
+      final fmt = DateFormat('d MMM yyyy');
+      return '${fmt.format(start)} — ${fmt.format(end)}';
+    }
+    return '';
+  }
+
+  Future<void> _showCampaignDetails(BuildContext context) {
+    final start = campaign.submissionStartDate;
+    final end = campaign.submissionDeadline;
+    final dateRangeSlash = (start != null && end != null)
+        ? '${start.day}/${start.month}/${start.year} — ${end.day}/${end.month}/${end.year}'
+        : 'Ongoing';
+
+    return showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          ),
+          padding: EdgeInsets.fromLTRB(
+            24,
+            12,
+            24,
+            MediaQuery.of(bottomSheetContext).padding.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 4.5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD1D8D2),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'CAMPAIGN DETAILS',
+                style: TextStyle(
+                  color: Color(0xFF758278),
+                  fontSize: 10.5,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                campaign.title,
+                style: GoogleFonts.playfairDisplay(
+                  color: const Color(0xFF192A1E),
+                  fontSize: 21,
+                  fontWeight: FontWeight.w800,
+                  height: 1.25,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEF8E7),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFF4DFB0)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.check_rounded,
+                      size: 13,
+                      color: Color(0xFFDE9010),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      campaign.isCompleted
+                          ? 'Campaign completed'
+                          : 'Campaign active',
+                      style: const TextStyle(
+                        color: Color(0xFF8B5E14),
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'About this campaign',
+                style: TextStyle(
+                  color: Color(0xFF1E3123),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                campaign.description.trim().isNotEmpty
+                    ? campaign.description.trim()
+                    : 'A completed campaign for a Melaka-inspired heritage tiffin design.',
+                style: const TextStyle(
+                  color: Color(0xFF738176),
+                  fontSize: 13,
+                  height: 1.45,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF3F6F1),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 20,
+                      color: Color(0xFF234934),
+                    ),
+                    const SizedBox(width: 12),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Campaign period',
+                          style: TextStyle(
+                            color: Color(0xFF7B887E),
+                            fontSize: 11,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      const Icon(
-                        Icons.info_outline_rounded,
-                        color: AppColors.primary,
-                        size: 22,
-                      ),
-                    ],
+                        const SizedBox(height: 3),
+                        Text(
+                          dateRangeSlash,
+                          style: const TextStyle(
+                            color: Color(0xFF1A3B2B),
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 28),
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(bottomSheetContext),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF1E432B),
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(26),
+                    ),
                   ),
-                  const SizedBox(height: 10),
+                  child: const Text(
+                    'Done',
+                    style: TextStyle(
+                      fontSize: 15.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+/// Custom painter rendering the subtle geometric chevron pattern watermark.
+class ChevronPatternPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFFEEDBB2).withValues(alpha: 0.55)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    const double spacingX = 14;
+    const double spacingY = 12;
+    const double chevronW = 8;
+    const double chevronH = 5;
+
+    for (double y = 0; y <= size.height; y += spacingY) {
+      for (double x = 0; x <= size.width; x += spacingX) {
+        final path = Path()
+          ..moveTo(x, y)
+          ..lineTo(x + chevronW / 2, y + chevronH)
+          ..lineTo(x + chevronW, y);
+        canvas.drawPath(path, paint);
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+class _WinnerArtworkCard extends StatelessWidget {
+  final ArtworkVotingEntryModel entry;
+  final VoidCallback onOpen;
+
+  const _WinnerArtworkCard({required this.entry, required this.onOpen});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFDF8),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: _CampaignColors.gold, width: 1.8),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0E000000),
+            blurRadius: 12,
+            offset: Offset(0, 4),
+          ),
+        ],
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onOpen,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Upper section: Centered Artwork Image
+              Container(
+                width: double.infinity,
+                height: 220,
+                padding: const EdgeInsets.symmetric(
+                  vertical: 14,
+                  horizontal: 20,
+                ),
+                alignment: Alignment.center,
+                child: AppNetworkImage(
+                  imageUrl: entry.artworkUrl,
+                  fit: BoxFit.contain,
+                  targetOptimizationWidth: 480,
+                ),
+              ),
+              // Golden Divider line with overlapping Trophy & Champion badge
+              Stack(
+                clipBehavior: Clip.none,
+                alignment: Alignment.centerLeft,
+                children: [
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 9,
-                      vertical: 5,
-                    ),
-                    decoration: BoxDecoration(
-                      color: const Color(0x8AFFFFFF),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: AppColors.primaryContainer),
-                    ),
+                    height: 1.5,
+                    width: double.infinity,
+                    color: _CampaignColors.gold,
+                  ),
+                  Positioned(
+                    left: 12,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(statusIcon, size: 14, color: AppColors.primary),
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: _CampaignColors.darkGold,
+                              width: 2,
+                            ),
+                            boxShadow: const [
+                              BoxShadow(
+                                color: Color(0x18000000),
+                                blurRadius: 4,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.emoji_events_outlined,
+                            color: _CampaignColors.darkGold,
+                            size: 20,
+                          ),
+                        ),
                         const SizedBox(width: 6),
-                        Text(
-                          statusTitle,
-                          style: const TextStyle(
-                            color: AppColors.textPrimary,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w800,
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _CampaignColors.darkGold,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 2.5,
+                                height: 10,
+                                decoration: BoxDecoration(
+                                  color: Colors.white70,
+                                  borderRadius: BorderRadius.circular(1),
+                                ),
+                              ),
+                              const SizedBox(width: 5),
+                              const Text(
+                                'CAMPAIGN CHAMPION',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 9.5,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                       ],
@@ -746,150 +1204,94 @@ class _CampaignHeader extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Future<void> _showCampaignDetails(BuildContext context) {
-    final statusColor = campaign.isCompleted
-        ? AppColors.accentDark
-        : AppColors.success;
-    final statusBackground = campaign.isCompleted
-        ? AppColors.accentContainer
-        : AppColors.successLight;
-    final statusLabel = campaign.isCompleted ? 'Campaign Completed' : 'Active';
-    return showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          campaign.title,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontSize: 20,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: statusBackground,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: statusColor),
-                ),
-                child: Text(
-                  statusLabel,
-                  style: TextStyle(
-                    color: statusColor,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w900,
-                  ),
+              // Lower section: Details & Arrow Button
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            entry.artworkTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: _CampaignColors.darkGreen,
+                              fontSize: 16.5,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'by ${entry.submitterName}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              color: _CampaignColors.textMuted,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.favorite_rounded,
+                                color: Color(0xFF8E5B16),
+                                size: 13,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                '${entry.voteCount} winning votes',
+                                style: const TextStyle(
+                                  color: Color(0xFF8E5B16),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 82,
+                      height: 56,
+                      child: Stack(
+                        alignment: Alignment.centerRight,
+                        children: [
+                          Positioned.fill(
+                            child: CustomPaint(
+                              painter: ChevronPatternPainter(),
+                            ),
+                          ),
+                          Container(
+                            width: 38,
+                            height: 38,
+                            decoration: const BoxDecoration(
+                              color: _CampaignColors.softGold,
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.chevron_right_rounded,
+                              color: Color(0xFFB77E20),
+                              size: 24,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              if (campaign.description.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Text(
-                  'About this campaign',
-                  style: TextStyle(
-                    color: AppColors.textPrimary,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  campaign.description,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    height: 1.5,
-                  ),
-                ),
-              ],
-              if (_phaseDates(campaign) case final dates?) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: AppColors.surfaceVariant,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Icon(
-                        Icons.calendar_today_outlined,
-                        size: 17,
-                        color: AppColors.textHint,
-                      ),
-                      const SizedBox(width: 9),
-                      Expanded(
-                        child: Text(
-                          dates,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
             ],
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(dialogContext),
-            child: const Text('Close'),
-          ),
-        ],
       ),
     );
-  }
-
-  String? _phaseDates(ArtworkCampaignModel campaign) {
-    if (campaign.submissionStartDate != null &&
-        campaign.submissionDeadline != null) {
-      return 'Campaign period: ${_date(campaign.submissionStartDate!)} - ${_date(campaign.submissionDeadline!)}';
-    }
-    return null;
-  }
-
-  String _date(DateTime date) => '${date.day}/${date.month}/${date.year}';
-}
-
-class _ArtworkEntryCard extends StatelessWidget {
-  final ArtworkVotingEntryModel entry;
-  final bool isWinner;
-  final VoidCallback onOpen;
-
-  const _ArtworkEntryCard({
-    required this.entry,
-    required this.isWinner,
-    required this.onOpen,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (isWinner) {
-      return _WinnerArtworkCard(entry: entry, onOpen: onOpen);
-    }
-
-    return _StandardArtworkCard(entry: entry, onOpen: onOpen);
   }
 }
 
@@ -902,152 +1304,149 @@ class _StandardArtworkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 6, 16, 8),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: _CampaignColors.border),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x14335C31),
-            blurRadius: 14,
-            offset: Offset(0, 5),
+            color: Color(0x0A000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
         ],
       ),
+      clipBehavior: Clip.antiAlias,
       child: Material(
         color: Colors.transparent,
-        borderRadius: BorderRadius.circular(22),
-        clipBehavior: Clip.antiAlias,
         child: InkWell(
           onTap: onOpen,
-          child: Row(
-            children: [
-              Container(
-                width: 128,
-                height: 142,
-                color: const Color(0xFFF3F6F0),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.all(8),
-                      child: AppNetworkImage(
-                        imageUrl: entry.artworkUrl,
-                        fit: BoxFit.contain,
-                        targetOptimizationWidth: 360,
-                      ),
-                    ),
-                    const DecoratedBox(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Color(0x26000000)],
-                          stops: [0.68, 1],
+          child: Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                // Thumbnail with Rank badge
+                Container(
+                  width: 96,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2F5F0),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(6),
+                        child: AppNetworkImage(
+                          imageUrl: entry.artworkUrl,
+                          fit: BoxFit.contain,
+                          targetOptimizationWidth: 240,
                         ),
                       ),
-                    ),
-                    Align(
-                      alignment: Alignment.topLeft,
-                      child: Container(
-                        margin: const EdgeInsets.all(8),
-                        width: 34,
-                        height: 34,
-                        decoration: BoxDecoration(
-                          color: _CampaignColors.darkGreen,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2),
-                          boxShadow: const [
-                            BoxShadow(color: Colors.black26, blurRadius: 5),
-                          ],
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          '#${entry.currentRank}',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w900,
-                            fontSize: 11,
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        child: Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            color: _CampaignColors.forestGreen,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 1.5),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            '#${entry.currentRank}',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 14),
+                const SizedBox(width: 14),
+                // Middle details
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const Text(
                         'COMMUNITY CREATION',
                         style: TextStyle(
-                          color: AppColors.textHint,
-                          fontSize: 9,
-                          letterSpacing: .8,
-                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF88968D),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.6,
                         ),
                       ),
-                      const SizedBox(height: 5),
+                      const SizedBox(height: 4),
                       Text(
                         entry.artworkTitle,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: _CampaignColors.darkGreen,
-                          fontWeight: FontWeight.w900,
-                          height: 1.2,
-                        ),
-                        maxLines: 2,
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: _CampaignColors.darkGreen,
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                        ),
                       ),
                       const SizedBox(height: 5),
                       Row(
                         children: [
-                          const Icon(
-                            Icons.brush_rounded,
-                            size: 13,
-                            color: AppColors.textSecondary,
+                          Container(
+                            width: 3,
+                            height: 12,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2B5B3C),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
                           ),
-                          const SizedBox(width: 5),
+                          const SizedBox(width: 6),
                           Expanded(
                             child: Text(
                               entry.submitterName,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(color: _CampaignColors.text),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                color: Color(0xFF7C8B80),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 11),
+                      const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 9,
-                          vertical: 5,
+                          horizontal: 10,
+                          vertical: 4,
                         ),
                         decoration: BoxDecoration(
                           color: _CampaignColors.softYellow,
-                          borderRadius: BorderRadius.circular(20),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(
                               Icons.favorite_rounded,
-                              size: 13,
-                              color: _CampaignColors.yellow,
+                              color: Color(0xFFEAA21D),
+                              size: 12,
                             ),
                             const SizedBox(width: 5),
                             Text(
                               '${entry.voteCount} votes',
                               style: const TextStyle(
-                                color: _CampaignColors.darkGreen,
-                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF2E4837),
                                 fontSize: 11,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                           ],
@@ -1056,214 +1455,23 @@ class _StandardArtworkCard extends StatelessWidget {
                     ],
                   ),
                 ),
-              ),
-              const Padding(
-                padding: EdgeInsets.only(right: 10),
-                child: CircleAvatar(
-                  radius: 14,
-                  backgroundColor: Color(0xFFEEF3EC),
-                  child: Icon(
-                    Icons.arrow_forward_rounded,
-                    size: 15,
-                    color: _CampaignColors.darkGreen,
+                const SizedBox(width: 10),
+                // Arrow circle button
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFEBF1E8),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.chevron_right_rounded,
+                    color: Color(0xFF2B5B3C),
+                    size: 22,
                   ),
                 ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _WinnerArtworkCard extends StatelessWidget {
-  final ArtworkVotingEntryModel entry;
-  final VoidCallback onOpen;
-
-  const _WinnerArtworkCard({required this.entry, required this.onOpen});
-
-  @override
-  Widget build(BuildContext context) {
-    const gold = Color(0xFFF4B928);
-    const deepGold = Color(0xFFC98308);
-
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-      padding: const EdgeInsets.all(2),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFFFE69A), gold, deepGold, Color(0xFFFFD65C)],
-        ),
-        borderRadius: BorderRadius.circular(21),
-        boxShadow: const [
-          BoxShadow(
-            color: Color(0x45E6A315),
-            blurRadius: 18,
-            spreadRadius: 1,
-            offset: Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Material(
-        color: const Color(0xFFFFFBEE),
-        borderRadius: BorderRadius.circular(19),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onOpen,
-          child: Stack(
-            children: [
-              const Positioned(
-                right: -18,
-                top: -28,
-                child: Icon(
-                  Icons.workspace_premium_rounded,
-                  size: 112,
-                  color: Color(0x14C98308),
-                ),
-              ),
-              Row(
-                children: [
-                  Container(
-                    width: 128,
-                    height: 142,
-                    color: const Color(0xFFF3F6F0),
-                    child: Stack(
-                      fit: StackFit.expand,
-                      children: [
-                        AppNetworkImage(
-                          imageUrl: entry.artworkUrl,
-                          fit: BoxFit.contain,
-                          targetOptimizationWidth: 300,
-                        ),
-                        const DecoratedBox(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.transparent, Color(0x22000000)],
-                              stops: [0.65, 1],
-                            ),
-                          ),
-                        ),
-                        Align(
-                          alignment: Alignment.topLeft,
-                          child: Container(
-                            margin: const EdgeInsets.all(7),
-                            width: 35,
-                            height: 35,
-                            decoration: BoxDecoration(
-                              color: gold,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white, width: 2),
-                              boxShadow: const [
-                                BoxShadow(
-                                  color: Color(0x55000000),
-                                  blurRadius: 6,
-                                  offset: Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: const Icon(
-                              Icons.emoji_events_rounded,
-                              color: Colors.white,
-                              size: 21,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 13),
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 9,
-                              vertical: 4,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [gold, deepGold],
-                              ),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.auto_awesome_rounded,
-                                  size: 12,
-                                  color: Colors.white,
-                                ),
-                                SizedBox(width: 4),
-                                Text(
-                                  'CAMPAIGN CHAMPION',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    letterSpacing: .7,
-                                    fontWeight: FontWeight.w900,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            entry.artworkTitle,
-                            style: Theme.of(context).textTheme.titleSmall
-                                ?.copyWith(
-                                  color: _CampaignColors.darkGreen,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            'by ${entry.submitterName}',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: _CampaignColors.text),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 7),
-                          Row(
-                            children: [
-                              const Icon(
-                                Icons.favorite_rounded,
-                                size: 14,
-                                color: deepGold,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${entry.voteCount} winning votes',
-                                style: const TextStyle(
-                                  color: deepGold,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const Padding(
-                    padding: EdgeInsets.only(right: 10),
-                    child: Icon(Icons.chevron_right_rounded, color: deepGold),
-                  ),
-                ],
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

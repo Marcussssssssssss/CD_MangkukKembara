@@ -180,7 +180,10 @@ abstract final class AppRoutes {
           settings,
         );
       case artworkCampaign:
-        return _build(const ArtworkCampaignHomeView(), settings);
+        final campaignId = settings.arguments is String
+            ? settings.arguments as String
+            : null;
+        return _build(ArtworkCampaignHomeView(campaignId: campaignId), settings);
       case campaignDetail:
         return _build(
           ArtworkCampaignDetailView(
