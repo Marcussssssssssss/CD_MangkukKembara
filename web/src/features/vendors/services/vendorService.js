@@ -99,13 +99,14 @@ export async function fetchVendors() {
  * Fetch all reference data needed for the Vendor Forms.
  */
 export async function fetchReferenceData() {
-  const [states, foods, tiffins] = await Promise.all([
+  const [states, foods, categories, tiffins] = await Promise.all([
     queryRows('states', '*', q => q.eq('is_active', true).order('state_name')),
     queryRows('heritage_foods', '*', q => q.eq('is_active', true).order('food_name')),
+    queryRows('food_categories', '*', q => q.eq('is_active', true).order('category_name')),
     queryRows('heritage_tiffins', '*', q => q.neq('status', 'inactive').order('edition_name'))
   ]);
 
-  return { states, foods, tiffins };
+  return { states, foods, categories, tiffins };
 }
 
 async function assertVendorSelectionsMatchState(formData) {
