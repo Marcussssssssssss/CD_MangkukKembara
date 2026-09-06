@@ -86,7 +86,12 @@ abstract final class AppRoutes {
     switch (settings.name) {
       // Module A
       case treasureMap:
-        return _build(const TreasureMapView(), settings);
+        return _build(
+          TreasureMapView(
+            initialFoodQuery: settings.arguments as String? ?? '',
+          ),
+          settings,
+        );
       case vendorSearch:
         return _build(
           VendorSearchResultView(query: settings.arguments as String? ?? ''),
