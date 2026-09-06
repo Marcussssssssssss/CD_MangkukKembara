@@ -421,7 +421,7 @@ class _TreasureMapViewState extends State<TreasureMapView> {
           child: _VendorGoogleMap(
             // Vendors belonging to a Pasar Malam are shown through the market
             // marker on the default map, then as direct pins during searches.
-            vendors: vm.vendors,
+            vendors: vm.mapVendors,
             pasarMalam: vm.pasarMalam,
             selectedVendor: vm.previewVendor,
             showCurrentLocation: vm.canShowCurrentLocation,
