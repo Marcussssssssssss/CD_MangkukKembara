@@ -4,6 +4,7 @@ import 'dart:math' as math;
 import '../../Model/Repositories/HeritageTreasureMap/treasure_map_repository.dart';
 import '../../Model/Repositories/HeritageTreasureMap/vendor_model.dart';
 import '../../Model/Repositories/HeritageTreasureMap/pasar_malam_model.dart';
+import 'heritage_treasure_map_search.dart';
 
 enum MapViewMode { map, list }
 
@@ -71,20 +72,23 @@ class TreasureMapViewModel extends ChangeNotifier {
     _hasError = false;
     if (showLoading) notifyListeners();
     try {
-      _mapVendors = await _repo.fetchVendors(
-        query: _searchQuery.isEmpty ? null : _searchQuery,
-        state: _selectedState == 'All States' ? null : _selectedState,
-        foodCategory: _selectedFoodCategory == 'All'
-            ? null
-            : _selectedFoodCategory,
+      final fetchedVendors = await _repo.fetchVendors();
+      _mapVendors = HeritageTreasureMapSearch.filterVendors(
+        fetchedVendors,
+        query: _searchQuery,
+        state: _selectedState,
+        foodCategory: _selectedFoodCategory,
       );
       _vendors = _mapVendors
-          .where((vendor) => vendor.pasarMalamId == null)
+          .where(
+            (vendor) =>
+                vendor.pasarMalamId == null || _searchQuery.trim().isNotEmpty,
+          )
           .toList();
       await _sortVendors();
       _pasarMalam = await _repo.fetchPasarMalam(
         query: _searchQuery.isEmpty ? null : _searchQuery,
-        state: _selectedState == 'All States' ? null : _selectedState,
+        state: HeritageTreasureMapSearch.databaseStateName(_selectedState),
       );
     } catch (e) {
       _hasError = true;

@@ -3,6 +3,7 @@ import 'package:geolocator/geolocator.dart';
 import 'dart:math' as math;
 import '../../Model/Repositories/HeritageTreasureMap/treasure_map_repository.dart';
 import '../../Model/Repositories/HeritageTreasureMap/vendor_model.dart';
+import 'heritage_treasure_map_search.dart';
 
 /// View model for vendor search result view.
 class VendorSearchViewModel extends ChangeNotifier {
@@ -43,12 +44,12 @@ class VendorSearchViewModel extends ChangeNotifier {
     _hasError = false;
     if (showLoading) notifyListeners();
     try {
-      _results = await _repo.fetchVendors(
-        query: query.isEmpty ? null : query,
-        state: _selectedState == 'All States' ? null : _selectedState,
-        foodCategory: _selectedFoodCategory == 'All'
-            ? null
-            : _selectedFoodCategory,
+      final fetchedVendors = await _repo.fetchVendors();
+      _results = HeritageTreasureMapSearch.filterVendors(
+        fetchedVendors,
+        query: query,
+        state: _selectedState,
+        foodCategory: _selectedFoodCategory,
       );
       await _sortResults();
     } catch (_) {

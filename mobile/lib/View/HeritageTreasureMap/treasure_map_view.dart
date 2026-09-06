@@ -973,20 +973,265 @@ class _PasarMalamListCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      child: ListTile(
-        leading: const CircleAvatar(
-          backgroundColor: AppColors.accentContainer,
-          child: Icon(Icons.nightlife_rounded, color: AppColors.accentDark),
-        ),
-        title: Text(
-          market.name,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        subtitle: Text(
-          '${market.state} · ${market.isOpen ? "Open" : "Closed"}',
-        ),
-        trailing: const Icon(Icons.chevron_right_rounded),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 82,
+                height: 92,
+                decoration: BoxDecoration(
+                  color: AppColors.accentContainer,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(
+                  Icons.nightlife_rounded,
+                  color: AppColors.accentDark,
+                  size: 34,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            market.name,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        _OpenStatusPill(isOpen: market.isOpen),
+                      ],
+                    ),
+                    const SizedBox(height: 7),
+                    _MarketMetaLine(
+                      icon: Icons.place_outlined,
+                      text: market.address.isNotEmpty
+                          ? market.address
+                          : market.state,
+                    ),
+                    const SizedBox(height: 5),
+                    _MarketMetaLine(
+                      icon: Icons.schedule_outlined,
+                      text: _compactMarketHours(market.operatingHours),
+                    ),
+                    const SizedBox(height: 5),
+                    _MarketMetaLine(
+                      icon: Icons.storefront_outlined,
+                      text: '${market.activeVendorCount} active stalls',
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              const Icon(Icons.chevron_right_rounded),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MarketMetaLine extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _MarketMetaLine({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 15, color: AppColors.textSecondary),
+        const SizedBox(width: 5),
+        Expanded(
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+String _compactMarketHours(List<PasarMalamOperatingHourModel> hours) {
+  if (hours.isEmpty) return 'Opening hours unavailable';
+  final displayed = hours
+      .take(2)
+      .map((hour) => '${hour.dayName.substring(0, 3)} ${hour.displayHours}')
+      .join(' · ');
+  return hours.length > 2 ? '$displayed · …' : displayed;
+}
+
+class _MarketHoursSection extends StatelessWidget {
+  final List<PasarMalamOperatingHourModel> hours;
+
+  const _MarketHoursSection({required this.hours});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(
+              Icons.schedule_outlined,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              'Opening hours',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                color: AppColors.textPrimary,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        if (hours.isEmpty)
+          const Padding(
+            padding: EdgeInsets.only(left: 26),
+            child: Text(
+              'Opening hours unavailable',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.only(left: 26),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: hours
+                  .map(
+                    (hour) => Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 9,
+                        vertical: 5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: AppColors.surfaceVariant,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${hour.dayName.substring(0, 3)} · ${hour.displayHours}',
+                        style: Theme.of(context).textTheme.labelMedium
+                            ?.copyWith(
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                    ),
+                  )
+                  .toList(),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _MarketSummaryMetric extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+
+  const _MarketSummaryMetric({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 20, color: AppColors.accentDark),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                Text(
+                  label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MarketSummaryRating extends StatelessWidget {
+  final ({double average, int reviews}) summary;
+
+  const _MarketSummaryRating({required this.summary});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceVariant,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          RatingBar(rating: summary.average, size: 15, showLabel: false),
+          const SizedBox(height: 3),
+          Text(
+            '${summary.average.toStringAsFixed(1)} · ${summary.reviews} review${summary.reviews == 1 ? '' : 's'}',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: AppColors.textSecondary),
+          ),
+        ],
       ),
     );
   }
@@ -1023,6 +1268,20 @@ class _PasarMalamPreviewSheet extends StatelessWidget {
     if (description.isNotEmpty) return description;
     if (market.state.isNotEmpty) return 'Night market in ${market.state}.';
     return 'Local night market.';
+  }
+
+  ({double average, int reviews})? get _ratingSummary {
+    final reviewedVendors = vendors.where((vendor) => vendor.reviewCount > 0);
+    final reviews = reviewedVendors.fold<int>(
+      0,
+      (total, vendor) => total + vendor.reviewCount,
+    );
+    if (reviews == 0) return null;
+    final ratingTotal = reviewedVendors.fold<double>(
+      0,
+      (total, vendor) => total + vendor.averageRating * vendor.reviewCount,
+    );
+    return (average: ratingTotal / reviews, reviews: reviews);
   }
 
   @override
@@ -1111,6 +1370,8 @@ class _PasarMalamPreviewSheet extends StatelessWidget {
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 12),
+                            _MarketHoursSection(hours: market.operatingHours),
                             const SizedBox(height: 10),
                             Text(
                               _description,
@@ -1122,6 +1383,29 @@ class _PasarMalamPreviewSheet extends StatelessWidget {
                           ],
                         ),
                       ),
+                      if (!isLoading && errorMessage == null)
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _MarketSummaryMetric(
+                                  icon: Icons.storefront_outlined,
+                                  label: 'Active heritage stalls',
+                                  value: '${vendors.length}',
+                                ),
+                              ),
+                              if (_ratingSummary != null) ...[
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: _MarketSummaryRating(
+                                    summary: _ratingSummary!,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
                       const Divider(height: 1),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 14, 16, 10),

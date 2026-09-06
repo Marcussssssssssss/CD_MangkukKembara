@@ -6,6 +6,7 @@ import 'package:mangkuk_kembara/Model/Repositories/HeritageExperience/heritage_m
 import 'package:mangkuk_kembara/Model/Repositories/HeritageExperience/heritage_story_model.dart';
 import 'package:mangkuk_kembara/Model/Repositories/HeritageExperience/heritage_tiffin_model.dart';
 import 'package:mangkuk_kembara/Model/Repositories/HeritageTreasureMap/vendor_tiffin_model.dart';
+import 'package:mangkuk_kembara/Model/Repositories/HeritageTreasureMap/vendor_model.dart';
 import 'package:mangkuk_kembara/Model/Repositories/HeritageCommunity/artwork_campaign_model.dart';
 import 'package:mangkuk_kembara/ViewModel/HeritageCommunity/artwork_campaign_view_model.dart';
 
@@ -64,6 +65,24 @@ void main() {
     expect(vendorTiffin.tiffinId, 'HT0001');
     expect(vendorTiffin.tiffinEditionName, 'Penang Edition');
     expect(vendorTiffin.coverImageUrl, 'https://example.com/tiffin.jpg');
+  });
+
+  test('vendor maps cover_image_url', () {
+    final vendor = VendorModel.fromJson({
+      'vendor_id': 'V0001',
+      'vendor_name': 'Test Vendor',
+      'description': '',
+      'address_line': '1 Test Street',
+      'contact_person': '',
+      'business_type': 'restaurant',
+      'cover_image_url': ' https://example.com/vendor.jpg ',
+      'latitude': 5.4141,
+      'longitude': 100.3288,
+      'states': {'state_name': 'Penang'},
+      'vendor_foods': [],
+    });
+
+    expect(vendor.coverImageUrl, 'https://example.com/vendor.jpg');
   });
 
   test('featured artwork campaign prefers the live campaign', () {
