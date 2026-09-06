@@ -34,6 +34,7 @@ abstract final class _MapPageColors {
 /// A1. Heritage Treasure Map View — the application home screen.
 class TreasureMapView extends StatefulWidget {
   final bool selectionMode;
+
   /// Optional heritage-food search supplied by the Food Origin page.
   /// The map's existing search logic uses this to show matching vendors.
   final String initialFoodQuery;
@@ -486,20 +487,20 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
     try {
       final configuration = createLocalImageConfiguration(
         context,
-        size: const Size(48, 48),
+        size: const Size(65, 65),
       );
       final icons = await Future.wait([
         BitmapDescriptor.asset(
           configuration,
           'asset/image/nightmarket_tiffin_pin.png',
-          width: 48,
-          height: 48,
+          width: 65,
+          height: 65,
         ),
         BitmapDescriptor.asset(
           configuration,
           'asset/image/restaurant_tiffin_pin.png',
-          width: 48,
-          height: 48,
+          width: 65,
+          height: 65,
         ),
       ]);
       if (!mounted) return;
