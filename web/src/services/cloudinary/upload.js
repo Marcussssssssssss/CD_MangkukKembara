@@ -26,7 +26,7 @@ const ALLOWED_MEDIA_TYPES = new Set([
 const SIZE_LIMITS = {
   profileImage: 5 * 1024 * 1024,   // 5 MB — enforced by Edge Function
   image:       10 * 1024 * 1024,   // 10 MB
-  video:       50 * 1024 * 1024,   // 50 MB
+  video:      100 * 1024 * 1024,   // 100 MB
 };
 
 // ---------------------------------------------------------------------------

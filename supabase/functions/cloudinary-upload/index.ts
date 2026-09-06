@@ -9,7 +9,7 @@ const imageTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const videoTypes = new Set(['video/mp4', 'video/webm']);
 const imageLimit = 10 * 1024 * 1024;
 const profileImageLimit = 5 * 1024 * 1024;
-const videoLimit = 50 * 1024 * 1024;
+const videoLimit = 100 * 1024 * 1024;
 
 function json(body: Record<string, unknown>, status = 200) {
   return new Response(JSON.stringify(body), {
