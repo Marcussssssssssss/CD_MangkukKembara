@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+
 import '../../Model/Repositories/HeritageTreasureMap/vendor_model.dart';
 
 /// Search and filter rules used by the Heritage Treasure Map views.
@@ -23,53 +25,49 @@ abstract final class HeritageTreasureMapSearch {
     'putrajaya': 'Putrajaya',
   };
 
-  static const Map<String, List<String>> _foodCategoryKeywords = {
-    'rice': ['rice', 'nasi'],
-    'noodles': [
-      'noodle',
-      'laksa',
-      'mee',
-      'bihun',
-      'mihun',
-      'mee hoon',
-      'kuey teow',
-      'kway teow',
-      'vermicelli',
-    ],
-    'bread': ['bread', 'roti'],
-    'snacks': ['snack', 'kuih', 'keropok', 'kerepek', 'popiah', 'cucur'],
-    'dessert': [
-      'dessert',
-      'sweet',
-      'kuih',
-      'cendol',
-      'ais kacang',
-      'sago',
-      'pudding',
-      'puding',
-      'cake',
-      'kek',
-      'apam',
-      'onde',
-      'seri muka',
-      'pengat',
-    ],
-  };
-
   static List<VendorModel> filterVendors(
     Iterable<VendorModel> vendors, {
     String query = '',
     String state = 'All States',
     String foodCategory = 'All',
+    String? foodCategoryId,
   }) {
-    return vendors
+    final vendorList = vendors.toList();
+    final filteredVendors = vendorList
         .where(
           (vendor) =>
               _matchesState(vendor, state) &&
-              _matchesFoodCategory(vendor, foodCategory) &&
+              _matchesFoodCategory(vendor, foodCategory, foodCategoryId) &&
               matchesVendor(vendor, query),
         )
         .toList();
+
+    final matchedFoodRecords = <String>[];
+    if (foodCategoryId != null && foodCategoryId.isNotEmpty) {
+      for (final vendor in vendorList) {
+        for (var index = 0; index < vendor.heritageFoods.length; index++) {
+          if (index < vendor.foodCategoryIds.length &&
+              vendor.foodCategoryIds[index] == foodCategoryId) {
+            matchedFoodRecords.add(
+              '${vendor.id}:${vendor.heritageFoods[index]}',
+            );
+          }
+        }
+      }
+    }
+    debugPrint(
+      '[TreasureMap][FoodCategory] '
+      'selected_category_id=${foodCategoryId ?? 'All'}',
+    );
+    debugPrint(
+      '[TreasureMap][FoodCategory] '
+      'matched_food_records=$matchedFoodRecords',
+    );
+    debugPrint(
+      '[TreasureMap][FoodCategory] '
+      'matched_vendors=${filteredVendors.map((vendor) => '${vendor.id}:${vendor.name}').toList()}',
+    );
+    return filteredVendors;
   }
 
   static bool matchesVendor(VendorModel vendor, String query) {
@@ -109,24 +107,13 @@ abstract final class HeritageTreasureMapSearch {
     return _databaseStateNames[canonical] ?? state.trim();
   }
 
-  static bool _matchesFoodCategory(VendorModel vendor, String category) {
+  static bool _matchesFoodCategory(
+    VendorModel vendor,
+    String category,
+    String? categoryId,
+  ) {
     if (category == 'All') return true;
-
-    final normalizedCategory = _normalize(category);
-    final keywords = _foodCategoryKeywords[normalizedCategory];
-    final foodValues = [
-      ...vendor.foodCategories,
-      ...vendor.heritageFoods,
-    ].map(_normalize);
-
-    if (keywords == null) {
-      return foodValues.any((value) => value == normalizedCategory);
-    }
-
-    return keywords.any(
-      (keyword) =>
-          foodValues.any((value) => value.contains(_normalize(keyword))),
-    );
+    return categoryId != null && vendor.foodCategoryIds.contains(categoryId);
   }
 
   static List<String> _terms(String value) {

@@ -61,6 +61,16 @@ class _VendorDetailViewState extends State<VendorDetailView> {
           expandedHeight: 200,
           pinned: true,
           backgroundColor: AppColors.primary,
+          leading: Padding(
+            padding: const EdgeInsets.all(8),
+            child: Material(
+              color: Colors.white,
+              elevation: 4,
+              shadowColor: Colors.black38,
+              shape: const CircleBorder(),
+              child: const BackButton(color: AppColors.primary),
+            ),
+          ),
           flexibleSpace: FlexibleSpaceBar(
             background: v.coverImageUrl != null && v.coverImageUrl!.isNotEmpty
                 ? GestureDetector(
