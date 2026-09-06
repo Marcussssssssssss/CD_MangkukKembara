@@ -23,9 +23,14 @@ class AccountLandingView extends StatelessWidget {
     ),
     child: MapBackScope(
       child: Scaffold(
-        backgroundColor: const Color(0xFF008D8D),
+        backgroundColor: const Color(0xFFFFFFFF),
         body: Consumer<AuthViewModel>(
           builder: (context, auth, _) {
+            if (!auth.isInitialized) {
+              return const Center(
+                child: CircularProgressIndicator(color: Color(0xFF075A5A)),
+              );
+            }
             if (auth.isLoggedIn) {
               WidgetsBinding.instance.addPostFrameCallback(
                 (_) => Navigator.pushReplacementNamed(
@@ -35,13 +40,60 @@ class AccountLandingView extends StatelessWidget {
               );
               return const SizedBox.shrink();
             }
-            return _WelcomePage(
-              onLogin: () => Navigator.pushNamed(context, AppRoutes.login),
-              onRegister: () =>
-                  Navigator.pushNamed(context, AppRoutes.register),
+            if (auth.currentUser != null && auth.errorMessage != null) {
+              return ColoredBox(
+                color: const Color(0xFF008D8D),
+                child: _SessionRestoreError(
+                  message: auth.errorMessage!,
+                  onRetry: auth.retrySessionRestore,
+                ),
+              );
+            }
+            return ColoredBox(
+              color: const Color(0xFF008D8D),
+              child: _WelcomePage(
+                onLogin: () => Navigator.pushNamed(context, AppRoutes.login),
+                onRegister: () =>
+                    Navigator.pushNamed(context, AppRoutes.register),
+              ),
             );
           },
         ),
+      ),
+    ),
+  );
+}
+
+class _SessionRestoreError extends StatelessWidget {
+  const _SessionRestoreError({required this.message, required this.onRetry});
+
+  final String message;
+  final Future<void> Function() onRetry;
+
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Padding(
+      padding: const EdgeInsets.all(32),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.cloud_off_rounded, color: Color(0xFFFFF8EC), size: 48),
+          const SizedBox(height: 16),
+          Text(
+            message,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Color(0xFFFFF8EC), fontSize: 16),
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton(
+            onPressed: onRetry,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFFFFF8EC),
+              side: const BorderSide(color: Color(0xFFFFD47B)),
+            ),
+            child: const Text('Try again'),
+          ),
+        ],
       ),
     ),
   );

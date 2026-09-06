@@ -2,6 +2,20 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mangkuk_kembara/core/email_address_validator.dart';
 
 void main() {
+  group('EmailAddressValidator.validate', () {
+    test('accepts a valid address with a long top-level domain', () {
+      expect(
+        EmailAddressValidator.validate('traveller@example.technology'),
+        isNull,
+      );
+    });
+
+    test('rejects malformed addresses', () {
+      expect(EmailAddressValidator.validate('traveller@example'), isNotNull);
+      expect(EmailAddressValidator.validate('traveller@-example.com'), isNotNull);
+    });
+  });
+
   group('EmailAddressValidator.validateChange', () {
     const current = 'traveller@example.com';
 

@@ -35,7 +35,6 @@ import '../View/AccountManagement/register_view.dart';
 import '../View/AccountManagement/forgot_password_view.dart'; // also contains ChangePasswordView
 import '../View/AccountManagement/profile_view.dart';
 import '../View/AccountManagement/edit_profile_view.dart';
-import '../View/AccountManagement/email_verification_view.dart';
 import '../View/AccountManagement/my_artwork_submissions_view.dart';
 import '../View/AccountManagement/my_reviews_view.dart';
 
@@ -77,7 +76,6 @@ abstract final class AppRoutes {
   static const String editProfile = '/edit-profile';
   static const String changePassword = '/change-password';
   static const String resetPassword = '/reset-password';
-  static const String emailVerification = '/email-verification';
   static const String myReviews = '/my-reviews';
   static const String myArtworkSubmissions = '/my-artwork-submissions';
 
@@ -236,10 +234,10 @@ abstract final class AppRoutes {
       case changePassword:
         return _build(const ChangePasswordView(), settings);
       case resetPassword:
-        return _build(const ResetPasswordView(), settings);
-      case emailVerification:
         return _build(
-          EmailVerificationView(email: settings.arguments as String? ?? ''),
+          ResetPasswordView(
+            recoverySessionVerified: settings.arguments == true,
+          ),
           settings,
         );
       case myReviews:
