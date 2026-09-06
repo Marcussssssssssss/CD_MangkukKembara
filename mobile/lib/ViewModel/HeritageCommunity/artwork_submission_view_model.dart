@@ -34,6 +34,15 @@ class ArtworkSubmissionViewModel extends ChangeNotifier {
   XFile? photoFor(ArtworkPhotoView view) => _artworkPhotos[view];
   bool hasPhoto(ArtworkPhotoView view) => _artworkPhotos.containsKey(view);
   int get completedPhotoCount => _artworkPhotos.length;
+  int get completedWrittenCount => [
+    _artworkTitle,
+    _designDescription,
+    _culturalInspiration,
+    _layer1Meaning,
+    _layer2Meaning,
+    _layer3Meaning,
+  ].where((value) => value.trim().isNotEmpty).length;
+  int get completedItemCount => completedWrittenCount + completedPhotoCount;
 
   bool get canSubmit =>
       _artworkTitle.trim().isNotEmpty &&

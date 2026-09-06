@@ -9,7 +9,6 @@ import '../../core/app_routes.dart';
 import '../../ViewModel/AccountManagement/auth_view_model.dart';
 import '../../ViewModel/HeritageCommunity/artwork_submission_view_model.dart';
 import 'artwork_image_capture_crop_view.dart';
-import 'heritage_community_style.dart';
 
 /// Guided artwork submission with the four views required for review.
 class ArtworkSubmissionView extends StatefulWidget {
@@ -53,8 +52,8 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
           return PopScope(
             canPop: !vm.isSubmitting,
             child: Scaffold(
-              backgroundColor: HeritageCommunityStyle.background,
-              appBar: heritageCommunityAppBar(title: 'Submit Artwork'),
+              backgroundColor: Colors.white,
+              appBar: const _ArtworkSubmissionHeader(),
               body: !auth.isLoggedIn
                   ? _LoginRequired(
                       onLogin: () => Navigator.pushNamed(ctx, AppRoutes.login),
@@ -73,120 +72,118 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
     AuthViewModel auth,
   ) {
     return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
+      padding: const EdgeInsets.fromLTRB(22, 12, 22, 24),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SectionCard(
+          _StepBanner(
             step: '1',
-            title: 'Tell us about your artwork',
-            subtitle: 'These details help reviewers understand your work.',
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                _label('Artwork title'),
-                _field(
-                  hint: 'Example: Warisan Rempah',
-                  onChanged: vm.setArtworkTitle,
-                  maxLength: 180,
-                ),
-                const SizedBox(height: 14),
-                _label('Design description'),
-                _area(
-                  hint:
-                      'Describe the colours, materials, patterns and visual elements.',
-                  onChanged: vm.setDesignDescription,
-                ),
-                const SizedBox(height: 14),
-                _label('Cultural inspiration'),
-                _area(
-                  hint:
-                      'Which Malaysian heritage, place, craft or story inspired it?',
-                  onChanged: vm.setCulturalInspiration,
-                ),
-                const SizedBox(height: 14),
-                _label('Layer 1 meaning'),
-                _area(
-                  hint:
-                      'What does the artwork on Layer 1 represent, and why is it meaningful?',
-                  onChanged: vm.setLayer1Meaning,
-                ),
-                const SizedBox(height: 14),
-                _label('Layer 2 meaning'),
-                _area(
-                  hint:
-                      'Explain the story, heritage elements or symbolism shown on Layer 2.',
-                  onChanged: vm.setLayer2Meaning,
-                ),
-                const SizedBox(height: 14),
-                _label('Layer 3 meaning'),
-                _area(
-                  hint:
-                      'Explain the meaning and cultural significance of the Layer 3 artwork.',
-                  onChanged: vm.setLayer3Meaning,
-                ),
-              ],
+            title: 'Artwork details',
+            subtitle:
+                'Tell reviewers about the idea, culture and meaning behind your work.',
+            completed: vm.completedWrittenCount,
+            total: 6,
+          ),
+          const SizedBox(height: 22),
+          const Text(
+            'About your artwork',
+            style: TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 18),
-          _SectionCard(
+          const SizedBox(height: 3),
+          const Text(
+            'Keep your explanations clear and concise.',
+            style: TextStyle(color: Color(0xFF7D887F), fontSize: 13),
+          ),
+          const SizedBox(height: 16),
+          _SimpleField(
+            label: 'Artwork title',
+            hint: 'e.g. Warisan Rempah',
+            minLines: 1,
+            maxLines: 1,
+            maxLength: 180,
+            onChanged: vm.setArtworkTitle,
+          ),
+          const SizedBox(height: 14),
+          _SimpleField(
+            label: 'Design description',
+            hint: 'Describe colours, materials, patterns and visual elements…',
+            onChanged: vm.setDesignDescription,
+          ),
+          const SizedBox(height: 14),
+          _SimpleField(
+            label: 'Cultural inspiration',
+            hint:
+                'Tell us about the heritage, place, craft or story behind it…',
+            onChanged: vm.setCulturalInspiration,
+          ),
+          const SizedBox(height: 16),
+          _LayerMeaningCard(
+            onLayer1Changed: vm.setLayer1Meaning,
+            onLayer2Changed: vm.setLayer2Meaning,
+            onLayer3Changed: vm.setLayer3Meaning,
+          ),
+          const SizedBox(height: 16),
+          _StepBanner(
             step: '2',
-            title: 'Add four required artwork views',
+            title: 'Artwork photos',
             subtitle:
-                'Each layer image is one 30 cm × 6 cm canvas: FRONT on the left and BACK on the right.',
-            child: Column(
-              children: [
-                _photoCard(
-                  vm,
-                  ArtworkPhotoView.frontHero,
-                  title: '1. Front / Hero View',
-                  description:
-                      'Show the complete assembled tiffin straight on. This becomes the main voting image.',
-                  icon: Icons.crop_portrait_rounded,
-                  guidanceUrl: _frontGuidanceUrl,
-                ),
-                const SizedBox(height: 12),
-                _photoCard(
-                  vm,
-                  ArtworkPhotoView.layer1Flat360,
-                  title: '2. Layer 1 Design',
-                  description:
-                      'Upload one 5:1 image containing the 15 cm front and 15 cm back designs.',
-                  icon: Icons.panorama_horizontal_rounded,
-                  isTiffinLayer: true,
-                  guidanceUrl: _layerGuidanceUrl,
-                ),
-                const SizedBox(height: 12),
-                _photoCard(
-                  vm,
-                  ArtworkPhotoView.layer2Flat360,
-                  title: '3. Layer 2 Design',
-                  description:
-                      'Upload one 5:1 image containing the 15 cm front and 15 cm back designs.',
-                  icon: Icons.panorama_horizontal_rounded,
-                  isTiffinLayer: true,
-                  guidanceUrl: _layerGuidanceUrl,
-                ),
-                const SizedBox(height: 12),
-                _photoCard(
-                  vm,
-                  ArtworkPhotoView.layer3Flat360,
-                  title: '4. Layer 3 Design',
-                  description:
-                      'Upload one 5:1 image containing the 15 cm front and 15 cm back designs.',
-                  icon: Icons.panorama_horizontal_rounded,
-                  isTiffinLayer: true,
-                  guidanceUrl: _layerGuidanceUrl,
-                ),
-              ],
-            ),
+                'Add four clear, evenly lit views. The hero photo becomes the main voting image.',
+            completed: vm.completedPhotoCount,
+            total: 4,
+          ),
+          const SizedBox(height: 16),
+          GridView.count(
+            crossAxisCount: 2,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            crossAxisSpacing: 16,
+            mainAxisSpacing: 16,
+            childAspectRatio: 1.14,
+            children: [
+              _photoCard(
+                vm,
+                ArtworkPhotoView.frontHero,
+                badge: 'Hero',
+                title: 'Front',
+                description: 'Main voting image',
+                guidanceUrl: _frontGuidanceUrl,
+              ),
+              _photoCard(
+                vm,
+                ArtworkPhotoView.layer1Flat360,
+                badge: '1',
+                title: 'Layer 1',
+                description: 'Front + back in one 5:1 image',
+                guidanceUrl: _layerGuidanceUrl,
+              ),
+              _photoCard(
+                vm,
+                ArtworkPhotoView.layer2Flat360,
+                badge: '2',
+                title: 'Layer 2',
+                description: 'Front + back in one 5:1 image',
+                guidanceUrl: _layerGuidanceUrl,
+              ),
+              _photoCard(
+                vm,
+                ArtworkPhotoView.layer3Flat360,
+                badge: '3',
+                title: 'Layer 3',
+                description: 'Front + back in one 5:1 image',
+                guidanceUrl: _layerGuidanceUrl,
+              ),
+            ],
           ),
           if (vm.errorMessage != null) ...[
             const SizedBox(height: 16),
             _ErrorBanner(message: vm.errorMessage!),
           ],
           const SizedBox(height: 20),
-          ElevatedButton.icon(
+          ElevatedButton(
             onPressed:
                 vm.canSubmit && !vm.isSubmitting && auth.currentUser != null
                 ? () => vm.submit(
@@ -194,32 +191,23 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
                     userId: auth.currentUser!.id,
                   )
                 : null,
-            icon: vm.isSubmitting
+            style: ElevatedButton.styleFrom(
+              minimumSize: const Size.fromHeight(54),
+              elevation: 0,
+              backgroundColor: const Color(0xFF24663F),
+              disabledBackgroundColor: const Color(0xFFB7BDB8),
+              disabledForegroundColor: Colors.white,
+              shape: const StadiumBorder(),
+            ),
+            child: vm.isSubmitting
                 ? const SizedBox.square(
-                    dimension: 18,
+                    dimension: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
                       color: Colors.white,
                     ),
                   )
-                : const Icon(Icons.send_rounded),
-            label: Text(
-              vm.isSubmitting ? 'Uploading 4 views…' : 'Submit for review',
-            ),
-            style: ElevatedButton.styleFrom(
-              minimumSize: const Size.fromHeight(52),
-            ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            vm.canSubmit
-                ? 'Ready to submit. Your entry will be locked while it is under review.'
-                : 'Complete all written fields and add all 4 required views.',
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
+                : const Text('Submit for review'),
           ),
         ],
       ),
@@ -229,18 +217,16 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
   Widget _photoCard(
     ArtworkSubmissionViewModel vm,
     ArtworkPhotoView view, {
+    required String badge,
     required String title,
     required String description,
-    required IconData icon,
-    bool isTiffinLayer = false,
     required String guidanceUrl,
   }) {
     return _PhotoViewCard(
+      badge: badge,
       title: title,
       description: description,
-      icon: icon,
       file: vm.photoFor(view),
-      isTiffinLayer: isTiffinLayer,
       onGuidance: () => _showGuidance(title, guidanceUrl),
       onAdd: () => _choosePhotoSource(view),
       onRemove: () => vm.removeArtworkPhoto(view),
@@ -440,91 +426,123 @@ class _ArtworkSubmissionViewState extends State<ArtworkSubmissionView> {
       ),
     );
   }
-
-  Widget _label(String text) => Padding(
-    padding: const EdgeInsets.only(bottom: 7),
-    child: Row(
-      children: [
-        Text(
-          text,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            fontSize: 13,
-            color: AppColors.textPrimary,
-          ),
-        ),
-        const Text('  *', style: TextStyle(color: AppColors.error)),
-      ],
-    ),
-  );
-
-  Widget _field({
-    required String hint,
-    required ValueChanged<String> onChanged,
-    int? maxLength,
-  }) => TextField(
-    decoration: InputDecoration(hintText: hint, counterText: ''),
-    textCapitalization: TextCapitalization.sentences,
-    maxLength: maxLength,
-    onChanged: onChanged,
-  );
-
-  Widget _area({
-    required String hint,
-    required ValueChanged<String> onChanged,
-  }) => TextField(
-    decoration: InputDecoration(hintText: hint, alignLabelWithHint: true),
-    minLines: 3,
-    maxLines: 5,
-    textCapitalization: TextCapitalization.sentences,
-    onChanged: onChanged,
-  );
 }
 
-class _SectionCard extends StatelessWidget {
+class _ArtworkSubmissionHeader extends StatelessWidget
+    implements PreferredSizeWidget {
+  const _ArtworkSubmissionHeader();
+
+  @override
+  Size get preferredSize => const Size.fromHeight(74);
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipPath(
+      clipper: _HeaderWaveClipper(),
+      child: Material(
+        color: const Color(0xFFF0F5EA),
+        child: SafeArea(
+          bottom: false,
+          child: SizedBox(
+            height: 64,
+            child: Row(
+              children: [
+                IconButton(
+                  tooltip: MaterialLocalizations.of(context).backButtonTooltip,
+                  onPressed: () => Navigator.maybePop(context),
+                  icon: const Icon(Icons.arrow_back, size: 23),
+                  color: const Color(0xFF1D643C),
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Submit Artwork',
+                  style: Theme.of(context).appBarTheme.titleTextStyle?.copyWith(
+                    fontSize: 22,
+                    color: const Color(0xFF175C35),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderWaveClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    return Path()
+      ..lineTo(0, size.height - 9)
+      ..cubicTo(
+        size.width * .16,
+        size.height + 9,
+        size.width * .34,
+        size.height + 4,
+        size.width * .45,
+        size.height - 24,
+      )
+      ..cubicTo(
+        size.width * .56,
+        size.height - 2,
+        size.width * .72,
+        size.height + 10,
+        size.width,
+        size.height - 5,
+      )
+      ..lineTo(size.width, 0)
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
+class _StepBanner extends StatelessWidget {
   final String step;
   final String title;
   final String subtitle;
-  final Widget child;
+  final int completed;
+  final int total;
 
-  const _SectionCard({
+  const _StepBanner({
     required this.step,
     required this.title,
     required this.subtitle,
-    required this.child,
+    required this.completed,
+    required this.total,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      constraints: const BoxConstraints(minHeight: 104),
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 11),
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: AppColors.divider),
-        boxShadow: HeritageCommunityStyle.cardShadow,
+        color: const Color(0xFF24663F),
+        borderRadius: BorderRadius.circular(23),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.accentLight, AppColors.accent],
-                  ),
-                  borderRadius: BorderRadius.circular(13),
-                ),
+                width: 29,
+                height: 29,
                 alignment: Alignment.center,
+                decoration: const BoxDecoration(
+                  color: Color(0xFFFFC127),
+                  shape: BoxShape.circle,
+                ),
                 child: Text(
                   step,
                   style: const TextStyle(
-                    color: AppColors.textOnAccent,
-                    fontWeight: FontWeight.w900,
+                    color: Color(0xFF183D29),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
                   ),
                 ),
               ),
@@ -536,18 +554,18 @@ class _SectionCard extends StatelessWidget {
                     Text(
                       title,
                       style: const TextStyle(
-                        fontSize: 16,
+                        color: Colors.white,
+                        fontSize: 17,
                         fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       subtitle,
                       style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                        height: 1.35,
+                        color: Color(0xFFE1ECE4),
+                        fontSize: 11,
+                        height: 1.25,
                       ),
                     ),
                   ],
@@ -555,30 +573,285 @@ class _SectionCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 18),
-          child,
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Text(
+                'Step $step of 2',
+                style: const TextStyle(color: Color(0xFFE1ECE4), fontSize: 10),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: LinearProgressIndicator(
+                    value: completed / total,
+                    minHeight: 5,
+                    backgroundColor: const Color(0xFF5B896C),
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                      Color(0xFFFFC127),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              SizedBox(
+                width: 88,
+                child: Text(
+                  '$completed of $total complete',
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(color: Colors.white, fontSize: 10),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 }
 
+class _SimpleField extends StatelessWidget {
+  final String label;
+  final String hint;
+  final int minLines;
+  final int maxLines;
+  final int? maxLength;
+  final ValueChanged<String> onChanged;
+
+  const _SimpleField({
+    required this.label,
+    required this.hint,
+    this.minLines = 2,
+    this.maxLines = 4,
+    this.maxLength,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _RequiredLabel(label),
+        const SizedBox(height: 7),
+        TextField(
+          onChanged: onChanged,
+          minLines: minLines,
+          maxLines: maxLines,
+          maxLength: maxLength,
+          textCapitalization: TextCapitalization.sentences,
+          style: const TextStyle(fontSize: 14),
+          decoration: _fieldDecoration(hint, outlined: true),
+        ),
+      ],
+    );
+  }
+}
+
+class _LayerMeaningCard extends StatelessWidget {
+  final ValueChanged<String> onLayer1Changed;
+  final ValueChanged<String> onLayer2Changed;
+  final ValueChanged<String> onLayer3Changed;
+
+  const _LayerMeaningCard({
+    required this.onLayer1Changed,
+    required this.onLayer2Changed,
+    required this.onLayer3Changed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'What your layers mean',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        const SizedBox(height: 2),
+        const Text(
+          'Explain the symbolism behind each layer.',
+          style: TextStyle(color: Color(0xFF7D887F), fontSize: 12),
+        ),
+        const SizedBox(height: 10),
+        _LayerField(number: '1', label: 'Layer 1', onChanged: onLayer1Changed),
+        const SizedBox(height: 10),
+        _LayerField(number: '2', label: 'Layer 2', onChanged: onLayer2Changed),
+        const SizedBox(height: 10),
+        _LayerField(
+          number: '3',
+          label: 'Layer 3',
+          goldBadge: true,
+          onChanged: onLayer3Changed,
+        ),
+      ],
+    );
+  }
+}
+
+class _LayerField extends StatelessWidget {
+  final String number;
+  final String label;
+  final bool goldBadge;
+  final ValueChanged<String> onChanged;
+
+  const _LayerField({
+    required this.number,
+    required this.label,
+    this.goldBadge = false,
+    required this.onChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 98,
+      padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFFCDDAC7)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 25,
+            height: 25,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: goldBadge
+                  ? const Color(0xFFFFF1C8)
+                  : const Color(0xFFEAF2E7),
+              shape: BoxShape.circle,
+            ),
+            child: Text(
+              number,
+              style: const TextStyle(
+                color: Color(0xFF52715A),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 2),
+                  child: Text(
+                    label,
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Expanded(
+                  child: TextField(
+                    onChanged: onChanged,
+                    minLines: 1,
+                    maxLines: 2,
+                    textCapitalization: TextCapitalization.sentences,
+                    style: const TextStyle(fontSize: 12),
+                    decoration: _fieldDecoration(
+                      'Describe its meaning…',
+                      compact: true,
+                      outlined: true,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RequiredLabel extends StatelessWidget {
+  final String label;
+
+  const _RequiredLabel(this.label);
+
+  @override
+  Widget build(BuildContext context) {
+    return Text.rich(
+      TextSpan(
+        text: label,
+        children: const [
+          TextSpan(
+            text: '  *',
+            style: TextStyle(color: AppColors.error),
+          ),
+        ],
+      ),
+      style: const TextStyle(
+        color: AppColors.textPrimary,
+        fontSize: 13,
+        fontWeight: FontWeight.w800,
+      ),
+    );
+  }
+}
+
+InputDecoration _fieldDecoration(
+  String hint, {
+  bool outlined = false,
+  bool compact = false,
+}) {
+  return InputDecoration(
+    hintText: hint,
+    counterText: '',
+    filled: true,
+    fillColor: const Color(0xFFF5F7F3),
+    hintStyle: const TextStyle(color: Color(0xFF929B94), fontSize: 12),
+    contentPadding: compact
+        ? const EdgeInsets.symmetric(horizontal: 12, vertical: 6)
+        : const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(compact ? 10 : 13),
+      borderSide: outlined
+          ? const BorderSide(color: Color(0xFFCDDAC7))
+          : BorderSide.none,
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(compact ? 10 : 13),
+      borderSide: outlined
+          ? const BorderSide(color: Color(0xFFCDDAC7))
+          : BorderSide.none,
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(compact ? 10 : 13),
+      borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+    ),
+  );
+}
+
 class _PhotoViewCard extends StatelessWidget {
+  final String badge;
   final String title;
   final String description;
-  final IconData icon;
   final XFile? file;
-  final bool isTiffinLayer;
   final VoidCallback onGuidance;
   final VoidCallback onAdd;
   final VoidCallback onRemove;
 
   const _PhotoViewCard({
+    required this.badge,
     required this.title,
     required this.description,
-    required this.icon,
     required this.file,
-    this.isTiffinLayer = false,
     required this.onGuidance,
     required this.onAdd,
     required this.onRemove,
@@ -589,121 +862,122 @@ class _PhotoViewCard extends StatelessWidget {
     final selected = file != null;
     return Container(
       decoration: BoxDecoration(
-        color: selected ? AppColors.successLight : AppColors.surfaceVariant,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: selected ? AppColors.success : AppColors.divider,
-          width: selected ? 1.5 : 1,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFCDDAC7)),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          if (selected && isTiffinLayer)
-            AspectRatio(
-              aspectRatio: ArtworkSubmissionViewModel.layerAspectRatio,
-              child: _XFilePreview(file: file!),
-            )
-          else if (selected)
-            _XFilePreview(file: file!),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Icon(
-                  selected ? Icons.check_circle_rounded : icon,
-                  color: selected ? AppColors.success : AppColors.primary,
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
+          Expanded(
+            child: Material(
+              color: const Color(0xFFF6F8F3),
+              child: InkWell(
+                onTap: onAdd,
+                child: selected
+                    ? Stack(
+                        fit: StackFit.expand,
                         children: [
-                          Expanded(
-                            child: Text(
-                              title,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w800,
-                                color: AppColors.textPrimary,
-                              ),
+                          _XFilePreview(file: file!),
+                          Align(
+                            alignment: Alignment.topRight,
+                            child: IconButton.filledTonal(
+                              tooltip: 'Remove $title',
+                              visualDensity: VisualDensity.compact,
+                              onPressed: onRemove,
+                              icon: const Icon(Icons.close, size: 16),
                             ),
                           ),
-                          IconButton(
-                            tooltip: 'View guidance for $title',
-                            visualDensity: VisualDensity.compact,
-                            onPressed: onGuidance,
-                            icon: const Icon(Icons.help_outline_rounded),
-                            color: AppColors.primary,
+                        ],
+                      )
+                    : const Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.photo_camera_outlined,
+                            size: 27,
+                            color: Color(0xFF17603A),
                           ),
+                          SizedBox(height: 1),
                           Text(
-                            selected ? 'Added' : 'Required',
+                            'Add photo',
                             style: TextStyle(
-                              color: selected
-                                  ? AppColors.success
-                                  : AppColors.error,
-                              fontSize: 11,
-                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF17603A),
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        description,
-                        style: const TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 12,
-                          height: 1.3,
-                        ),
-                      ),
-                      if (selected) ...[
-                        const SizedBox(height: 5),
-                        Text(
-                          file!.name.isEmpty
-                              ? 'Converted WebP image'
-                              : file!.name,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: AppColors.success,
-                            fontSize: 11,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
+          const Divider(height: 1, thickness: 1),
           Padding(
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(12, 10, 12, 11),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onAdd,
-                    icon: Icon(
-                      selected
-                          ? Icons.change_circle_outlined
-                          : Icons.add_a_photo_outlined,
+                Row(
+                  children: [
+                    Container(
+                      constraints: const BoxConstraints(minWidth: 36),
+                      height: 25,
+                      padding: const EdgeInsets.symmetric(horizontal: 9),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: badge == 'Hero'
+                            ? const Color(0xFFFFE9A9)
+                            : const Color(0xFFEAF2E7),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        badge,
+                        style: const TextStyle(
+                          color: Color(0xFF344E3C),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
-                    label: Text(selected ? 'Replace' : 'Add photo'),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                    InkResponse(
+                      onTap: onGuidance,
+                      radius: 18,
+                      child: const Icon(
+                        Icons.info_outline,
+                        size: 17,
+                        color: Color(0xFF17603A),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 9),
+                Text(
+                  description,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFF748179),
+                    fontSize: 11,
                   ),
                 ),
-                if (selected) ...[
-                  const SizedBox(width: 8),
-                  IconButton(
-                    tooltip: 'Remove $title',
-                    onPressed: onRemove,
-                    icon: const Icon(Icons.delete_outline_rounded),
-                    color: AppColors.error,
-                  ),
-                ],
               ],
             ),
           ),
