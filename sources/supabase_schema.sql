@@ -262,7 +262,7 @@ create table public.heritage_tiffins (
 create table public.heritage_stories (
     heritage_story_id  varchar(6) primary key default
                        ('HS' || lpad(nextval('public.heritage_story_number_seq')::text, 4, '0')),
-    heritage_tiffin_id varchar(6) not null unique references public.heritage_tiffins(heritage_tiffin_id) on delete cascade,
+    heritage_tiffin_id varchar(6) not null references public.heritage_tiffins(heritage_tiffin_id) on delete cascade,
     title               varchar(180) not null,
     story_body          text not null,
     image_url           text,
@@ -272,6 +272,9 @@ create table public.heritage_stories (
     constraint chk_heritage_story_id_format
         check (heritage_story_id ~ '^HS[0-9]{4}$')
 );
+
+create unique index uq_heritage_story_tiffin_order
+on public.heritage_stories (heritage_tiffin_id, sort_order);
 
 create table public.heritage_media (
     heritage_media_id  varchar(6) primary key default

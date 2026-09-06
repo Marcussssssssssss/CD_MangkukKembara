@@ -677,7 +677,7 @@ function TiffinDetailsStep({
   );
 }
 
-function HeritageFoodDialog({ state, categories, onClose, onCreate }) {
+export function HeritageFoodDialog({ state, categories, onClose, onCreate }) {
   const [foodData, setFoodData] = useState({
     food_name: '',
     food_category_id: categories[0]?.food_category_id || '',

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Modal from '../../../components/Modal';
 import EditSaveConfirmation from '../../../components/EditSaveConfirmation';
+import { HeritageFoodDialog } from '../../tiffins/components/TiffinForm';
 import {
   ALLOWED_IMAGE_TYPES,
   SIZE_LIMITS,
@@ -75,11 +76,19 @@ export default function VendorForm(props) {
   return <VendorFormContent key={formKey} {...props} />;
 }
 
-function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
+function VendorFormContent({
+  vendor,
+  isOpen,
+  onClose,
+  onSave,
+  onCreateHeritageFood,
+  referenceData,
+}) {
   const [formData, setFormData] = useState(() => initialFormData(vendor));
   const selectedStateId = useRef(formData.state_id);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmingSave, setIsConfirmingSave] = useState(false);
+  const [isFoodCreatorOpen, setIsFoodCreatorOpen] = useState(false);
   const [errors, setErrors] = useState({});
   const [coverImageFile, setCoverImageFile] = useState(null);
   const [coverImagePreview, setCoverImagePreview] = useState(
@@ -88,6 +97,7 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
   const coverImageInputRef = useRef(null);
   const coverImageObjectUrl = useRef(null);
   const formRef = useRef(null);
+  const foodCreatorTriggerRef = useRef(null);
 
   // Complex relation state
   const [selectedFoods, setSelectedFoods] = useState(
@@ -95,6 +105,7 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
       .map(vf => vf.heritage_food_id || vf.heritage_foods?.heritage_food_id)
       .filter(Boolean)
   );
+  const [foodSearchQuery, setFoodSearchQuery] = useState('');
   const [selectedTiffins, setSelectedTiffins] = useState(
     () => vendor?.vendor_tiffins?.[0]
       ? [{
@@ -114,6 +125,12 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
   const foodsForState = referenceData.foods.filter(
     food => food.state_id === formData.state_id
   );
+  const visibleFoods = foodsForState.filter(food => (
+    food.food_name.toLowerCase().includes(foodSearchQuery.trim().toLowerCase())
+  ));
+  const selectedState = referenceData.states.find(
+    state => state.state_id === formData.state_id
+  );
   const tiffinsForState = referenceData.tiffins.filter(
     tiffin => tiffin.state_id === formData.state_id
   );
@@ -123,6 +140,7 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
     if (name === 'state_id') {
       selectedStateId.current = value;
       setSelectedFoods([]);
+      setFoodSearchQuery('');
       setSelectedTiffins([]);
     }
     setFormData(prev => ({ ...prev, [name]: value }));
@@ -157,6 +175,7 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
     if (selectedStateId.current !== matchedState.state_id) {
       selectedStateId.current = matchedState.state_id;
       setSelectedFoods([]);
+      setFoodSearchQuery('');
       setSelectedTiffins([]);
     }
 
@@ -165,9 +184,31 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
   }, [referenceData.states]);
 
   const handleFoodToggle = (foodId) => {
-    setSelectedFoods(prev => 
-      prev.includes(foodId) ? prev.filter(id => id !== foodId) : [...prev, foodId]
-    );
+    setSelectedFoods(prev => (
+      prev.includes(foodId)
+        ? prev.filter(id => id !== foodId)
+        : [...prev, foodId]
+    ));
+  };
+
+  const closeFoodCreator = () => {
+    setIsFoodCreatorOpen(false);
+    requestAnimationFrame(() => foodCreatorTriggerRef.current?.focus());
+  };
+
+  const handleHeritageFoodCreated = async (foodData, imageFile) => {
+    const createdFood = await onCreateHeritageFood({
+      ...foodData,
+      state_id: formData.state_id,
+    }, imageFile);
+    setSelectedFoods(prev => (
+      prev.includes(createdFood.heritage_food_id)
+        ? prev
+        : [...prev, createdFood.heritage_food_id]
+    ));
+    setFoodSearchQuery('');
+    closeFoodCreator();
+    return createdFood;
   };
 
   const handleTiffinSelect = (tiffinId) => {
@@ -328,7 +369,7 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
     <>
       <Modal
         open={isOpen}
-        onClose={isSubmitting || isConfirmingSave ? undefined : onClose}
+        onClose={isSubmitting || isConfirmingSave || isFoodCreatorOpen ? undefined : onClose}
         title={vendor ? 'Edit Heritage Vendor' : 'Add New Heritage Vendor'}
         size="xl"
         closeOnBackdrop={false}
@@ -687,27 +728,100 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
 
             {/* Heritage Foods Selection */}
             <div>
-              <h4 className="text-base font-semibold text-surface-900 border-b border-surface-200 pb-2 mb-4">Heritage Foods Associated</h4>
-              <div className="flex flex-wrap gap-3">
-                {foodsForState.map((food) => (
-                  <label key={food.heritage_food_id} className="flex items-center gap-2 bg-surface-50 p-2 rounded-lg border border-surface-200 cursor-pointer hover:bg-surface-100">
-                    <input 
-                      type="checkbox" 
-                      checked={selectedFoods.includes(food.heritage_food_id)}
-                      onChange={() => handleFoodToggle(food.heritage_food_id)}
-                      className="rounded border-surface-300 text-primary-600 focus:ring-primary-500"
-                    />
-                    <span className="text-sm font-medium">{food.food_name}</span>
-                  </label>
-                ))}
-                {foodsForState.length === 0 && (
-                  <p className="text-sm text-surface-500">
-                    {formData.state_id
-                      ? 'No active heritage food is configured for this state.'
-                      : 'Confirm the vendor location first to see Heritage Foods for its state.'}
-                  </p>
-                )}
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-surface-200 pb-2">
+                <h4 className="text-base font-semibold text-surface-900">
+                  Heritage Foods Associated
+                </h4>
+                <button
+                  ref={foodCreatorTriggerRef}
+                  type="button"
+                  onClick={() => setIsFoodCreatorOpen(true)}
+                  disabled={!formData.state_id || !selectedState || isSubmitting}
+                  className="rounded px-1.5 py-0.5 text-xs font-semibold text-primary-700 hover:bg-primary-50 hover:text-primary-800 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  + Add New Heritage Food
+                </button>
               </div>
+              <p id="vendor-food-help" className="mb-4 mt-2 text-sm text-surface-500">
+                Add one or more foods served by this vendor. Options are limited to the confirmed vendor state.
+              </p>
+
+              {!formData.state_id ? (
+                <p className="text-sm text-surface-500">
+                  Confirm the vendor location first to see Heritage Foods for its state.
+                </p>
+              ) : foodsForState.length === 0 ? (
+                <p className="text-sm text-surface-500">
+                  No active heritage food is configured for this state. Use “Add New Heritage Food” to create one.
+                </p>
+              ) : (
+                <fieldset>
+                  <legend className="sr-only">Select Heritage Foods</legend>
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="relative w-full sm:max-w-sm">
+                      <svg
+                        className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-surface-400"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        aria-hidden="true"
+                      >
+                        <circle cx="11" cy="11" r="7" />
+                        <path d="m20 20-4-4" strokeLinecap="round" />
+                      </svg>
+                      <label htmlFor="vendor-food-search" className="sr-only">
+                        Search Heritage Foods
+                      </label>
+                      <input
+                        id="vendor-food-search"
+                        type="search"
+                        value={foodSearchQuery}
+                        onChange={(event) => setFoodSearchQuery(event.target.value)}
+                        disabled={isSubmitting}
+                        placeholder="Search heritage foods..."
+                        className="block w-full rounded-lg border border-surface-300 py-2 pl-9 pr-3 text-sm focus:border-primary-500 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:cursor-not-allowed disabled:bg-surface-100"
+                      />
+                    </div>
+                    <p className="shrink-0 text-sm font-medium text-surface-600" aria-live="polite">
+                      {selectedFoods.length} selected
+                    </p>
+                  </div>
+
+                  <div className="mt-3 max-h-64 overflow-y-auto rounded-xl border border-surface-200 bg-surface-50 p-2">
+                    {visibleFoods.length > 0 ? (
+                      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+                        {visibleFoods.map(food => {
+                          const isSelected = selectedFoods.includes(food.heritage_food_id);
+                          return (
+                            <label
+                              key={food.heritage_food_id}
+                              className={`flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-sm transition-colors ${
+                                isSelected
+                                  ? 'border-primary-300 bg-primary-50 text-primary-900'
+                                  : 'border-transparent bg-white text-surface-800 hover:border-surface-200 hover:bg-surface-100'
+                              }`}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={isSelected}
+                                onChange={() => handleFoodToggle(food.heritage_food_id)}
+                                disabled={isSubmitting}
+                                className="h-4 w-4 rounded border-surface-300 text-primary-600 focus:ring-primary-500 disabled:cursor-not-allowed"
+                              />
+                              <span className="min-w-0 font-medium">{food.food_name}</span>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="px-3 py-6 text-center text-sm text-surface-500" role="status">
+                        No Heritage Foods match “{foodSearchQuery.trim()}”.
+                      </p>
+                    )}
+                  </div>
+                </fieldset>
+              )}
             </div>
 
             {/* Tiffin Assignment */}
@@ -792,6 +906,14 @@ function VendorFormContent({ vendor, isOpen, onClose, onSave, referenceData }) {
         </div>
         </form>
       </Modal>
+      {isFoodCreatorOpen && (
+        <HeritageFoodDialog
+          state={selectedState}
+          categories={referenceData.categories || []}
+          onClose={closeFoodCreator}
+          onCreate={handleHeritageFoodCreated}
+        />
+      )}
       <EditSaveConfirmation
         open={Boolean(vendor) && isConfirmingSave}
         entityName="Vendor"

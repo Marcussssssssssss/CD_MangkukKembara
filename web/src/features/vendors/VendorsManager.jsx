@@ -5,6 +5,7 @@ import VendorForm from './components/VendorForm';
 import VendorDeactivateDialog from './components/VendorDeactivateDialog';
 import NotificationCenter from '../../components/NotificationCenter';
 import { useNotifier } from '../../hooks/useNotifier';
+import { createHeritageFood } from '../tiffins/services/tiffinService';
 import { 
   fetchVendors, 
   fetchReferenceData, 
@@ -118,6 +119,22 @@ export default function VendorsManager() {
     }
   };
 
+  const handleCreateHeritageFood = async (foodData, imageFile) => {
+    try {
+      const createdFood = await createHeritageFood(foodData, imageFile);
+      setReferenceData(prev => ({
+        ...prev,
+        foods: [...(prev?.foods || []), createdFood]
+          .sort((left, right) => left.food_name.localeCompare(right.food_name)),
+      }));
+      notifySuccess(`${createdFood.food_name} was added to Heritage Foods.`);
+      return createdFood;
+    } catch (err) {
+      notifyFailure(err.message || 'The Heritage Food could not be created.');
+      throw err;
+    }
+  };
+
   const handleConfirmDeactivate = async (id) => {
     if (isDeactivating) return;
     setIsDeactivating(true);
@@ -177,6 +194,7 @@ export default function VendorsManager() {
         isOpen={isCreating || !!editingVendor}
         onClose={handleCloseModals}
         onSave={handleSaveVendor}
+        onCreateHeritageFood={handleCreateHeritageFood}
         referenceData={referenceData}
       />
 
