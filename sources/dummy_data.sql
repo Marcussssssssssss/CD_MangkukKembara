@@ -953,36 +953,6 @@ values (
         (current_date + 60) + time '23:59:00',
         'active',
         'P0001'
-    ),
-    (
-        'AC0006',
-        'S0002',
-        'Melaka Food Stories Tiffin Design Campaign',
-        'An active campaign inviting Melaka-inspired food-story artwork.',
-        (current_date - 30) + time '00:00:00',
-        (current_date + 60) + time '23:59:00',
-        'active',
-        'P0001'
-    ),
-    (
-        'AC0007',
-        'S0003',
-        'Kelantan Food Stories Tiffin Design Campaign',
-        'An active campaign inviting Kelantan-inspired food-story artwork.',
-        (current_date - 30) + time '00:00:00',
-        (current_date + 60) + time '23:59:00',
-        'active',
-        'P0001'
-    ),
-    (
-        'AC0008',
-        'S0004',
-        'Sarawak Food Stories Tiffin Design Campaign',
-        'An active campaign inviting Sarawak-inspired food-story artwork.',
-        (current_date - 30) + time '00:00:00',
-        (current_date + 60) + time '23:59:00',
-        'active',
-        'P0001'
     );
 
 alter table public.artwork_campaigns
@@ -1143,10 +1113,10 @@ values (
         'The middle layer represents the tools and movement of night-market cooks.',
         'The lower layer celebrates noodle bowls enjoyed together beneath the lanterns.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1787280690/Hawker_Lanterns_qnktet.png',
-        'pending',
+        'approved',
         now() - interval '6 days',
-        null,
-        null
+        'P0001',
+        now() - interval '5 days'
     ),
     (
         'AS0010',
@@ -1165,24 +1135,8 @@ values (
         now() - interval '10 days'
     ),
     (
-        'AS0011',
-        'AC0006',
-        'P0002',
-        'Tile and Tiffin',
-        'Peranakan tile geometry wraps around stacked tiffin tiers in vivid colour.',
-        'Decorative tiles found in historic Melaka homes.',
-        'Repeating patterns show how traditions adapt while keeping their roots.',
-        'The middle layer reflects the rhythm and craftsmanship of Peranakan geometry.',
-        'The lower layer represents traditions carried from the home into shared meals.',
-        'https://res.cloudinary.com/hv2ectij/image/upload/v1787280688/Tile_and_Tiffin_w5pode.png',
-        'rejected',
-        now() - interval '9 days',
-        'P0001',
-        now() - interval '7 days'
-    ),
-    (
         'AS0012',
-        'AC0006',
+        'AC0002',
         'P0003',
         'Melaka Family Table',
         'A round table illustration surrounded by rice balls, ceramics, and family hands.',
@@ -1192,13 +1146,13 @@ values (
         'The lower layer represents the hands that prepare and share family recipes.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1787280687/Melaka_Family_Table_oci8d1.png',
         'approved',
-        now() - interval '4 days',
+        '2026-03-08 10:00:00+08',
         'P0001',
-        now() - interval '3 days'
+        '2026-03-15 10:10:00+08'
     ),
     (
         'AS0013',
-        'AC0007',
+        'AC0003',
         'P0002',
         'Kelantan Bloom',
         'Blue blossoms, woven motifs, and grains of rice create a bright botanical design.',
@@ -1208,13 +1162,13 @@ values (
         'The lower layer honours rice and the natural ingredients central to Kelantanese cuisine.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1787280684/Kelantan_Bloom_hmyjot.png',
         'approved',
-        now() - interval '2 days',
+        '2026-03-12 10:00:00+08',
         'P0001',
-        now() - interval '1 day'
+        '2026-03-16 10:00:00+08'
     ),
     (
         'AS0014',
-        'AC0008',
+        'AC0004',
         'P0003',
         'Laksa Lines',
         'Steam and noodle lines weave through pepper leaves and river contours.',
@@ -1224,9 +1178,41 @@ values (
         'The lower layer celebrates the bowls and communities that carry laksa traditions forward.',
         'https://res.cloudinary.com/hv2ectij/image/upload/v1787280686/Laksa_Lines_nrk8fz.png',
         'approved',
-        now() - interval '1 day',
+        '2026-03-14 10:00:00+08',
         'P0001',
-        now() - interval '12 hours'
+        '2026-03-18 10:00:00+08'
+    ),
+    (
+        'AS0015',
+        'AC0001',
+        'P0002',
+        'Hawker Lanterns',
+        'Warm lanterns illuminate illustrated hawker tools and noodle bowls.',
+        'George Town night markets and hawker culture.',
+        'The artwork captures the warmth of discovering food after sunset.',
+        'The middle layer represents the tools and movement of night-market cooks.',
+        'The lower layer celebrates noodle bowls enjoyed together beneath the lanterns.',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1787280690/Hawker_Lanterns_qnktet.png',
+        'approved',
+        '2026-03-10 10:00:00+08',
+        'P0001',
+        '2026-03-15 10:00:00+08'
+    ),
+    (
+        'AS0016',
+        'AC0005',
+        'P0002',
+        'Penang Spice Routes',
+        'A design combining spice trails, shophouses, and hawker tools.',
+        'Penang trade history and street-food culture.',
+        'The design represents movement between cultures and food traditions.',
+        'The middle layer celebrates the shophouses and communities connected by those routes.',
+        'The lower layer honours the hawker tools and shared meals that sustain Penang food heritage.',
+        'https://res.cloudinary.com/hv2ectij/image/upload/v1787280686/Penang_Spice_Routes_covwsj.png',
+        'approved',
+        now() - interval '4 days',
+        'P0001',
+        now() - interval '3 days'
     );
 
 -- Each submission requires one hero view and three flattened 360-degree layer
@@ -1274,6 +1260,11 @@ join (
     ) as winning_artwork(artwork_id, artwork_submission_id)
     on winning_artwork.artwork_submission_id = submission.artwork_submission_id
 where artwork.artwork_id = winning_artwork.artwork_id;
+-- Keep deterministic AVE0001... IDs: the normal session trigger would publish
+-- approved submissions immediately with sequence-generated entry IDs.
+alter table public.artwork_voting_sessions
+disable trigger publish_approved_artworks_for_session_trigger;
+
 insert into public.artwork_voting_sessions (
         artwork_voting_session_id,
         artwork_campaign_id,
@@ -1327,33 +1318,6 @@ values (
         'scheduled',
         'standard',
         null
-    ),
-    (
-        'AVS0006',
-        'AC0006',
-        now() - interval '30 days',
-        now() + interval '60 days',
-        'scheduled',
-        'standard',
-        null
-    ),
-    (
-        'AVS0007',
-        'AC0007',
-        now() - interval '30 days',
-        now() + interval '60 days',
-        'scheduled',
-        'standard',
-        null
-    ),
-    (
-        'AVS0008',
-        'AC0008',
-        now() - interval '30 days',
-        now() + interval '60 days',
-        'scheduled',
-        'standard',
-        null
     );
 -- Start every cached total at zero. The database vote trigger derives the final
 -- totals from the vote rows inserted immediately after these entries.
@@ -1380,74 +1344,99 @@ values (
     ),
     (
         'AVE0003',
-        'AVS0002',
-        'AS0003',
+        'AVS0001',
+        'AS0015',
         0,
         '2026-04-05 10:10:00+08'
     ),
     (
         'AVE0004',
         'AVS0002',
-        'AS0004',
+        'AS0003',
         0,
         '2026-04-05 10:15:00+08'
     ),
     (
         'AVE0005',
-        'AVS0003',
-        'AS0005',
+        'AVS0002',
+        'AS0004',
         0,
         '2026-04-05 10:20:00+08'
     ),
     (
         'AVE0006',
-        'AVS0003',
-        'AS0006',
+        'AVS0002',
+        'AS0012',
         0,
         '2026-04-05 10:25:00+08'
     ),
     (
         'AVE0007',
-        'AVS0004',
-        'AS0007',
+        'AVS0003',
+        'AS0005',
         0,
         '2026-04-05 10:30:00+08'
     ),
     (
         'AVE0008',
-        'AVS0004',
-        'AS0008',
+        'AVS0003',
+        'AS0006',
         0,
         '2026-04-05 10:35:00+08'
     ),
     (
         'AVE0009',
+        'AVS0003',
+        'AS0013',
+        0,
+        '2026-04-05 10:40:00+08'
+    ),
+    (
+        'AVE0010',
+        'AVS0004',
+        'AS0007',
+        0,
+        '2026-04-05 10:45:00+08'
+    ),
+    (
+        'AVE0011',
+        'AVS0004',
+        'AS0008',
+        0,
+        '2026-04-05 10:50:00+08'
+    ),
+    (
+        'AVE0012',
+        'AVS0004',
+        'AS0014',
+        0,
+        '2026-04-05 10:55:00+08'
+    ),
+    (
+        'AVE0013',
+        'AVS0005',
+        'AS0009',
+        0,
+        now() - interval '6 days'
+    ),
+    (
+        'AVE0014',
         'AVS0005',
         'AS0010',
         0,
         now() - interval '9 days'
     ),
     (
-        'AVE0010',
-        'AVS0006',
-        'AS0012',
+        'AVE0015',
+        'AVS0005',
+        'AS0016',
         0,
         now() - interval '3 days'
-    ),
-    (
-        'AVE0011',
-        'AVS0007',
-        'AS0013',
-        0,
-        now() - interval '1 day'
-    ),
-    (
-        'AVE0012',
-        'AVS0008',
-        'AS0014',
-        0,
-        now() - interval '12 hours'
     );
+
+alter table public.artwork_voting_sessions
+enable trigger publish_approved_artworks_for_session_trigger;
+
 -- Entries can only be published while a session is scheduled. Transition each
 -- session only after its complete entry list has been inserted.
 update public.artwork_voting_sessions
@@ -1461,12 +1450,7 @@ where artwork_voting_session_id in (
 
 update public.artwork_voting_sessions
 set status = 'active'
-where artwork_voting_session_id in (
-        'AVS0005',
-        'AVS0006',
-        'AVS0007',
-        'AVS0008'
-    );
+where artwork_voting_session_id = 'AVS0005';
 insert into public.artwork_votes (
         artwork_vote_id,
         artwork_voting_session_id,
@@ -1491,49 +1475,49 @@ values (
     (
         'AV0003',
         'AVS0002',
-        'AVE0003',
+        'AVE0004',
         'P0001',
         '2026-04-17 14:00:00+08'
     ),
     (
         'AV0004',
         'AVS0003',
-        'AVE0005',
+        'AVE0007',
         'P0001',
         '2026-04-18 10:00:00+08'
     ),
     (
         'AV0005',
         'AVS0003',
-        'AVE0005',
+        'AVE0007',
         'P0002',
         '2026-04-18 10:05:00+08'
     ),
     (
         'AV0006',
         'AVS0003',
-        'AVE0006',
+        'AVE0008',
         'P0003',
         '2026-04-18 10:10:00+08'
     ),
     (
         'AV0007',
         'AVS0004',
-        'AVE0007',
+        'AVE0010',
         'P0001',
         '2026-04-19 11:00:00+08'
     ),
     (
         'AV0008',
         'AVS0004',
-        'AVE0008',
+        'AVE0011',
         'P0002',
         '2026-04-19 11:05:00+08'
     ),
     (
         'AV0009',
         'AVS0004',
-        'AVE0008',
+        'AVE0011',
         'P0003',
         '2026-04-19 11:10:00+08'
     );
@@ -1563,7 +1547,7 @@ values (
         'ACW0002',
         'AC0002',
         'AVS0002',
-        'AVE0003',
+        'AVE0004',
         'A0002',
         1,
         1,
@@ -1574,7 +1558,7 @@ values (
         'ACW0003',
         'AC0003',
         'AVS0003',
-        'AVE0005',
+        'AVE0007',
         'A0003',
         2,
         1,
@@ -1585,7 +1569,7 @@ values (
         'ACW0004',
         'AC0004',
         'AVS0004',
-        'AVE0008',
+        'AVE0011',
         'A0004',
         2,
         1,
@@ -1685,11 +1669,11 @@ $$;
 -- ============================================================================
 do $$
 begin
-    if (select count(*) from public.artwork_campaigns) <> 8
-        or (select count(*) from public.artwork_submissions) <> 14
-        or (select count(*) from public.artwork_submission_photos) <> 56
-        or (select count(*) from public.artwork_voting_sessions) <> 8
-        or (select count(*) from public.artwork_voting_entries) <> 12
+    if (select count(*) from public.artwork_campaigns) <> 5
+        or (select count(*) from public.artwork_submissions) <> 15
+        or (select count(*) from public.artwork_submission_photos) <> 60
+        or (select count(*) from public.artwork_voting_sessions) <> 5
+        or (select count(*) from public.artwork_voting_entries) <> 15
         or (select count(*) from public.artwork_votes) <> 9
         or (select count(*) from public.artwork_campaign_winners) <> 4 then
         raise exception 'Seed verification failed: unexpected campaign subsystem row counts';
@@ -1701,6 +1685,39 @@ begin
         where status not in ('active', 'completed')
     ) then
         raise exception 'Seed verification failed: unexpected artwork campaign status';
+    end if;
+
+    if (select count(*) from public.artwork_campaigns where status = 'completed') <> 4
+        or (select count(*) from public.artwork_campaigns where status = 'active') <> 1 then
+        raise exception 'Seed verification failed: expected four completed campaigns and one active campaign';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_campaigns campaign
+        left join public.artwork_submissions submission
+            on submission.artwork_campaign_id = campaign.artwork_campaign_id
+        group by campaign.artwork_campaign_id
+        having count(submission.artwork_submission_id) <> 3
+    ) then
+        raise exception 'Seed verification failed: every campaign must have exactly three artwork designs';
+    end if;
+
+    if exists (
+        select 1
+        from public.artwork_submissions submission
+        join public.artwork_campaigns campaign
+            on campaign.artwork_campaign_id = submission.artwork_campaign_id
+        join public.states state on state.state_id = campaign.state_id
+        where campaign.artwork_campaign_id between 'AC0001' and 'AC0005'
+          and not (
+              (state.state_code = 'PNG' and submission.artwork_submission_id in ('AS0001', 'AS0002', 'AS0009', 'AS0010', 'AS0015', 'AS0016'))
+              or (state.state_code = 'MLK' and submission.artwork_submission_id in ('AS0003', 'AS0004', 'AS0012'))
+              or (state.state_code = 'KTN' and submission.artwork_submission_id in ('AS0005', 'AS0006', 'AS0013'))
+              or (state.state_code = 'SWK' and submission.artwork_submission_id in ('AS0007', 'AS0008', 'AS0014'))
+          )
+    ) then
+        raise exception 'Seed verification failed: artwork design does not match its campaign state';
     end if;
 
     if exists (
@@ -1718,7 +1735,7 @@ begin
     end if;
 
     if (select count(*) from public.artwork_voting_sessions where status = 'closed') <> 4
-        or (select count(*) from public.artwork_voting_sessions where status = 'active') <> 4
+        or (select count(*) from public.artwork_voting_sessions where status = 'active') <> 1
         or (select count(*) from public.artwork_voting_sessions where status = 'scheduled') <> 0 then
         raise exception 'Seed verification failed: unexpected final voting session statuses';
     end if;
