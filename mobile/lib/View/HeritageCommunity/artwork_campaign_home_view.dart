@@ -21,10 +21,8 @@ abstract final class _CampaignColors {
   static const Color darkGreen = Color(0xFF1E3B2B);
   static const Color forestGreen = Color(0xFF234E35);
   static const Color textDark = Color(0xFF192A1E);
-  static const Color textMuted = Color(0xFF7A887E);
   static const Color gold = Color(0xFFF4B333);
   static const Color darkGold = Color(0xFFDE9010);
-  static const Color softGold = Color(0xFFFEF3D6);
   static const Color softYellow = Color(0xFFFEF5E4);
   static const Color paleMint = Color(0xFFE5EFE4);
 }
@@ -541,31 +539,17 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
 
     return [
       if (isCompleted) ...[
-        // Section 1: Winning artwork
+        // Ended campaign: Winning artwork followed directly by remaining submissions
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.fromLTRB(16, 20, 16, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Winning artwork',
-                  style: TextStyle(
-                    color: _CampaignColors.textDark,
-                    fontSize: 17.5,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                SizedBox(height: 2),
-                Text(
-                  'Selected by the community',
-                  style: TextStyle(
-                    color: _CampaignColors.textMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
+            child: Text(
+              'Submission',
+              style: TextStyle(
+                color: _CampaignColors.textDark,
+                fontSize: 17.5,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
         ),
@@ -582,21 +566,7 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
             },
           ),
         ),
-        if (otherEntries.isNotEmpty) ...[
-          // Section 2: Other artwork
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 10),
-              child: Text(
-                'Other artwork',
-                style: TextStyle(
-                  color: _CampaignColors.textDark,
-                  fontSize: 17.5,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-          ),
+        if (otherEntries.isNotEmpty)
           SliverList(
             delegate: SliverChildBuilderDelegate(
               (context, index) {
@@ -616,96 +586,40 @@ class _ArtworkCampaignContentState extends State<ArtworkCampaignContent> {
               childCount: otherEntries.length,
             ),
           ),
-        ],
       ] else ...[
-        // Active Campaign: Featured submissions
-        SliverToBoxAdapter(
+        // Active Campaign: All entries displayed with standard cards (no winner card)
+        const SliverToBoxAdapter(
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 20, 16, 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    const Text(
-                      'Featured submissions',
-                      style: TextStyle(
-                        color: _CampaignColors.textDark,
-                        fontSize: 17.5,
-                        fontWeight: FontWeight.w800,
-                      ),
-                    ),
-                    Text(
-                      '${entries.length} ${entries.length == 1 ? "entry" : "entries"}',
-                      style: const TextStyle(
-                        color: _CampaignColors.textMuted,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 2),
-                const Text(
-                  'Community-voted artwork',
-                  style: TextStyle(
-                    color: _CampaignColors.textMuted,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        SliverToBoxAdapter(
-          child: _WinnerArtworkCard(
-            entry: winnerEntry,
-            onOpen: () async {
-              await Navigator.pushNamed(
-                context,
-                AppRoutes.artworkVotingDetail,
-                arguments: winnerEntry.id,
-              );
-              if (mounted) await _refresh();
-            },
-          ),
-        ),
-        if (otherEntries.isNotEmpty) ...[
-          const SliverToBoxAdapter(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(16, 16, 16, 10),
-              child: Text(
-                'Other artwork',
-                style: TextStyle(
-                  color: _CampaignColors.textDark,
-                  fontSize: 17.5,
-                  fontWeight: FontWeight.w800,
-                ),
+            padding: EdgeInsets.fromLTRB(16, 20, 16, 10),
+            child: Text(
+              'Submission',
+              style: TextStyle(
+                color: _CampaignColors.textDark,
+                fontSize: 17.5,
+                fontWeight: FontWeight.w800,
               ),
             ),
           ),
-          SliverList(
-            delegate: SliverChildBuilderDelegate(
-              (context, index) {
-                final entry = otherEntries[index];
-                return _StandardArtworkCard(
-                  entry: entry,
-                  onOpen: () async {
-                    await Navigator.pushNamed(
-                      context,
-                      AppRoutes.artworkVotingDetail,
-                      arguments: entry.id,
-                    );
-                    if (mounted) await _refresh();
-                  },
-                );
-              },
-              childCount: otherEntries.length,
-            ),
+        ),
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final entry = entries[index];
+              return _StandardArtworkCard(
+                entry: entry,
+                onOpen: () async {
+                  await Navigator.pushNamed(
+                    context,
+                    AppRoutes.artworkVotingDetail,
+                    arguments: entry.id,
+                  );
+                  if (mounted) await _refresh();
+                },
+              );
+            },
+            childCount: entries.length,
           ),
-        ],
+        ),
       ],
     ];
   }
@@ -1050,37 +964,6 @@ class _CampaignHeader extends StatelessWidget {
     );
   }
 }
-
-/// Custom painter rendering the subtle geometric chevron pattern watermark.
-class ChevronPatternPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = const Color(0xFFEEDBB2).withValues(alpha: 0.55)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1.2
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round;
-
-    const double spacingX = 14;
-    const double spacingY = 12;
-    const double chevronW = 8;
-    const double chevronH = 5;
-
-    for (double y = 0; y <= size.height; y += spacingY) {
-      for (double x = 0; x <= size.width; x += spacingX) {
-        final path = Path()
-          ..moveTo(x, y)
-          ..lineTo(x + chevronW / 2, y + chevronH)
-          ..lineTo(x + chevronW, y);
-        canvas.drawPath(path, paint);
-      }
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
 class _WinnerArtworkCard extends StatelessWidget {
   final ArtworkVotingEntryModel entry;
   final VoidCallback onOpen;
@@ -1089,17 +972,20 @@ class _WinnerArtworkCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final goldBorder = _CampaignColors.gold;
+    final badgeGold = _CampaignColors.darkGold;
+
     return Container(
-      margin: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      margin: const EdgeInsets.fromLTRB(16, 0, 16, 14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFFDF8),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: _CampaignColors.gold, width: 1.8),
+        color: const Color(0xFFFFFDF7),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: goldBorder, width: 1.6),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x0E000000),
-            blurRadius: 12,
-            offset: Offset(0, 4),
+            color: Color(0x12000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -1108,118 +994,119 @@ class _WinnerArtworkCard extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           onTap: onOpen,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          child: Stack(
             children: [
-              // Upper section: Centered Artwork Image
-              Container(
-                width: double.infinity,
-                height: 220,
-                padding: const EdgeInsets.symmetric(
-                  vertical: 14,
-                  horizontal: 20,
-                ),
-                alignment: Alignment.center,
-                child: AppNetworkImage(
-                  imageUrl: entry.artworkUrl,
-                  fit: BoxFit.contain,
-                  targetOptimizationWidth: 480,
+              // Subtle trophy ribbon watermark in the top-right background
+              Positioned(
+                right: -4,
+                top: -10,
+                child: Opacity(
+                  opacity: 0.07,
+                  child: Icon(
+                    Icons.workspace_premium_rounded,
+                    size: 110,
+                    color: badgeGold,
+                  ),
                 ),
               ),
-              // Golden Divider line with overlapping Trophy & Champion badge
-              Stack(
-                clipBehavior: Clip.none,
-                alignment: Alignment.centerLeft,
+              Row(
                 children: [
-                  Container(
-                    height: 1.5,
-                    width: double.infinity,
-                    color: _CampaignColors.gold,
-                  ),
-                  Positioned(
-                    left: 12,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
+                  // Left: Artwork thumbnail with golden trophy circle badge
+                  SizedBox(
+                    width: 120,
+                    height: 126,
+                    child: Stack(
+                      clipBehavior: Clip.none,
                       children: [
-                        Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            shape: BoxShape.circle,
-                            border: Border.all(
-                              color: _CampaignColors.darkGold,
-                              width: 2,
+                        // Centered artwork image
+                        Positioned.fill(
+                          child: Padding(
+                            padding: const EdgeInsets.fromLTRB(14, 12, 6, 12),
+                            child: AppNetworkImage(
+                              imageUrl: entry.artworkUrl,
+                              fit: BoxFit.contain,
+                              targetOptimizationWidth: 320,
                             ),
-                            boxShadow: const [
-                              BoxShadow(
-                                color: Color(0x18000000),
-                                blurRadius: 4,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.emoji_events_outlined,
-                            color: _CampaignColors.darkGold,
-                            size: 20,
                           ),
                         ),
-                        const SizedBox(width: 6),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: _CampaignColors.darkGold,
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 2.5,
-                                height: 10,
-                                decoration: BoxDecoration(
-                                  color: Colors.white70,
-                                  borderRadius: BorderRadius.circular(1),
-                                ),
+                        // Circular golden trophy badge overlapping top-left
+                        Positioned(
+                          top: 8,
+                          left: 8,
+                          child: Container(
+                            width: 32,
+                            height: 32,
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAA21D),
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: Colors.white,
+                                width: 2,
                               ),
-                              const SizedBox(width: 5),
-                              const Text(
-                                'CAMPAIGN CHAMPION',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 9.5,
-                                  fontWeight: FontWeight.w800,
-                                  letterSpacing: 0.5,
+                              boxShadow: const [
+                                BoxShadow(
+                                  color: Color(0x22000000),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
                                 ),
-                              ),
-                            ],
+                              ],
+                            ),
+                            child: const Icon(
+                              Icons.emoji_events_rounded,
+                              color: Colors.white,
+                              size: 18,
+                            ),
                           ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
-              // Lower section: Details & Arrow Button
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 22, 16, 16),
-                child: Row(
-                  children: [
-                    Expanded(
+                  const SizedBox(width: 8),
+                  // Middle: Campaign Champion badge, title, author, winning votes
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 3.5,
+                            ),
+                            decoration: BoxDecoration(
+                              color: badgeGold,
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.auto_awesome_rounded,
+                                  size: 12,
+                                  color: Colors.white,
+                                ),
+                                SizedBox(width: 4),
+                                Text(
+                                  'CAMPAIGN CHAMPION',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: 0.6,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 6),
                           Text(
                             entry.artworkTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
                               color: _CampaignColors.darkGreen,
-                              fontSize: 16.5,
+                              fontSize: 15.5,
                               fontWeight: FontWeight.w800,
                             ),
                           ),
@@ -1229,24 +1116,24 @@ class _WinnerArtworkCard extends StatelessWidget {
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
-                              color: _CampaignColors.textMuted,
+                              color: Color(0xFF7A8B7F),
                               fontSize: 12,
                               fontWeight: FontWeight.w500,
                             ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 7),
                           Row(
                             children: [
                               const Icon(
                                 Icons.favorite_rounded,
-                                color: Color(0xFF8E5B16),
+                                color: Color(0xFFC07F10),
                                 size: 13,
                               ),
-                              const SizedBox(width: 4),
+                              const SizedBox(width: 5),
                               Text(
                                 '${entry.voteCount} winning votes',
                                 style: const TextStyle(
-                                  color: Color(0xFF8E5B16),
+                                  color: Color(0xFFC07F10),
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
                                 ),
@@ -1256,36 +1143,17 @@ class _WinnerArtworkCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    SizedBox(
-                      width: 82,
-                      height: 56,
-                      child: Stack(
-                        alignment: Alignment.centerRight,
-                        children: [
-                          Positioned.fill(
-                            child: CustomPaint(
-                              painter: ChevronPatternPainter(),
-                            ),
-                          ),
-                          Container(
-                            width: 38,
-                            height: 38,
-                            decoration: const BoxDecoration(
-                              color: _CampaignColors.softGold,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.chevron_right_rounded,
-                              color: Color(0xFFB77E20),
-                              size: 24,
-                            ),
-                          ),
-                        ],
-                      ),
+                  ),
+                  // Right: Arrow button
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 12),
+                    child: Icon(
+                      Icons.chevron_right_rounded,
+                      color: Color(0xFFC07F10),
+                      size: 24,
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ],
           ),
