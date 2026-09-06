@@ -11,6 +11,70 @@ import '../Widgets/app_network_image.dart';
 import '../Widgets/loading_widget.dart';
 import '../Widgets/error_state_widget.dart';
 
+/// Normalized (0.0–1.0) hotspot position for a single layer marker.
+class _MarkerPosition {
+  const _MarkerPosition(this.x, this.y);
+  final double x;
+  final double y;
+}
+
+/// Per-artwork hotspot coordinates for the three tiffin layers.
+///
+/// Each coordinate is a fraction of the **image** width/height, so
+/// `(0.0, 0.0)` is the top-left corner of the artwork image and
+/// `(1.0, 1.0)` is the bottom-right corner.
+class _LayerHotspots {
+  const _LayerHotspots({
+    required this.layer1,
+    required this.layer2,
+    required this.layer3,
+  });
+
+  final _MarkerPosition layer1;
+  final _MarkerPosition layer2;
+  final _MarkerPosition layer3;
+
+  /// Sensible default when a tiffin has no per-artwork hotspot data.
+  static const _LayerHotspots fallback = _LayerHotspots(
+    layer1: _MarkerPosition(0.10, 0.38),
+    layer2: _MarkerPosition(0.90, 0.55),
+    layer3: _MarkerPosition(0.10, 0.72),
+  );
+
+  /// Per-tiffin hotspot overrides.
+  ///
+  /// When a new tiffin artwork is added, define its layer positions here.
+  /// Values are normalized to the image canvas (0.0–1.0).
+  /// In future, these can be fetched from a `layer_markers` JSONB column
+  /// in the `artworks` table.
+  static const Map<String, _LayerHotspots> _perTiffin = {
+    'HT0001': _LayerHotspots(  // Penang Street Flavours 2026
+      layer1: _MarkerPosition(0.10, 0.38),
+      layer2: _MarkerPosition(0.90, 0.55),
+      layer3: _MarkerPosition(0.10, 0.72),
+    ),
+    'HT0002': _LayerHotspots(  // Melaka Peranakan Heritage 2026
+      layer1: _MarkerPosition(0.10, 0.38),
+      layer2: _MarkerPosition(0.90, 0.55),
+      layer3: _MarkerPosition(0.10, 0.72),
+    ),
+    'HT0003': _LayerHotspots(  // East Coast Colours 2026
+      layer1: _MarkerPosition(0.10, 0.38),
+      layer2: _MarkerPosition(0.90, 0.55),
+      layer3: _MarkerPosition(0.10, 0.72),
+    ),
+    'HT0004': _LayerHotspots(  // Borneo Traditions 2026
+      layer1: _MarkerPosition(0.10, 0.38),
+      layer2: _MarkerPosition(0.90, 0.55),
+      layer3: _MarkerPosition(0.10, 0.72),
+    ),
+  };
+
+  /// Look up hotspots for a given tiffin, falling back to defaults.
+  static _LayerHotspots forTiffin(String? tiffinId) =>
+      _perTiffin[tiffinId] ?? fallback;
+}
+
 /// Visual tokens for the tiffin experience detail presentation.
 abstract final class _TiffinDetailColors {
   static const Color background = Color(0xFFFFFFFF);
@@ -136,6 +200,7 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView>
             child: _ExperienceHero(
               backgroundAsset: backgroundAsset,
               tiffinName: t.editionName,
+              tiffinId: t.id,
               state: t.state,
               imageUrl: t.coverImageUrl,
               onBack: () => Navigator.maybePop(ctx),
@@ -252,6 +317,7 @@ class _ExperienceHero extends StatefulWidget {
   const _ExperienceHero({
     required this.backgroundAsset,
     required this.tiffinName,
+    required this.tiffinId,
     required this.state,
     required this.imageUrl,
     required this.onBack,
@@ -265,6 +331,7 @@ class _ExperienceHero extends StatefulWidget {
 
   final String backgroundAsset;
   final String tiffinName;
+  final String tiffinId;
   final String state;
   final String? imageUrl;
   final VoidCallback onBack;
@@ -463,12 +530,20 @@ class _ExperienceHeroState extends State<_ExperienceHero>
                         return Center(
                           child: SizedBox.fromSize(
                             size: renderedSize,
-                            child: _TiffinImageWithLayerMarkers(
-                              imageUrl: widget.imageUrl,
-                              entrance: _entranceController,
-                              onLayerOneTap: widget.onLayerOneTap,
-                              onLayerTwoTap: widget.onLayerTwoTap,
-                              onLayerThreeTap: widget.onLayerThreeTap,
+                            child: OverflowBox(
+                              maxWidth: renderedSize.width + 40,
+                              maxHeight: renderedSize.height + 40,
+                              child: SizedBox.fromSize(
+                                size: renderedSize,
+                                child: _TiffinImageWithLayerMarkers(
+                                  imageUrl: widget.imageUrl,
+                                  tiffinId: widget.tiffinId,
+                                  entrance: _entranceController,
+                                  onLayerOneTap: widget.onLayerOneTap,
+                                  onLayerTwoTap: widget.onLayerTwoTap,
+                                  onLayerThreeTap: widget.onLayerThreeTap,
+                                ),
+                              ),
                             ),
                           ),
                         );
@@ -632,6 +707,7 @@ class _ExperienceHeroState extends State<_ExperienceHero>
 class _TiffinImageWithLayerMarkers extends StatelessWidget {
   const _TiffinImageWithLayerMarkers({
     required this.imageUrl,
+    required this.tiffinId,
     required this.entrance,
     required this.onLayerOneTap,
     required this.onLayerTwoTap,
@@ -639,71 +715,66 @@ class _TiffinImageWithLayerMarkers extends StatelessWidget {
   });
 
   final String? imageUrl;
+  final String tiffinId;
   final Animation<double> entrance;
   final VoidCallback onLayerOneTap;
   final VoidCallback onLayerTwoTap;
   final VoidCallback onLayerThreeTap;
 
-  static const double _leftMarkerX = .10;
-  static const double _rightMarkerX = .90;
-  static const double _upperLayerY = .38;
-  static const double _middleLayerY = .55;
-  static const double _lowerLayerY = .72;
   static const double _markerSize = 30;
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-    builder: (context, constraints) {
-      final size = constraints.biggest;
-      return Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Positioned.fill(
-            child: AppNetworkImage(
-              imageUrl: imageUrl,
-              fit: BoxFit.fill,
-              targetOptimizationWidth: 1200,
+  Widget build(BuildContext context) {
+    final hotspots = _LayerHotspots.forTiffin(tiffinId);
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final size = constraints.biggest;
+        return Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Positioned.fill(
+              child: AppNetworkImage(
+                imageUrl: imageUrl,
+                fit: BoxFit.fill,
+                targetOptimizationWidth: 1200,
+              ),
             ),
-          ),
-          _positionedMarker(
-            size: size,
-            x: _leftMarkerX,
-            y: _upperLayerY,
-            number: 1,
-            onTap: onLayerOneTap,
-            delay: .45,
-          ),
-          _positionedMarker(
-            size: size,
-            x: _rightMarkerX,
-            y: _middleLayerY,
-            number: 2,
-            onTap: onLayerTwoTap,
-            delay: .59,
-          ),
-          _positionedMarker(
-            size: size,
-            x: _leftMarkerX,
-            y: _lowerLayerY,
-            number: 3,
-            onTap: onLayerThreeTap,
-            delay: .73,
-          ),
-        ],
-      );
-    },
-  );
+            _positionedMarker(
+              size: size,
+              pos: hotspots.layer1,
+              number: 1,
+              onTap: onLayerOneTap,
+              delay: .45,
+            ),
+            _positionedMarker(
+              size: size,
+              pos: hotspots.layer2,
+              number: 2,
+              onTap: onLayerTwoTap,
+              delay: .59,
+            ),
+            _positionedMarker(
+              size: size,
+              pos: hotspots.layer3,
+              number: 3,
+              onTap: onLayerThreeTap,
+              delay: .73,
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   Positioned _positionedMarker({
     required Size size,
-    required double x,
-    required double y,
+    required _MarkerPosition pos,
     required int number,
     required VoidCallback onTap,
     required double delay,
   }) => Positioned(
-    left: (size.width * x) - (_markerSize / 2),
-    top: (size.height * y) - (_markerSize / 2),
+    left: (size.width * pos.x) - (_markerSize / 2),
+    top: (size.height * pos.y) - (_markerSize / 2),
     width: _markerSize,
     height: _markerSize,
     child: _AnimatedLayerMarker(
