@@ -10,7 +10,6 @@ class GoogleMapApiService {
     'api': '1',
     'destination': '$latitude,$longitude',
     'travelmode': travelMode,
-    'dir_action': 'navigate',
   });
 
   Future<bool> openDirections({
