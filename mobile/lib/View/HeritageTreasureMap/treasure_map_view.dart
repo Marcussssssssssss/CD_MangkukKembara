@@ -34,8 +34,15 @@ abstract final class _MapPageColors {
 /// A1. Heritage Treasure Map View — the application home screen.
 class TreasureMapView extends StatefulWidget {
   final bool selectionMode;
+  /// Optional heritage-food search supplied by the Food Origin page.
+  /// The map's existing search logic uses this to show matching vendors.
+  final String initialFoodQuery;
 
-  const TreasureMapView({super.key, this.selectionMode = false});
+  const TreasureMapView({
+    super.key,
+    this.selectionMode = false,
+    this.initialFoodQuery = '',
+  });
 
   @override
   State<TreasureMapView> createState() => _TreasureMapViewState();
@@ -49,7 +56,17 @@ class _TreasureMapViewState extends State<TreasureMapView> {
   void initState() {
     super.initState();
     _vm = TreasureMapViewModel();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _vm.loadVendors());
+    final foodQuery = widget.initialFoodQuery.trim();
+    if (foodQuery.isNotEmpty) {
+      _searchController.text = foodQuery;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (foodQuery.isEmpty) {
+        _vm.loadVendors();
+      } else {
+        _vm.setSearchQuery(foodQuery);
+      }
+    });
   }
 
   @override
@@ -500,9 +517,10 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
       (vendor) => Marker(
         markerId: MarkerId('vendor_${vendor.id}'),
         position: LatLng(vendor.latitude, vendor.longitude),
-        icon:
-            _restaurantMarkerIcon ??
-            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed),
+        // Custom assets are shared across platforms. The plain default marker
+        // is the loading/error fallback because defaultMarkerWithHue is not
+        // implemented by google_maps_flutter_web.
+        icon: _restaurantMarkerIcon ?? BitmapDescriptor.defaultMarker,
         anchor: const Offset(.5, .85),
         zIndexInt: 2,
         infoWindow: InfoWindow(title: vendor.name, snippet: vendor.address),
@@ -513,9 +531,7 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
       (market) => Marker(
         markerId: MarkerId('market_${market.id}'),
         position: LatLng(market.latitude, market.longitude),
-        icon:
-            _nightMarketMarkerIcon ??
-            BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange),
+        icon: _nightMarketMarkerIcon ?? BitmapDescriptor.defaultMarker,
         anchor: const Offset(.5, .85),
         zIndexInt: 1,
         infoWindow: InfoWindow(title: market.name, snippet: market.address),
@@ -568,6 +584,9 @@ class _VendorGoogleMapState extends State<_VendorGoogleMap> {
             buildingsEnabled: true,
             mapToolbarEnabled: false,
             zoomControlsEnabled: false,
+            // The Maps JavaScript API exposes a separate camera control on
+            // web; zoomControlsEnabled only covers the legacy +/- controls.
+            webCameraControlEnabled: false,
             onMapCreated: (controller) {
               _controller = controller;
               WidgetsBinding.instance.addPostFrameCallback(

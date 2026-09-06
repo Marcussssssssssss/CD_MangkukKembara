@@ -72,15 +72,6 @@ class _HeritageExperienceHomeViewState
                 ),
               ),
               leading: const MapHomeButton(color: _ExperiencePageColors.darkGreen),
-              actions: [
-                if (auth.isLoggedIn)
-                  IconButton(
-                    icon: const Icon(Icons.qr_code_scanner_rounded),
-                    tooltip: 'Scan QR',
-                    onPressed: () =>
-                        Navigator.pushNamed(ctx, AppRoutes.qrScanner),
-                  ),
-              ],
             ),
             body: AnimatedSwitcher(
               duration: const Duration(milliseconds: 260),
@@ -384,7 +375,6 @@ class _HeritageExperienceHomeViewState
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Row(
         children: AppConstants.malaysianStates
-            .take(8)
             .map(
               (state) => Padding(
             padding: const EdgeInsets.only(right: 8),
