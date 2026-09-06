@@ -253,7 +253,7 @@ class TreasureMapRepository {
       () => _api.client
           .from('vendor_tiffins')
           .select('''
-        *, heritage_tiffins(edition_name, cover_image_url)
+        *, heritage_tiffins(edition_name, artworks(image_url))
       ''')
           .eq('vendor_id', vendorId),
     );

@@ -203,6 +203,7 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView>
               tiffinId: t.id,
               state: t.state,
               imageUrl: t.coverImageUrl,
+              showLayerMarkers: vm.isCollected,
               onBack: () => Navigator.maybePop(ctx),
               onLayerOneTap: () => _showLayerDetails(ctx, vm, layerNumber: 1),
               onLayerTwoTap: () => _showLayerDetails(ctx, vm, layerNumber: 2),
@@ -214,11 +215,13 @@ class _TiffinExperienceViewState extends State<TiffinExperienceView>
           ),
         ),
         SliverToBoxAdapter(
-          child: _LearnMorePanel(
-            key: _learnMoreKey,
-            vm: vm,
-            entranceController: _storyEntranceController,
-          ),
+          child: vm.isCollected
+              ? _LearnMorePanel(
+                  key: _learnMoreKey,
+                  vm: vm,
+                  entranceController: _storyEntranceController,
+                )
+              : _LockedContentPanel(key: _learnMoreKey),
         ),
       ],
     );
@@ -320,6 +323,7 @@ class _ExperienceHero extends StatefulWidget {
     required this.tiffinId,
     required this.state,
     required this.imageUrl,
+    required this.showLayerMarkers,
     required this.onBack,
     required this.onLayerOneTap,
     required this.onLayerTwoTap,
@@ -334,6 +338,7 @@ class _ExperienceHero extends StatefulWidget {
   final String tiffinId;
   final String state;
   final String? imageUrl;
+  final bool showLayerMarkers;
   final VoidCallback onBack;
   final VoidCallback onLayerOneTap;
   final VoidCallback onLayerTwoTap;
@@ -539,6 +544,7 @@ class _ExperienceHeroState extends State<_ExperienceHero>
                                   imageUrl: widget.imageUrl,
                                   tiffinId: widget.tiffinId,
                                   entrance: _entranceController,
+                                  showMarkers: widget.showLayerMarkers,
                                   onLayerOneTap: widget.onLayerOneTap,
                                   onLayerTwoTap: widget.onLayerTwoTap,
                                   onLayerThreeTap: widget.onLayerThreeTap,
@@ -709,6 +715,7 @@ class _TiffinImageWithLayerMarkers extends StatelessWidget {
     required this.imageUrl,
     required this.tiffinId,
     required this.entrance,
+    required this.showMarkers,
     required this.onLayerOneTap,
     required this.onLayerTwoTap,
     required this.onLayerThreeTap,
@@ -717,6 +724,7 @@ class _TiffinImageWithLayerMarkers extends StatelessWidget {
   final String? imageUrl;
   final String tiffinId;
   final Animation<double> entrance;
+  final bool showMarkers;
   final VoidCallback onLayerOneTap;
   final VoidCallback onLayerTwoTap;
   final VoidCallback onLayerThreeTap;
@@ -739,27 +747,29 @@ class _TiffinImageWithLayerMarkers extends StatelessWidget {
                 targetOptimizationWidth: 1200,
               ),
             ),
-            _positionedMarker(
-              size: size,
-              pos: hotspots.layer1,
-              number: 1,
-              onTap: onLayerOneTap,
-              delay: .45,
-            ),
-            _positionedMarker(
-              size: size,
-              pos: hotspots.layer2,
-              number: 2,
-              onTap: onLayerTwoTap,
-              delay: .59,
-            ),
-            _positionedMarker(
-              size: size,
-              pos: hotspots.layer3,
-              number: 3,
-              onTap: onLayerThreeTap,
-              delay: .73,
-            ),
+            if (showMarkers) ...[
+              _positionedMarker(
+                size: size,
+                pos: hotspots.layer1,
+                number: 1,
+                onTap: onLayerOneTap,
+                delay: .45,
+              ),
+              _positionedMarker(
+                size: size,
+                pos: hotspots.layer2,
+                number: 2,
+                onTap: onLayerTwoTap,
+                delay: .59,
+              ),
+              _positionedMarker(
+                size: size,
+                pos: hotspots.layer3,
+                number: 3,
+                onTap: onLayerThreeTap,
+                delay: .73,
+              ),
+            ],
           ],
         );
       },
@@ -1115,6 +1125,60 @@ class _LayerSheetUnavailable extends StatelessWidget {
       ],
     ),
   );
+}
+
+class _LockedContentPanel extends StatelessWidget {
+  const _LockedContentPanel({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(24, 34, 24, 48),
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(34)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 58,
+            height: 58,
+            decoration: const BoxDecoration(
+              color: _TiffinDetailColors.mist,
+              shape: BoxShape.circle,
+            ),
+            child: const Icon(
+              Icons.lock_outline_rounded,
+              color: _TiffinDetailColors.darkGreen,
+              size: 28,
+            ),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            'Heritage experience locked',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.playfairDisplay(
+              color: _TiffinDetailColors.darkGreen,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'Scan this tiffin’s QR code to unlock its heritage experience.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.nunito(
+              color: _TiffinDetailColors.text.withValues(alpha: .72),
+              fontSize: 16,
+              height: 1.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _LearnMorePanel extends StatelessWidget {

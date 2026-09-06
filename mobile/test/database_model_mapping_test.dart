@@ -51,13 +51,13 @@ void main() {
     expect(food.categoryName, 'Noodles');
   });
 
-  test('vendor tiffin maps heritage_tiffin_id and cover image', () {
+  test('vendor tiffin maps heritage_tiffin_id and artwork image', () {
     final vendorTiffin = VendorTiffinModel.fromJson({
       'vendor_id': 'V0001',
       'heritage_tiffin_id': 'HT0001',
       'heritage_tiffins': {
         'edition_name': 'Penang Edition',
-        'cover_image_url': 'https://example.com/tiffin.jpg',
+        'artworks': {'image_url': 'https://example.com/tiffin.jpg'},
       },
     });
 
