@@ -62,7 +62,11 @@ flutter:
     - asset/image/tiffin_background_yellow.png
     - asset/image/profile_background_green.png
     - asset/image/campaign_background.png
+    - asset/image/artwork_campaign_card.png
     - asset/image/heritage_story_illustration.png
+    - asset/image/artwork_story_background.png
+    - asset/image/artwork_story_idea.png
+    - asset/image/artwork_story_culture.png
     - asset/image/heritage_background.png
     - asset/image/artist_background.png
     - asset/image/nightmarket_tiffin_pin.png

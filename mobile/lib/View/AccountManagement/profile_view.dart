@@ -236,6 +236,36 @@ class _ProfileViewState extends State<ProfileView> {
                 }),
                 _MenuItem(Icons.lock_outline_rounded, 'Change Password', () => Navigator.pushNamed(ctx, AppRoutes.changePassword)),
                 _MenuItem(Icons.logout_rounded, 'Logout', () async {
+                  final shouldLogout = await showDialog<bool>(
+                    context: ctx,
+                    builder: (dialogContext) => AlertDialog(
+                      icon: const Icon(
+                        Icons.logout_rounded,
+                        color: _ProfilePageColors.darkGreen,
+                      ),
+                      title: const Text('Log out?'),
+                      content: const Text(
+                        'Are you sure you want to log out of your account?',
+                        textAlign: TextAlign.center,
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(dialogContext, false),
+                          child: const Text('Cancel'),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(dialogContext, true),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: _ProfilePageColors.darkGreen,
+                            foregroundColor: Colors.white,
+                          ),
+                          child: const Text('Log out'),
+                        ),
+                      ],
+                      actionsAlignment: MainAxisAlignment.center,
+                    ),
+                  );
+                  if (shouldLogout != true || !ctx.mounted) return;
                   try {
                     await auth.logout();
                     if (ctx.mounted) {
