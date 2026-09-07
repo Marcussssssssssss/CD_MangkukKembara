@@ -23,7 +23,7 @@ void main() {
       expect(uri.queryParameters['api'], '1');
       expect(uri.queryParameters['destination'], '1.5535,110.3593');
       expect(uri.queryParameters['travelmode'], travelMode);
-      expect(uri.queryParameters['dir_action'], 'navigate');
+      expect(uri.queryParameters.containsKey('dir_action'), isFalse);
     }
   });
 }
