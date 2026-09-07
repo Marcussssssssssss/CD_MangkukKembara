@@ -363,6 +363,27 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
                             _passwordCtrl.text,
                           );
                           if (success && context.mounted) {
+                            await showDialog<void>(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (dialogContext) => PopScope(
+                                canPop: false,
+                                child: AlertDialog(
+                                  title: const Text('Password reset successful'),
+                                  content: const Text(
+                                    'Your password has been reset successfully.',
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () =>
+                                          Navigator.of(dialogContext).pop(),
+                                      child: const Text('OK'),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                            if (!context.mounted) return;
                             if (widget.wasAuthenticated) {
                               await context.read<AuthViewModel>().finalizeAuthenticatedRecovery();
                               if (!context.mounted) return;
