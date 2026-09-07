@@ -55,9 +55,13 @@ class _MangkukKembaraAppState extends State<MangkukKembaraApp> {
       state,
     ) async {
       if (state.event == AuthChangeEvent.passwordRecovery) {
+        // Keep the return path only for recovery opened from Change Password.
         _navigatorKey.currentState?.pushNamedAndRemoveUntil(
           AppRoutes.resetPassword,
-          (route) => false,
+          (route) =>
+              _hadAuthenticatedSession &&
+              route.settings.name == AppRoutes.forgotPassword &&
+              route.settings.arguments == AppRoutes.changePassword,
           arguments: ResetPasswordArguments(
             recoverySessionVerified: true,
             wasAuthenticated: _hadAuthenticatedSession,
