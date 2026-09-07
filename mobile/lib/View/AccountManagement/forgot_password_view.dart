@@ -228,11 +228,6 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
     if (widget.wasAuthenticated) {
       await context.read<AuthViewModel>().finalizeAuthenticatedRecovery();
       if (!mounted) return;
-      // Recovery from Change Password keeps the reset-email page underneath.
-      if (Navigator.of(context).canPop()) {
-        Navigator.pop(context);
-        return;
-      }
       Navigator.pushNamedAndRemoveUntil(
         context,
         AppRoutes.profile,
@@ -371,17 +366,10 @@ class _ResetPasswordViewState extends State<ResetPasswordView> {
                             if (widget.wasAuthenticated) {
                               await context.read<AuthViewModel>().finalizeAuthenticatedRecovery();
                               if (!context.mounted) return;
-                              final fromChangePassword =
-                                  Navigator.of(context).canPop();
                               Navigator.pushNamedAndRemoveUntil(
                                 context,
-                                fromChangePassword
-                                    ? AppRoutes.changePassword
-                                    : AppRoutes.profile,
-                                (route) =>
-                                    route.settings.name == AppRoutes.treasureMap ||
-                                    (fromChangePassword &&
-                                        route.settings.name == AppRoutes.profile),
+                                AppRoutes.profile,
+                                (route) => route.settings.name == AppRoutes.treasureMap,
                               );
                             } else {
                               await vm.endRecoverySession();
@@ -519,7 +507,6 @@ class _ChangePasswordViewState extends State<ChangePasswordView> {
                         onPressed: () => Navigator.pushNamed(
                           context,
                           AppRoutes.forgotPassword,
-                          arguments: AppRoutes.changePassword,
                         ),
                         child: const Text('Forgot password?'),
                       ),
